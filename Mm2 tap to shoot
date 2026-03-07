@@ -1,0 +1,172 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local Window = Rayfield:CreateWindow({
+   Name = "MM2 Gemini | 2026 OMNI",
+   LoadingTitle = "Bypassing MM2 Logic...",
+   ConfigurationSaving = {Enabled = true, FolderName = "MM2_Omni"}
+})
+
+-- Variables
+local buttonLocked = false
+local espEnabled = false
+local autoGrabEnabled = false
+local MurdererHighlight = Instance.new("Highlight")
+MurdererHighlight.FillColor = Color3.fromRGB(255, 0, 0)
+
+-- Helper: Find Murderer
+local function GetMurderer()
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            if p.Character:FindFirstChild("Knife") or p.Backpack:FindFirstChild("Knife") then
+                return p
+            end
+        end
+    end
+    return nil
+end
+
+-- Logic: Shoot Murderer (Silent Aim Method)
+local function FireAtMurderer()
+    local murderer = GetMurderer()
+    local gun = LocalPlayer.Character:FindFirstChild("Gun") or LocalPlayer.Backpack:FindFirstChild("Gun")
+    
+    if murderer and gun then
+        if gun.Parent == LocalPlayer.Backpack then
+            LocalPlayer.Character.Humanoid:EquipTool(gun)
+            task.wait(0.4) -- Wait for MM2 draw animation
+        end
+        
+        local targetPos = murderer.Character.HumanoidRootPart.Position
+        local shootRemote = gun:FindFirstChild("ShootGun") or game:GetService("ReplicatedStorage"):FindFirstChild("ShootGun")
+        
+        if shootRemote then
+            -- Bypasses screen position entirely
+            shootRemote:FireServer(targetPos, LocalPlayer.Character.HumanoidRootPart.Position)
+        else
+            -- Manual snap fallback
+            LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(LocalPlayer.Character.HumanoidRootPart.Position, Vector3.new(targetPos.X, LocalPlayer.Character.HumanoidRootPart.Position.Y, targetPos.Z))
+            gun:Activate()
+        end
+    else
+        Rayfield:Notify({Title = "Error", Content = "Need Gun & detected Murderer!", Duration = 2})
+    end
+end
+
+-- Logic: Find and Grab Gun
+local function GrabDroppedGun()
+    local gunDrop = workspace:FindFirstChild("GunDrop") or workspace:FindFirstChild("Gun")
+    if gunDrop and gunDrop:IsA("BasePart") then
+        LocalPlayer.Character.HumanoidRootPart.CFrame = gunDrop.CFrame
+        return true
+    end
+    return false
+end
+
+-- TABS
+local MainTab = Window:CreateTab("Main", 4483362458)
+local PlayerTab = Window:CreateTab("Player", 4483362458)
+
+--- MAIN TAB ---
+
+MainTab:CreateToggle({
+   Name = "Show 'Shoot Murderer' Button",
+   CurrentValue = false,
+   Callback = function(Value)
+      if Value then
+         if not _G.ShootUI then
+            local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+            local ShootBtn = Instance.new("TextButton", ScreenGui)
+            _G.ShootUI = ScreenGui
+
+            ShootBtn.Size = UDim2.new(0, 160, 0, 50)
+            ShootBtn.Position = UDim2.new(0.5, -80, 0.3, 0)
+            ShootBtn.Text = "SHOOT MURDERER"
+            ShootBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+            ShootBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            ShootBtn.Font = Enum.Font.GothamBold
+            
+            Instance.new("UICorner", ShootBtn).CornerRadius = UDim.new(0, 10)
+            local Stroke = Instance.new("UIStroke", ShootBtn)
+            Stroke.Color = Color3.fromRGB(255, 0, 0)
+            Stroke.Thickness = 2
+
+            -- MOBILE DRAG FIX
+            local dragging, dragStart, startPos
+            ShootBtn.InputBegan:Connect(function(input)
+                if not buttonLocked and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+                    dragging = true
+                    dragStart = input.Position
+                    startPos = ShootBtn.Position
+                end
+            end)
+            UserInputService.InputChanged:Connect(function(input)
+                if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                    local delta = input.Position - dragStart
+                    ShootBtn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+                end
+            end)
+            UserInputService.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end
+            end)
+
+            ShootBtn.MouseButton1Click:Connect(FireAtMurderer)
+         end
+         _G.ShootUI.Enabled = true
+      else
+         if _G.ShootUI then _G.ShootUI.Enabled = false end
+      end
+   end,
+})
+
+MainTab:CreateToggle({
+    Name = "Lock Button Position",
+    CurrentValue = false,
+    Callback = function(V) buttonLocked = V end
+})
+
+MainTab:CreateToggle({
+    Name = "Auto-Grab Dropped Gun",
+    CurrentValue = false,
+    Callback = function(V) autoGrabEnabled = V end
+})
+
+MainTab:CreateToggle({
+   Name = "Murderer ESP (Red Only)",
+   CurrentValue = false,
+   Callback = function(V) espEnabled = V; if not V then MurdererHighlight.Parent = nil end end,
+})
+
+--- PLAYER TAB ---
+
+PlayerTab:CreateInput({
+   Name = "WalkSpeed",
+   PlaceholderText = "16",
+   Callback = function(T) if tonumber(T) and LocalPlayer.Character then LocalPlayer.Character.Humanoid.WalkSpeed = tonumber(T) end end,
+})
+
+PlayerTab:CreateInput({
+   Name = "JumpPower",
+   PlaceholderText = "50",
+   Callback = function(T) 
+      if tonumber(T) and LocalPlayer.Character then 
+         LocalPlayer.Character.Humanoid.JumpPower = tonumber(T) 
+         LocalPlayer.Character.Humanoid.UseJumpPower = true
+      end 
+   end,
+})
+
+-- Global Loops (ESP & Auto-Grab)
+RunService.RenderStepped:Connect(function()
+    if espEnabled then
+        local m = GetMurderer()
+        MurdererHighlight.Parent = (m and m.Character) and m.Character or nil
+    end
+    
+    if autoGrabEnabled then
+        GrabDroppedGun()
+    end
+end)
