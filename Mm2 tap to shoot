@@ -5,8 +5,8 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local Window = Rayfield:CreateWindow({
-   Name = "MM2 Gemini | 2026 NO-SHIFTLOCK",
-   LoadingTitle = "Optimizing Free-Aim...",
+   Name = "MM2 Gemini | 2026 OMNI",
+   LoadingTitle = "HRP Targeting Active...",
    ConfigurationSaving = {Enabled = false}
 })
 
@@ -19,7 +19,7 @@ local espEnabled = false
 local MurdererHighlight = Instance.new("Highlight")
 MurdererHighlight.FillColor = Color3.fromRGB(255, 0, 0)
 
--- Logic: Identify Target
+-- Logic: Target Murderer
 local function GetMurderer()
     for _, p in pairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
@@ -31,34 +31,34 @@ local function GetMurderer()
     return nil
 end
 
--- THE FIX: Non-Shiftlock Silent Aim
-local function DirectShoot()
-    local target = GetMurderer()
+-- THE "HRP INJECTION" SHOOT: Ultimate Hitbox Reliability
+local function SilentShoot()
+    local murderer = GetMurderer()
     local gun = LocalPlayer.Character:FindFirstChild("Gun") or LocalPlayer.Backpack:FindFirstChild("Gun")
     
-    if target and gun then
-        -- Force Equip
+    if murderer and gun then
+        -- 1. Equip if needed (MM2 won't let you fire if holstered)
         if gun.Parent == LocalPlayer.Backpack then
             LocalPlayer.Character.Humanoid:EquipTool(gun)
-            task.wait(0.4) 
+            task.wait(0.4) -- Essential MM2 draw delay to prevent ghost shots
         end
         
-        -- Logic: We manually trigger the 'ShootGun' Remote
-        -- This is the "Most Possible" to work because it bypasses the 
-        -- screen-touch requirement entirely.
-        local remote = gun:FindFirstChild("ShootGun") or game:GetService("ReplicatedStorage"):FindFirstChild("ShootGun")
+        -- 2. HRP Target Injection
+        -- We target the center-mass of the player for the highest hit probability.
+        local targetPos = murderer.Character.HumanoidRootPart.Position
+        local hrpPos = LocalPlayer.Character.HumanoidRootPart.Position
         
-        if remote then
-            -- We send the target's position. The server accepts this 
-            -- even if your camera is looking elsewhere.
-            remote:FireServer(target.Character.HumanoidRootPart.Position, LocalPlayer.Character.HumanoidRootPart.Position)
+        local shootRemote = gun:FindFirstChild("ShootGun") or game:GetService("ReplicatedStorage"):FindFirstChild("ShootGun")
+        
+        if shootRemote then
+            -- Tell the server: "The bullet hit the HRP"
+            shootRemote:FireServer(targetPos, hrpPos)
         else
-            -- If the remote is hidden/renamed, we snap-aim and click
-            local oldCF = workspace.CurrentCamera.CFrame
-            workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, target.Character.HumanoidRootPart.Position)
+            -- Mobile Fallback: Direct Activation
             gun:Activate()
-            task.delay(0.05, function() workspace.CurrentCamera.CFrame = oldCF end)
         end
+    else
+        Rayfield:Notify({Title = "Error", Content = "Murderer or Gun not detected!", Duration = 2})
     end
 end
 
@@ -75,9 +75,9 @@ Main:CreateToggle({
             local b = Instance.new("TextButton", sg)
             _G.FinalBtn = sg
             b.Size = UDim2.new(0, 140, 0, 50)
-            b.Position = UDim2.new(0.5, -70, 0.7, 0) -- Lowered for easier mobile access
+            b.Position = UDim2.new(0.5, -70, 0.7, 0)
             b.Text = "TAP TO SHOOT"
-            b.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            b.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
             b.TextColor3 = Color3.fromRGB(255, 255, 255)
             b.Font = Enum.Font.GothamBold
             Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
@@ -85,13 +85,13 @@ Main:CreateToggle({
             st.Color = Color3.fromRGB(255, 0, 0)
             st.Thickness = 2
             
-            -- Mobile Draggable
+            -- Draggable Mobile Logic
             local drag, start, startPos
             b.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then drag = true start = i.Position startPos = b.Position end end)
             UserInputService.InputChanged:Connect(function(i) if drag and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then local d = i.Position - start b.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y) end end)
             UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then drag = false end end)
             
-            b.MouseButton1Click:Connect(DirectShoot)
+            b.MouseButton1Click:Connect(SilentShoot)
          end
          _G.FinalBtn.Enabled = true
       else
@@ -112,23 +112,21 @@ Main:CreateInput({
    Callback = function(v) if tonumber(v) then slashSpeed = math.clamp(tonumber(v), 0.1, 1) end end
 })
 
-Main:CreateInput({
-   Name = "Slash Range",
-   PlaceholderText = "12",
-   Callback = function(v) if tonumber(v) then slashRange = tonumber(v) end end
-})
-
 Main:CreateToggle({
    Name = "Murderer ESP",
    CurrentValue = false,
    Callback = function(v) espEnabled = v; if not v then MurdererHighlight.Parent = nil end end
 })
 
--- Background Loop
+-- Global Heartbeat Loop
 RunService.Heartbeat:Connect(function()
     if espEnabled then
         local m = GetMurderer()
-        MurdererHighlight.Parent = (m and m.Character) and m.Character or nil
+        if m and m.Character then
+            MurdererHighlight.Parent = m.Character
+        else
+            MurdererHighlight.Parent = nil
+        end
     end
     
     if autoSlash and tick() - lastSlash >= slashSpeed then
