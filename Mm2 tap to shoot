@@ -6,20 +6,20 @@ local UserInputService = game:GetService("UserInputService")
 
 local Window = Rayfield:CreateWindow({
    Name = "MM2 Gemini | 2026 OMNI",
-   LoadingTitle = "HRP Targeting Active...",
+   LoadingTitle = "Securing UI Elements...",
    ConfigurationSaving = {Enabled = false}
 })
 
 -- State
+local buttonLocked = false -- The UI Lock variable
 local autoSlash = false
 local slashRange = 12
-local slashSpeed = 0.5
 local lastSlash = 0
 local espEnabled = false
 local MurdererHighlight = Instance.new("Highlight")
 MurdererHighlight.FillColor = Color3.fromRGB(255, 0, 0)
 
--- Logic: Target Murderer
+-- Logic: Get Murderer
 local function GetMurderer()
     for _, p in pairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
@@ -31,34 +31,25 @@ local function GetMurderer()
     return nil
 end
 
--- THE "HRP INJECTION" SHOOT: Ultimate Hitbox Reliability
+-- Logic: Silent Shoot HRP
 local function SilentShoot()
     local murderer = GetMurderer()
     local gun = LocalPlayer.Character:FindFirstChild("Gun") or LocalPlayer.Backpack:FindFirstChild("Gun")
     
     if murderer and gun then
-        -- 1. Equip if needed (MM2 won't let you fire if holstered)
         if gun.Parent == LocalPlayer.Backpack then
             LocalPlayer.Character.Humanoid:EquipTool(gun)
-            task.wait(0.4) -- Essential MM2 draw delay to prevent ghost shots
+            task.wait(0.4) 
         end
         
-        -- 2. HRP Target Injection
-        -- We target the center-mass of the player for the highest hit probability.
         local targetPos = murderer.Character.HumanoidRootPart.Position
-        local hrpPos = LocalPlayer.Character.HumanoidRootPart.Position
-        
         local shootRemote = gun:FindFirstChild("ShootGun") or game:GetService("ReplicatedStorage"):FindFirstChild("ShootGun")
         
         if shootRemote then
-            -- Tell the server: "The bullet hit the HRP"
-            shootRemote:FireServer(targetPos, hrpPos)
+            shootRemote:FireServer(targetPos, LocalPlayer.Character.HumanoidRootPart.Position)
         else
-            -- Mobile Fallback: Direct Activation
             gun:Activate()
         end
-    else
-        Rayfield:Notify({Title = "Error", Content = "Murderer or Gun not detected!", Duration = 2})
     end
 end
 
@@ -70,14 +61,14 @@ Main:CreateToggle({
    CurrentValue = false,
    Callback = function(Value)
       if Value then
-         if not _G.FinalBtn then
+         if not _G.FinalBtnUI then
             local sg = Instance.new("ScreenGui", game.CoreGui)
             local b = Instance.new("TextButton", sg)
-            _G.FinalBtn = sg
+            _G.FinalBtnUI = sg
             b.Size = UDim2.new(0, 140, 0, 50)
             b.Position = UDim2.new(0.5, -70, 0.7, 0)
             b.Text = "TAP TO SHOOT"
-            b.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+            b.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
             b.TextColor3 = Color3.fromRGB(255, 255, 255)
             b.Font = Enum.Font.GothamBold
             Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
@@ -85,31 +76,49 @@ Main:CreateToggle({
             st.Color = Color3.fromRGB(255, 0, 0)
             st.Thickness = 2
             
-            -- Draggable Mobile Logic
+            -- Draggable Logic with Lock Check
             local drag, start, startPos
-            b.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then drag = true start = i.Position startPos = b.Position end end)
-            UserInputService.InputChanged:Connect(function(i) if drag and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then local d = i.Position - start b.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y) end end)
-            UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then drag = false end end)
+            b.InputBegan:Connect(function(i) 
+                if not buttonLocked and (i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch) then 
+                    drag = true 
+                    start = i.Position 
+                    startPos = b.Position 
+                end 
+            end)
+
+            UserInputService.InputChanged:Connect(function(i) 
+                if drag and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then 
+                    local d = i.Position - start 
+                    b.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y) 
+                end 
+            end)
+
+            UserInputService.InputEnded:Connect(function(i) 
+                if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then 
+                    drag = false 
+                end 
+            end)
             
             b.MouseButton1Click:Connect(SilentShoot)
          end
-         _G.FinalBtn.Enabled = true
+         _G.FinalBtnUI.Enabled = true
       else
-         if _G.FinalBtn then _G.FinalBtn.Enabled = false end
+         if _G.FinalBtnUI then _G.FinalBtnUI.Enabled = false end
       end
    end
 })
 
 Main:CreateToggle({
-   Name = "Auto Slash (Kill Aura)",
-   CurrentValue = false,
-   Callback = function(v) autoSlash = v end
-})
-
-Main:CreateInput({
-   Name = "Slash Speed (0.1 - 1.0)",
-   PlaceholderText = "0.5",
-   Callback = function(v) if tonumber(v) then slashSpeed = math.clamp(tonumber(v), 0.1, 1) end end
+    Name = "Lock Button Position",
+    CurrentValue = false,
+    Callback = function(V) 
+        buttonLocked = V 
+        Rayfield:Notify({
+            Title = "UI Update", 
+            Content = V and "Button Locked" or "Button Unlocked (Draggable)", 
+            Duration = 2
+        })
+    end
 })
 
 Main:CreateToggle({
@@ -122,14 +131,10 @@ Main:CreateToggle({
 RunService.Heartbeat:Connect(function()
     if espEnabled then
         local m = GetMurderer()
-        if m and m.Character then
-            MurdererHighlight.Parent = m.Character
-        else
-            MurdererHighlight.Parent = nil
-        end
+        MurdererHighlight.Parent = (m and m.Character) and m.Character or nil
     end
     
-    if autoSlash and tick() - lastSlash >= slashSpeed then
+    if autoSlash and tick() - lastSlash >= 0.5 then
         local k = LocalPlayer.Character:FindFirstChild("Knife")
         if k then
             for _, p in pairs(Players:GetPlayers()) do
