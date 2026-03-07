@@ -5,8 +5,8 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local Window = Rayfield:CreateWindow({
-   Name = "MM2 Gemini | 2026 WORKING",
-   LoadingTitle = "Bypassing All Checks...",
+   Name = "MM2 Gemini | 2026 NO-SHIFTLOCK",
+   LoadingTitle = "Optimizing Free-Aim...",
    ConfigurationSaving = {Enabled = false}
 })
 
@@ -19,7 +19,7 @@ local espEnabled = false
 local MurdererHighlight = Instance.new("Highlight")
 MurdererHighlight.FillColor = Color3.fromRGB(255, 0, 0)
 
--- Functions
+-- Logic: Identify Target
 local function GetMurderer()
     for _, p in pairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
@@ -31,26 +31,33 @@ local function GetMurderer()
     return nil
 end
 
-local function ShootMurderer()
+-- THE FIX: Non-Shiftlock Silent Aim
+local function DirectShoot()
     local target = GetMurderer()
     local gun = LocalPlayer.Character:FindFirstChild("Gun") or LocalPlayer.Backpack:FindFirstChild("Gun")
     
     if target and gun then
+        -- Force Equip
         if gun.Parent == LocalPlayer.Backpack then
             LocalPlayer.Character.Humanoid:EquipTool(gun)
-            task.wait(0.4) -- MM2 server-side draw delay
+            task.wait(0.4) 
         end
         
+        -- Logic: We manually trigger the 'ShootGun' Remote
+        -- This is the "Most Possible" to work because it bypasses the 
+        -- screen-touch requirement entirely.
         local remote = gun:FindFirstChild("ShootGun") or game:GetService("ReplicatedStorage"):FindFirstChild("ShootGun")
+        
         if remote then
-            -- Silent Aim: Hits regardless of Shiftlock or Joytick
+            -- We send the target's position. The server accepts this 
+            -- even if your camera is looking elsewhere.
             remote:FireServer(target.Character.HumanoidRootPart.Position, LocalPlayer.Character.HumanoidRootPart.Position)
         else
-            -- Mobile Snap Fallback
-            local cf = LocalPlayer.Character.HumanoidRootPart.CFrame
-            LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(LocalPlayer.Character.HumanoidRootPart.Position, Vector3.new(target.Character.HumanoidRootPart.Position.X, LocalPlayer.Character.HumanoidRootPart.Position.Y, target.Character.HumanoidRootPart.Position.Z))
+            -- If the remote is hidden/renamed, we snap-aim and click
+            local oldCF = workspace.CurrentCamera.CFrame
+            workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, target.Character.HumanoidRootPart.Position)
             gun:Activate()
-            task.delay(0.1, function() LocalPlayer.Character.HumanoidRootPart.CFrame = cf end)
+            task.delay(0.05, function() workspace.CurrentCamera.CFrame = oldCF end)
         end
     end
 end
@@ -63,32 +70,32 @@ Main:CreateToggle({
    CurrentValue = false,
    Callback = function(Value)
       if Value then
-         if not _G.BtnUI then
+         if not _G.FinalBtn then
             local sg = Instance.new("ScreenGui", game.CoreGui)
             local b = Instance.new("TextButton", sg)
-            _G.BtnUI = sg
-            b.Size = UDim2.new(0, 150, 0, 50)
-            b.Position = UDim2.new(0.5, -75, 0.5, 0)
+            _G.FinalBtn = sg
+            b.Size = UDim2.new(0, 140, 0, 50)
+            b.Position = UDim2.new(0.5, -70, 0.7, 0) -- Lowered for easier mobile access
             b.Text = "TAP TO SHOOT"
-            b.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-            b.TextColor3 = Color3.fromRGB(255, 60, 60)
+            b.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            b.TextColor3 = Color3.fromRGB(255, 255, 255)
             b.Font = Enum.Font.GothamBold
             Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
             local st = Instance.new("UIStroke", b)
             st.Color = Color3.fromRGB(255, 0, 0)
             st.Thickness = 2
             
-            -- Draggable
+            -- Mobile Draggable
             local drag, start, startPos
             b.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then drag = true start = i.Position startPos = b.Position end end)
             UserInputService.InputChanged:Connect(function(i) if drag and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then local d = i.Position - start b.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y) end end)
             UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then drag = false end end)
             
-            b.MouseButton1Click:Connect(ShootMurderer)
+            b.MouseButton1Click:Connect(DirectShoot)
          end
-         _G.BtnUI.Enabled = true
+         _G.FinalBtn.Enabled = true
       else
-         if _G.BtnUI then _G.BtnUI.Enabled = false end
+         if _G.FinalBtn then _G.FinalBtn.Enabled = false end
       end
    end
 })
@@ -117,22 +124,20 @@ Main:CreateToggle({
    Callback = function(v) espEnabled = v; if not v then MurdererHighlight.Parent = nil end end
 })
 
--- Main Loop
+-- Background Loop
 RunService.Heartbeat:Connect(function()
-    -- ESP
     if espEnabled then
         local m = GetMurderer()
         MurdererHighlight.Parent = (m and m.Character) and m.Character or nil
     end
     
-    -- Auto Slash
     if autoSlash and tick() - lastSlash >= slashSpeed then
-        local knife = LocalPlayer.Character:FindFirstChild("Knife")
-        if knife then
+        local k = LocalPlayer.Character:FindFirstChild("Knife")
+        if k then
             for _, p in pairs(Players:GetPlayers()) do
                 if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
                     if (LocalPlayer.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude <= slashRange then
-                        knife:Activate()
+                        k:Activate()
                         lastSlash = tick()
                         break
                     end
