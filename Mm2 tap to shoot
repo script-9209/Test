@@ -5,21 +5,21 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local Window = Rayfield:CreateWindow({
-   Name = "MM2 Gemini | 2026 OMNI",
-   LoadingTitle = "Configuring Attack Delays...",
-   ConfigurationSaving = {Enabled = true, FolderName = "MM2_Omni"}
+   Name = "MM2 Gemini | 2026 WORKING",
+   LoadingTitle = "Bypassing All Checks...",
+   ConfigurationSaving = {Enabled = false}
 })
 
--- Variables
-local autoSlashEnabled = false
+-- State
+local autoSlash = false
 local slashRange = 12
-local slashCooldown = 0.5 -- Default (Adjustable 0.1s to 1.0s)
+local slashSpeed = 0.5
 local lastSlash = 0
-
+local espEnabled = false
 local MurdererHighlight = Instance.new("Highlight")
 MurdererHighlight.FillColor = Color3.fromRGB(255, 0, 0)
 
--- Helper: Get Murderer
+-- Functions
 local function GetMurderer()
     for _, p in pairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
@@ -31,95 +31,113 @@ local function GetMurderer()
     return nil
 end
 
--- Logic: Precision Kill Aura
-local function DoCombatLogic()
-    local knife = LocalPlayer.Character:FindFirstChild("Knife")
-    if not knife or not autoSlashEnabled then return end
-
-    -- Check if cooldown has passed
-    if tick() - lastSlash >= slashCooldown then
-        for _, p in pairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                local dist = (LocalPlayer.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude
-                
-                if dist <= slashRange then 
-                    knife:Activate()
-                    lastSlash = tick()
-                    
-                    -- Optional: Speed up the visual animation to match the speed
-                    local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-                    if hum then
-                        for _, anim in pairs(hum:GetPlayingAnimationTracks()) do
-                            if anim.Name:lower():find("attack") or anim.Name:lower():find("slash") then
-                                anim:AdjustSpeed(2) -- Makes the arm move faster
-                            end
-                        end
-                    end
-                    break -- Only hit one person per interval to prevent lag
-                end
-            end
+local function ShootMurderer()
+    local target = GetMurderer()
+    local gun = LocalPlayer.Character:FindFirstChild("Gun") or LocalPlayer.Backpack:FindFirstChild("Gun")
+    
+    if target and gun then
+        if gun.Parent == LocalPlayer.Backpack then
+            LocalPlayer.Character.Humanoid:EquipTool(gun)
+            task.wait(0.4) -- MM2 server-side draw delay
+        end
+        
+        local remote = gun:FindFirstChild("ShootGun") or game:GetService("ReplicatedStorage"):FindFirstChild("ShootGun")
+        if remote then
+            -- Silent Aim: Hits regardless of Shiftlock or Joytick
+            remote:FireServer(target.Character.HumanoidRootPart.Position, LocalPlayer.Character.HumanoidRootPart.Position)
+        else
+            -- Mobile Snap Fallback
+            local cf = LocalPlayer.Character.HumanoidRootPart.CFrame
+            LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(LocalPlayer.Character.HumanoidRootPart.Position, Vector3.new(target.Character.HumanoidRootPart.Position.X, LocalPlayer.Character.HumanoidRootPart.Position.Y, target.Character.HumanoidRootPart.Position.Z))
+            gun:Activate()
+            task.delay(0.1, function() LocalPlayer.Character.HumanoidRootPart.CFrame = cf end)
         end
     end
 end
 
--- TABS
-local CombatTab = Window:CreateTab("Combat", 4483362458)
-local UtilityTab = Window:CreateTab("Utility", 4483362458)
+-- Tabs
+local Main = Window:CreateTab("Main", 4483362458)
 
---- COMBAT TAB ---
-
-CombatTab:CreateToggle({
-    Name = "Auto Slash (Kill Aura)",
-    CurrentValue = false,
-    Callback = function(V) autoSlashEnabled = V end
-})
-
-CombatTab:CreateInput({
-   Name = "Slash Speed (Seconds)",
-   PlaceholderText = "Min 0.1, Max 1.0",
-   Callback = function(Text)
-      local num = tonumber(Text)
-      if num then
-         -- Clamp the value between 0.1 and 1.0
-         slashCooldown = math.clamp(num, 0.1, 1.0)
-         Rayfield:Notify({
-            Title = "Speed Updated", 
-            Content = "Interval set to: " .. tostring(slashCooldown) .. "s", 
-            Duration = 2
-         })
+Main:CreateToggle({
+   Name = "Show 'Tap to Shoot' Button",
+   CurrentValue = false,
+   Callback = function(Value)
+      if Value then
+         if not _G.BtnUI then
+            local sg = Instance.new("ScreenGui", game.CoreGui)
+            local b = Instance.new("TextButton", sg)
+            _G.BtnUI = sg
+            b.Size = UDim2.new(0, 150, 0, 50)
+            b.Position = UDim2.new(0.5, -75, 0.5, 0)
+            b.Text = "TAP TO SHOOT"
+            b.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+            b.TextColor3 = Color3.fromRGB(255, 60, 60)
+            b.Font = Enum.Font.GothamBold
+            Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
+            local st = Instance.new("UIStroke", b)
+            st.Color = Color3.fromRGB(255, 0, 0)
+            st.Thickness = 2
+            
+            -- Draggable
+            local drag, start, startPos
+            b.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then drag = true start = i.Position startPos = b.Position end end)
+            UserInputService.InputChanged:Connect(function(i) if drag and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then local d = i.Position - start b.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y) end end)
+            UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then drag = false end end)
+            
+            b.MouseButton1Click:Connect(ShootMurderer)
+         end
+         _G.BtnUI.Enabled = true
+      else
+         if _G.BtnUI then _G.BtnUI.Enabled = false end
       end
-   end,
+   end
 })
 
-CombatTab:CreateInput({
-   Name = "Slash Range (Studs)",
+Main:CreateToggle({
+   Name = "Auto Slash (Kill Aura)",
+   CurrentValue = false,
+   Callback = function(v) autoSlash = v end
+})
+
+Main:CreateInput({
+   Name = "Slash Speed (0.1 - 1.0)",
+   PlaceholderText = "0.5",
+   Callback = function(v) if tonumber(v) then slashSpeed = math.clamp(tonumber(v), 0.1, 1) end end
+})
+
+Main:CreateInput({
+   Name = "Slash Range",
    PlaceholderText = "12",
-   Callback = function(Text)
-      if tonumber(Text) then slashRange = tonumber(Text) end
-   end,
+   Callback = function(v) if tonumber(v) then slashRange = tonumber(v) end end
 })
 
---- UTILITY TAB ---
-
-UtilityTab:CreateToggle({
+Main:CreateToggle({
    Name = "Murderer ESP",
    CurrentValue = false,
-   Callback = function(V) espEnabled = V; if not V then MurdererHighlight.Parent = nil end end,
-})
-
-UtilityTab:CreateButton({
-    Name = "TP to Dropped Gun",
-    Callback = function()
-        local gd = workspace:FindFirstChild("GunDrop") or workspace:FindFirstChild("Gun")
-        if gd then LocalPlayer.Character.HumanoidRootPart.CFrame = gd.CFrame end
-    end
+   Callback = function(v) espEnabled = v; if not v then MurdererHighlight.Parent = nil end end
 })
 
 -- Main Loop
 RunService.Heartbeat:Connect(function()
-    DoCombatLogic()
+    -- ESP
     if espEnabled then
         local m = GetMurderer()
         MurdererHighlight.Parent = (m and m.Character) and m.Character or nil
+    end
+    
+    -- Auto Slash
+    if autoSlash and tick() - lastSlash >= slashSpeed then
+        local knife = LocalPlayer.Character:FindFirstChild("Knife")
+        if knife then
+            for _, p in pairs(Players:GetPlayers()) do
+                if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                    if (LocalPlayer.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude <= slashRange then
+                        knife:Activate()
+                        lastSlash = tick()
+                        break
+                    end
+                end
+            end
+        end
     end
 end)
