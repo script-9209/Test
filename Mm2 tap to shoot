@@ -1,151 +1,209 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local Camera = workspace.CurrentCamera
+local lp = Players.LocalPlayer
 
+-- Window Setup
 local Window = Rayfield:CreateWindow({
-   Name = "MM2 Gemini | 2026 OMNI",
-   LoadingTitle = "Securing UI Elements...",
-   ConfigurationSaving = {Enabled = false}
+   Name = "Exodus Suite | MM2",
+   LoadingTitle = "Exodus Suite",
+   ConfigurationSaving = {Enabled = true, FolderName = "ExodusConfigs", FileName = "MM2_Main"}
 })
 
--- State
-local buttonLocked = false -- The UI Lock variable
-local autoSlash = false
-local slashRange = 12
-local lastSlash = 0
-local espEnabled = false
-local MurdererHighlight = Instance.new("Highlight")
-MurdererHighlight.FillColor = Color3.fromRGB(255, 0, 0)
+local MainTab = Window:CreateTab("Main", 4483362458)
 
--- Logic: Get Murderer
-local function GetMurderer()
-    for _, p in pairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-            if p.Character:FindFirstChild("Knife") or p.Backpack:FindFirstChild("Knife") then
-                return p
+-- Variables
+local ButtonLocked = false
+local ESPEnabled = false
+
+-- Create Styled Floating Button
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+ScreenGui.Name = "ExodusFloatingUI"
+ScreenGui.Enabled = false
+
+local ShootButton = Instance.new("TextButton", ScreenGui)
+ShootButton.Size = UDim2.new(0, 75, 0, 75)
+ShootButton.Position = UDim2.new(0.5, -37, 0.5, -37)
+ShootButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+ShootButton.Text = "SHOOT"
+ShootButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ShootButton.Font = Enum.Font.GothamBold
+ShootButton.TextSize = 14
+ShootButton.ZIndex = 10
+
+local UICorner = Instance.new("UICorner", ShootButton)
+UICorner.CornerRadius = UDim.new(0, 15)
+
+local UIStroke = Instance.new("UIStroke", ShootButton)
+UIStroke.Thickness = 2
+UIStroke.Color = Color3.fromRGB(60, 60, 60)
+
+-- Function to manage Billboard Tag (Murderer/Sheriff only)
+local function manageTag(char, text, color, visible)
+    local head = char:FindFirstChild("Head")
+    if not head then return end
+    
+    local tag = head:FindFirstChild("ExodusTag")
+    if visible then
+        if not tag then
+            local bill = Instance.new("BillboardGui", head)
+            bill.Name = "ExodusTag"
+            bill.Size = UDim2.new(0, 100, 0, 50)
+            bill.StudsOffset = Vector3.new(0, 2, 0)
+            bill.AlwaysOnTop = true
+
+            local label = Instance.new("TextLabel", bill)
+            label.Name = "RoleLabel"
+            label.BackgroundTransparency = 1
+            label.Size = UDim2.new(1, 0, 1, 0)
+            label.Font = Enum.Font.GothamBold
+            label.TextSize = 12
+            label.TextStrokeTransparency = 0
+            tag = bill
+        end
+        tag.RoleLabel.Text = text
+        tag.RoleLabel.TextColor3 = color
+    else
+        if tag then tag:Destroy() end
+    end
+end
+
+-- SMOOTH HIGHLIGHT LOGIC (Fixes Blinking)
+local function updateESP()
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= lp and v.Character then
+            local char = v.Character
+            local highlight = char:FindFirstChild("ExodusHighlight")
+            
+            if ESPEnabled then
+                if not highlight then
+                    highlight = Instance.new("Highlight", char)
+                    highlight.Name = "ExodusHighlight"
+                    highlight.OutlineTransparency = 0
+                    highlight.FillTransparency = 0.5
+                end
+
+                -- Determine Role
+                local hasKnife = v.Backpack:FindFirstChild("Knife") or char:FindFirstChild("Knife")
+                local hasGun = v.Backpack:FindFirstChild("Gun") or char:FindFirstChild("Gun")
+
+                if hasKnife then
+                    highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                    highlight.Enabled = true
+                    manageTag(char, "MURDERER", Color3.fromRGB(255, 0, 0), true)
+                elseif hasGun then
+                    highlight.FillColor = Color3.fromRGB(0, 0, 255)
+                    highlight.Enabled = true
+                    manageTag(char, "SHERIFF", Color3.fromRGB(0, 0, 255), true)
+                else
+                    highlight.FillColor = Color3.fromRGB(0, 255, 0) -- Innocent
+                    highlight.Enabled = true
+                    manageTag(char, "", nil, false) -- Remove text for innocents
+                end
+            else
+                if highlight then highlight:Destroy() end
+                manageTag(char, "", nil, false)
+            end
+        end
+    end
+end
+
+-- Shooting Logic
+local function getMurderer()
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= lp and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+            if v.Character:FindFirstChild("Knife") or v.Backpack:FindFirstChild("Knife") then
+                return v.Character.HumanoidRootPart
             end
         end
     end
     return nil
 end
 
--- Logic: Silent Shoot HRP
-local function SilentShoot()
-    local murderer = GetMurderer()
-    local gun = LocalPlayer.Character:FindFirstChild("Gun") or LocalPlayer.Backpack:FindFirstChild("Gun")
+local function fireGun()
+    local char = lp.Character
+    local gun = char and char:FindFirstChild("Gun")
     
-    if murderer and gun then
-        if gun.Parent == LocalPlayer.Backpack then
-            LocalPlayer.Character.Humanoid:EquipTool(gun)
-            task.wait(0.4) 
-        end
+    if gun and gun:FindFirstChild("Shoot") then
+        local murdererHRP = getMurderer()
+        local origin = Camera.CFrame
+        local targetCFrame = murdererHRP and CFrame.new(origin.Position, murdererHRP.Position) or origin
         
-        local targetPos = murderer.Character.HumanoidRootPart.Position
-        local shootRemote = gun:FindFirstChild("ShootGun") or game:GetService("ReplicatedStorage"):FindFirstChild("ShootGun")
-        
-        if shootRemote then
-            shootRemote:FireServer(targetPos, LocalPlayer.Character.HumanoidRootPart.Position)
-        else
-            gun:Activate()
-        end
+        local args = {
+            [1] = targetCFrame,
+            [2] = murdererHRP and CFrame.new(murdererHRP.Position) or (origin * CFrame.new(0, 0, -500))
+        }
+        gun.Shoot:FireServer(unpack(args))
     end
 end
 
--- Tabs
-local Main = Window:CreateTab("Main", 4483362458)
-
-Main:CreateToggle({
-   Name = "Show 'Tap to Shoot' Button",
-   CurrentValue = false,
-   Callback = function(Value)
-      if Value then
-         if not _G.FinalBtnUI then
-            local sg = Instance.new("ScreenGui", game.CoreGui)
-            local b = Instance.new("TextButton", sg)
-            _G.FinalBtnUI = sg
-            b.Size = UDim2.new(0, 140, 0, 50)
-            b.Position = UDim2.new(0.5, -70, 0.7, 0)
-            b.Text = "TAP TO SHOOT"
-            b.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-            b.TextColor3 = Color3.fromRGB(255, 255, 255)
-            b.Font = Enum.Font.GothamBold
-            Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
-            local st = Instance.new("UIStroke", b)
-            st.Color = Color3.fromRGB(255, 0, 0)
-            st.Thickness = 2
-            
-            -- Draggable Logic with Lock Check
-            local drag, start, startPos
-            b.InputBegan:Connect(function(i) 
-                if not buttonLocked and (i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch) then 
-                    drag = true 
-                    start = i.Position 
-                    startPos = b.Position 
-                end 
-            end)
-
-            UserInputService.InputChanged:Connect(function(i) 
-                if drag and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then 
-                    local d = i.Position - start 
-                    b.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y) 
-                end 
-            end)
-
-            UserInputService.InputEnded:Connect(function(i) 
-                if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then 
-                    drag = false 
-                end 
-            end)
-            
-            b.MouseButton1Click:Connect(SilentShoot)
-         end
-         _G.FinalBtnUI.Enabled = true
-      else
-         if _G.FinalBtnUI then _G.FinalBtnUI.Enabled = false end
-      end
-   end
-})
-
-Main:CreateToggle({
-    Name = "Lock Button Position",
-    CurrentValue = false,
-    Callback = function(V) 
-        buttonLocked = V 
-        Rayfield:Notify({
-            Title = "UI Update", 
-            Content = V and "Button Locked" or "Button Unlocked (Draggable)", 
-            Duration = 2
-        })
-    end
-})
-
-Main:CreateToggle({
-   Name = "Murderer ESP",
-   CurrentValue = false,
-   Callback = function(v) espEnabled = v; if not v then MurdererHighlight.Parent = nil end end
-})
-
--- Global Heartbeat Loop
-RunService.Heartbeat:Connect(function()
-    if espEnabled then
-        local m = GetMurderer()
-        MurdererHighlight.Parent = (m and m.Character) and m.Character or nil
-    end
-    
-    if autoSlash and tick() - lastSlash >= 0.5 then
-        local k = LocalPlayer.Character:FindFirstChild("Knife")
-        if k then
-            for _, p in pairs(Players:GetPlayers()) do
-                if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                    if (LocalPlayer.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude <= slashRange then
-                        k:Activate()
-                        lastSlash = tick()
-                        break
-                    end
-                end
-            end
+-- Draggable Button Logic
+local dragging, dragStart, startPos
+ShootButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        fireGun()
+        if not ButtonLocked then
+            dragging = true
+            dragStart = input.Position
+            startPos = ShootButton.Position
         end
     end
 end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        ShootButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end)
+
+-- Fast Background Refresh
+task.spawn(function()
+    while task.wait(0.5) do updateESP() end
+end)
+
+--- Rayfield Components ---
+
+MainTab:CreateToggle({
+   Name = "Show Button",
+   CurrentValue = false,
+   Callback = function(Value) ScreenGui.Enabled = Value end,
+})
+
+MainTab:CreateToggle({
+   Name = "Lock Button Position",
+   CurrentValue = false,
+   Callback = function(Value)
+      ButtonLocked = Value
+      UIStroke.Color = Value and Color3.fromRGB(200, 50, 50) or Color3.fromRGB(60, 60, 60)
+   end,
+})
+
+MainTab:CreateInput({
+   Name = "Button Transparency",
+   PlaceholderText = "0 to 1",
+   Callback = function(Text)
+      local val = tonumber(Text)
+      if val then
+          ShootButton.BackgroundTransparency = val
+          ShootButton.TextTransparency = val
+          UIStroke.Transparency = val
+      end
+   end,
+})
+
+MainTab:CreateToggle({
+   Name = "Highlight ESP",
+   CurrentValue = false,
+   Callback = function(Value)
+      ESPEnabled = Value
+      updateESP()
+   end,
+})
