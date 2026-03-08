@@ -1,0 +1,191 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local Camera = workspace.CurrentCamera
+local lp = Players.LocalPlayer
+
+-- Window Setup
+local Window = Rayfield:CreateWindow({
+   Name = "Exodus Suite | MM2",
+   LoadingTitle = "Exodus Suite",
+   ConfigurationSaving = {Enabled = true, FolderName = "ExodusConfigs", FileName = "MM2_Main"}
+})
+
+local MainTab = Window:CreateTab("Main", 4483362458)
+
+-- Variables
+local ButtonLocked = false
+local ESPEnabled = false
+
+-- Create Styled Floating Button
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+ScreenGui.Name = "ExodusFloatingUI"
+ScreenGui.Enabled = false
+
+local ShootButton = Instance.new("TextButton", ScreenGui)
+ShootButton.Size = UDim2.new(0, 75, 0, 75)
+ShootButton.Position = UDim2.new(0.5, -37, 0.5, -37)
+ShootButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+ShootButton.Text = "SHOOT"
+ShootButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ShootButton.Font = Enum.Font.GothamBold
+ShootButton.TextSize = 14
+ShootButton.ZIndex = 10
+
+local UICorner = Instance.new("UICorner", ShootButton)
+UICorner.CornerRadius = UDim.new(0, 15)
+
+local UIStroke = Instance.new("UIStroke", ShootButton)
+UIStroke.Thickness = 2
+UIStroke.Color = Color3.fromRGB(60, 60, 60)
+
+-- Function to create Billboard Tag (Only for M/S)
+local function createTag(char, text, color)
+    local head = char:FindFirstChild("Head")
+    if not head then return end
+    
+    local existing = head:FindFirstChild("ExodusTag")
+    if existing then existing:Destroy() end
+
+    local bill = Instance.new("BillboardGui", head)
+    bill.Name = "ExodusTag"
+    bill.Size = UDim2.new(0, 100, 0, 50)
+    bill.StudsOffset = Vector3.new(0, 2, 0)
+    bill.AlwaysOnTop = true
+
+    local label = Instance.new("TextLabel", bill)
+    label.BackgroundTransparency = 1
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.Text = text
+    label.TextColor3 = color
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 12
+    label.TextStrokeTransparency = 0
+end
+
+-- Highlight ESP Logic
+local function updateESP()
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= lp and v.Character then
+            local char = v.Character
+            local highlight = char:FindFirstChild("ExodusHighlight")
+            local head = char:FindFirstChild("Head")
+            
+            if ESPEnabled then
+                if not highlight then
+                    highlight = Instance.new("Highlight", char)
+                    highlight.Name = "ExodusHighlight"
+                    highlight.FillTransparency = 0.5
+                    highlight.OutlineTransparency = 0
+                end
+
+                if v.Backpack:FindFirstChild("Knife") or char:FindFirstChild("Knife") then
+                    highlight.FillColor = Color3.fromRGB(255, 0, 0) -- Red
+                    createTag(char, "MURDERER", Color3.fromRGB(255, 0, 0))
+                elseif v.Backpack:FindFirstChild("Gun") or char:FindFirstChild("Gun") then
+                    highlight.FillColor = Color3.fromRGB(0, 0, 255) -- Blue
+                    createTag(char, "SHERIFF", Color3.fromRGB(0, 0, 255))
+                else
+                    highlight.FillColor = Color3.fromRGB(0, 255, 0) -- Green (Innocent)
+                    if head and head:FindFirstChild("ExodusTag") then head.ExodusTag:Destroy() end
+                end
+            else
+                if highlight then highlight:Destroy() end
+                if head and head:FindFirstChild("ExodusTag") then head.ExodusTag:Destroy() end
+            end
+        end
+    end
+end
+
+-- Shooting Logic
+local function getMurderer()
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= lp and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+            if v.Character:FindFirstChild("Knife") or v.Backpack:FindFirstChild("Knife") then
+                return v.Character.HumanoidRootPart
+            end
+        end
+    end
+    return nil
+end
+
+local function fireGun()
+    local char = lp.Character
+    local gun = char and char:FindFirstChild("Gun")
+    
+    if gun and gun:FindFirstChild("Shoot") then
+        local murdererHRP = getMurderer()
+        local origin = Camera.CFrame
+        local targetCFrame = murdererHRP and CFrame.new(origin.Position, murdererHRP.Position) or origin
+        
+        local args = {
+            [1] = targetCFrame,
+            [2] = murdererHRP and CFrame.new(murdererHRP.Position) or (origin * CFrame.new(0, 0, -500))
+        }
+        gun.Shoot:FireServer(unpack(args))
+    end
+end
+
+-- Interaction Logic
+local dragging, dragStart, startPos
+ShootButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        fireGun()
+        if not ButtonLocked then
+            dragging = true dragStart = input.Position startPos = ShootButton.Position
+        end
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        ShootButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end end)
+
+task.spawn(function()
+    while task.wait(1) do updateESP() end
+end)
+
+--- Rayfield Components ---
+
+MainTab:CreateToggle({
+   Name = "Show Button",
+   CurrentValue = false,
+   Callback = function(Value) ScreenGui.Enabled = Value end,
+})
+
+MainTab:CreateToggle({
+   Name = "Lock Button Position",
+   CurrentValue = false,
+   Callback = function(Value)
+      ButtonLocked = Value
+      UIStroke.Color = Value and Color3.fromRGB(200, 50, 50) or Color3.fromRGB(60, 60, 60)
+   end,
+})
+
+MainTab:CreateInput({
+   Name = "Button Transparency",
+   PlaceholderText = "0 to 1",
+   Callback = function(Text)
+      local val = tonumber(Text)
+      if val then
+          ShootButton.BackgroundTransparency = val
+          ShootButton.TextTransparency = val
+          UIStroke.Transparency = val
+      end
+   end,
+})
+
+MainTab:CreateToggle({
+   Name = "Highlight ESP",
+   CurrentValue = false,
+   Callback = function(Value)
+      ESPEnabled = Value
+      updateESP()
+   end,
+})
+
