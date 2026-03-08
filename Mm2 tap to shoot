@@ -23,7 +23,7 @@ ScreenGui.Name = "ExodusFloatingUI"
 ScreenGui.Enabled = false
 
 local ShootButton = Instance.new("TextButton", ScreenGui)
-ShootButton.Size = UDim2.new(0, 75, 0, 75)
+ShootButton.Size = UDim2.new(0, 150, 0, 150)
 ShootButton.Position = UDim2.new(0.5, -37, 0.5, -37)
 ShootButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 ShootButton.Text = "SHOOT"
