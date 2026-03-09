@@ -142,20 +142,18 @@ end
 makeDraggable(ShootButton, "ShootLocked")
 makeDraggable(GunButton, "GunLocked")
 
---- FIXED ESP SYSTEM ---
+--- RELIABLE ESP SYSTEM ---
 
-local function applyESP(player)
-    if player == lp then return end
-    
-    local function cleanup(char)
+local function setupESP(player)
+    local function createESP(char)
+        if player == lp then return end
+        
+        -- Cleanup existing
         if char:FindFirstChild("ExodusHighlight") then char.ExodusHighlight:Destroy() end
         if char:FindFirstChild("Head") and char.Head:FindFirstChild("ExodusTag") then char.Head.ExodusTag:Destroy() end
-    end
 
-    local function setup(char)
-        cleanup(char)
         if not ESPEnabled then return end
-        
+
         local head = char:WaitForChild("Head", 10)
         if not head then return end
 
@@ -178,11 +176,12 @@ local function applyESP(player)
         label.Size = UDim2.new(1, 0, 1, 0)
         label.Font = Enum.Font.GothamBold
         label.TextSize = 14
+        label.TextColor3 = Color3.fromRGB(255, 255, 255)
         label.TextStrokeTransparency = 0
         label.Parent = bill
 
         task.spawn(function()
-            while char.Parent and ESPEnabled do
+            while char.Parent and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0 and ESPEnabled do
                 local hasKnife = player.Backpack:FindFirstChild("Knife") or char:FindFirstChild("Knife")
                 local hasGun = player.Backpack:FindFirstChild("Gun") or char:FindFirstChild("Gun")
 
@@ -198,17 +197,26 @@ local function applyESP(player)
                     bill.Enabled = true
                 else
                     highlight.FillColor = Color3.fromRGB(0, 255, 0)
-                    bill.Enabled = false
+                    label.Text = "INNOCENT"
+                    label.TextColor3 = Color3.fromRGB(0, 255, 0)
+                    bill.Enabled = false -- Change to true if you want to see Innocent tags
                 end
-                task.wait(0.5) -- Faster refresh but stable
+                task.wait(1)
             end
-            cleanup(char)
+            if highlight then highlight:Destroy() end
+            if bill then bill:Destroy() end
         end)
     end
 
-    player.CharacterAdded:Connect(setup)
-    if player.Character then setup(player.Character) end
+    player.CharacterAdded:Connect(createESP)
+    if player.Character then createESP(player.Character) end
 end
+
+-- Initialize ESP for everyone
+for _, p in pairs(Players:GetPlayers()) do
+    setupESP(p)
+end
+Players.PlayerAdded:Connect(setupESP)
 
 --- PERSISTENT STATS LOGIC ---
 lp.CharacterAdded:Connect(function(character)
@@ -235,14 +243,15 @@ MainTab:CreateToggle({
    CurrentValue = false,
    Callback = function(Value)
       ESPEnabled = Value
-      if Value then 
-          for _, v in pairs(Players:GetPlayers()) do applyESP(v) end 
-      else
-          for _, v in pairs(Players:GetPlayers()) do 
-              if v.Character then 
-                if v.Character:FindFirstChild("ExodusHighlight") then v.Character.ExodusHighlight:Destroy() end
-                if v.Character:FindFirstChild("Head") and v.Character.Head:FindFirstChild("ExodusTag") then v.Character.Head.ExodusTag:Destroy() end
-              end 
+      -- Refresh all ESP on toggle
+      for _, p in pairs(Players:GetPlayers()) do
+          if p.Character then
+              if Value then
+                  setupESP(p)
+              else
+                  if p.Character:FindFirstChild("ExodusHighlight") then p.Character.ExodusHighlight:Destroy() end
+                  if p.Character:FindFirstChild("Head") and p.Character.Head:FindFirstChild("ExodusTag") then p.Character.Head.ExodusTag:Destroy() end
+              end
           end
       end
    end,
@@ -316,4 +325,3 @@ PlayerTab:CreateInput({
 })
 
 Rayfield:LoadConfiguration()
-
