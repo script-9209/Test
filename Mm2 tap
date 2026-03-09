@@ -1,0 +1,233 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+    Name = "Universal Combat & Visuals V6",
+    LoadingTitle = "Finalizing Visual Modules...",
+    LoadingSubtitle = "Wall Check + Role Labels",
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = "CombatSettings",
+        FileName = "AimbotConfig"
+    }
+})
+
+-- Variables
+local Camera = workspace.CurrentCamera
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+
+-- Aimbot Vars
+local AimbotEnabled = false
+local WallCheck = false
+local SelectedRoleTarget = "All"
+local AimPart = "Head"
+local Smoothness = 0.05
+
+-- FOV Circle
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Visible = false
+FOVCircle.Thickness = 1.5
+FOVCircle.Color = Color3.fromRGB(255, 255, 255)
+FOVCircle.Radius = 150
+FOVCircle.Filled = false 
+
+-- Visual Vars
+local GeneralESP = false
+local RoleCheckVisuals = false
+local ESPColor = Color3.fromRGB(255, 255, 255)
+
+local RoleColors = {
+    ["Murderer"] = Color3.fromRGB(255, 0, 0),
+    ["Sheriff"] = Color3.fromRGB(0, 0, 255),
+    ["Innocent"] = Color3.fromRGB(0, 255, 0)
+}
+
+-- Helpers
+local function GetTrueCenter()
+    return Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+end
+
+local function IsVisible(TargetPart)
+    local Params = RaycastParams.new()
+    Params.FilterType = Enum.RaycastFilterType.Exclude
+    Params.FilterDescendantsInstances = {LocalPlayer.Character, TargetPart.Parent, Camera}
+    local Result = workspace:Raycast(Camera.CFrame.Position, (TargetPart.Position - Camera.CFrame.Position), Params)
+    return Result == nil
+end
+
+local function GetPlayerRole(Player)
+    -- Check for Role Value (MM2 standard)
+    local RoleValue = Player:FindFirstChild("Role") or Player:FindFirstChild("RoleValue")
+    if RoleValue then return tostring(RoleValue.Value) end
+    
+    -- Improved Item Check (Backpack & Character)
+    local BP = Player:FindFirstChild("Backpack")
+    local Char = Player.Character
+    if (BP and BP:FindFirstChild("Knife")) or (Char and Char:FindFirstChild("Knife")) then return "Murderer" end
+    if (BP and BP:FindFirstChild("Revolver")) or (Char and Char:FindFirstChild("Revolver")) or (BP and BP:FindFirstChild("Gun")) or (Char and Char:FindFirstChild("Gun")) then return "Sheriff" end
+    
+    return "Innocent"
+end
+
+local function CreateLabel(Parent, Text, Color)
+    local Label = Parent:FindFirstChild("RoleLabel") or Instance.new("BillboardGui")
+    Label.Name = "RoleLabel"
+    Label.Size = UDim2.new(0, 200, 0, 50)
+    Label.Adornee = Parent:FindFirstChild("Head")
+    Label.AlwaysOnTop = true
+    Label.StudsOffset = Vector3.new(0, 3, 0)
+    Label.Parent = Parent
+
+    local TextLabel = Label:FindFirstChild("TextLabel") or Instance.new("TextLabel")
+    TextLabel.Name = "TextLabel"
+    TextLabel.BackgroundTransparency = 1
+    TextLabel.Size = UDim2.new(1, 0, 1, 0)
+    TextLabel.Text = Text
+    TextLabel.TextColor3 = Color
+    TextLabel.TextStrokeTransparency = 0
+    TextLabel.TextSize = 18
+    TextLabel.Font = Enum.Font.SourceSansBold
+    TextLabel.Parent = Label
+    return Label
+end
+
+--- TABS ---
+
+local MainTab = Window:CreateTab("Main", 4483362458)
+
+MainTab:CreateToggle({
+    Name = "Enable Aimbot",
+    CurrentValue = false,
+    Callback = function(Value) AimbotEnabled = Value end,
+})
+
+MainTab:CreateToggle({
+    Name = "Wall Check",
+    CurrentValue = false,
+    Callback = function(Value) WallCheck = Value end,
+})
+
+MainTab:CreateDropdown({
+    Name = "Target Role",
+    Options = {"All", "Murderer", "Sheriff", "Innocent"},
+    CurrentOption = {"All"},
+    Callback = function(Option) SelectedRoleTarget = Option[1] end,
+})
+
+local ESPTab = Window:CreateTab("ESP", 4483362458)
+
+ESPTab:CreateSection("General ESP")
+ESPTab:CreateToggle({
+    Name = "Enable General ESP",
+    CurrentValue = false,
+    Callback = function(Value) GeneralESP = Value end,
+})
+
+ESPTab:CreateColorPicker({
+    Name = "ESP Color",
+    Color = Color3.fromRGB(255, 255, 255),
+    Callback = function(Value) ESPColor = Value end,
+})
+
+ESPTab:CreateSection("Role Visuals")
+ESPTab:CreateToggle({
+    Name = "Enable Role Colors & Labels",
+    CurrentValue = false,
+    Callback = function(Value) RoleCheckVisuals = Value end,
+})
+
+local OthersTab = Window:CreateTab("Others", 4483362458)
+
+OthersTab:CreateSection("FOV Settings")
+OthersTab:CreateToggle({
+    Name = "Show FOV Circle",
+    CurrentValue = false,
+    Callback = function(Value) FOVCircle.Visible = Value end,
+})
+
+OthersTab:CreateInput({
+    Name = "FOV Radius",
+    PlaceholderText = "150",
+    Callback = function(Text)
+        local num = tonumber(Text)
+        if num then FOVCircle.Radius = num end
+    end,
+})
+
+OthersTab:CreateSection("Aimbot Precision")
+OthersTab:CreateInput({
+    Name = "Smoothness",
+    PlaceholderText = "0.05",
+    Callback = function(Text)
+        local num = tonumber(Text)
+        if num then Smoothness = math.clamp(num, 0.001, 1) end
+    end,
+})
+
+--- LOGIC LOOPS ---
+
+RunService:BindToRenderStep("AimbotUpdate", Enum.RenderPriority.Camera.Value + 1, function()
+    local Center = GetTrueCenter()
+    FOVCircle.Position = Center
+
+    if AimbotEnabled then
+        local Target = nil
+        local MaxDist = FOVCircle.Radius
+        
+        for _, v in pairs(Players:GetPlayers()) do
+            if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild(AimPart) then
+                if v.Character:FindFirstChild("Humanoid") and v.Character.Humanoid.Health > 0 then
+                    local Role = GetPlayerRole(v)
+                    if SelectedRoleTarget ~= "All" and Role ~= SelectedRoleTarget then continue end
+                    
+                    local ScreenPoint, OnScreen = Camera:WorldToScreenPoint(v.Character[AimPart].Position)
+                    if OnScreen then
+                        local Dist = (Vector2.new(ScreenPoint.X, ScreenPoint.Y) - Center).Magnitude
+                        if Dist < MaxDist then
+                            if WallCheck and not IsVisible(v.Character[AimPart]) then continue end
+                            Target = v
+                            MaxDist = Dist
+                        end
+                    end
+                end
+            end
+        end
+
+        if Target then
+            local TargetPos = Target.Character[AimPart].Position
+            Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, TargetPos), Smoothness)
+        end
+    end
+end)
+
+RunService.Heartbeat:Connect(function()
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= LocalPlayer and v.Character then
+            local Highlight = v.Character:FindFirstChild("ESPHighlight")
+            local Role = GetPlayerRole(v)
+            
+            -- Role Label Logic
+            if RoleCheckVisuals and (Role == "Murderer" or Role == "Sheriff") then
+                CreateLabel(v.Character, Role, RoleColors[Role])
+            else
+                local ExistingLabel = v.Character:FindFirstChild("RoleLabel")
+                if ExistingLabel then ExistingLabel:Destroy() end
+            end
+
+            -- Highlight Logic
+            if GeneralESP or RoleCheckVisuals then
+                if not Highlight then
+                    Highlight = Instance.new("Highlight")
+                    Highlight.Name = "ESPHighlight"
+                    Highlight.Parent = v.Character
+                end
+                Highlight.FillColor = RoleCheckVisuals and RoleColors[Role] or ESPColor
+                Highlight.Enabled = true
+            else
+                if Highlight then Highlight.Enabled = false end
+            end
+        end
+    end
+end)
+
