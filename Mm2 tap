@@ -1,8 +1,19 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
 local lp = Players.LocalPlayer
+
+-- Global State
+_G.ShootLocked = false
+_G.GunLocked = false
+_G.TPDelay = 0.5 
+local ESPEnabled = false
+local AutoKillSheriff = false
+local AutoCollectCoins = false
+local AutoWin = false
+local PredictionIntensity = 0.15
 
 -- Window Setup
 local Window = Rayfield:CreateWindow({
@@ -11,123 +22,166 @@ local Window = Rayfield:CreateWindow({
    ConfigurationSaving = {Enabled = true, FolderName = "ExodusConfigs", FileName = "MM2_Final"}
 })
 
--- Discord Notification
-Rayfield:Notify({
-   Title = "Exodus Suite",
-   Content = "Join our Discord: discord.gg/PVSceQsNA",
-   Duration = 5,
-   Image = 4483362458,
-   Actions = {
-      Ignore = {
-         Name = "Okay!",
-         Callback = function() end
-      },
-   },
-})
-
 local MainTab = Window:CreateTab("Main", 4483362458)
+local AutoTab = Window:CreateTab("Auto", 4483362458)
 local PlayerTab = Window:CreateTab("Player", 4483362458)
-
--- Global State & Persistence
-_G.ShootLocked = false
-_G.GunLocked = false
-local ESPEnabled = false
-local PredictionIntensity = 0.15
-local currentSpeed = 18
-local currentJump = 52
 
 -- UI Container
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
 ScreenGui.Name = "ExodusFloatingUI"
 ScreenGui.Enabled = true
 
--- SHOOT BUTTON (90x90, Circular, 0.7 Opacity)
-local ShootButton = Instance.new("TextButton", ScreenGui)
-ShootButton.Visible = false
-ShootButton.Size = UDim2.new(0, 90, 0, 90)
-ShootButton.Position = UDim2.new(0.5, -100, 0.5, -45)
-ShootButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-ShootButton.BackgroundTransparency = 0.7 
-ShootButton.Text = "SHOOT"
-ShootButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-ShootButton.Font = Enum.Font.GothamBold
-ShootButton.TextSize = 16
-ShootButton.ZIndex = 10
-Instance.new("UICorner", ShootButton).CornerRadius = UDim.new(0, 18)
-local ShootStroke = Instance.new("UIStroke", ShootButton)
-ShootStroke.Thickness = 2
-ShootStroke.Color = Color3.fromRGB(60, 60, 60)
+local function createBaseButton(name, text, pos, isCircle)
+    local btn = Instance.new("TextButton", ScreenGui)
+    btn.Name = name; btn.Visible = false; btn.Size = UDim2.new(0, 90, 0, 90); btn.Position = pos
+    btn.BackgroundColor3 = Color3.fromRGB(25, 25, 25); btn.BackgroundTransparency = 0.7 
+    btn.Text = text; btn.TextColor3 = Color3.fromRGB(255, 255, 255); btn.Font = Enum.Font.GothamBold; btn.TextSize = 16; btn.ZIndex = 10
+    local corner = Instance.new("UICorner", btn); corner.CornerRadius = isCircle and UDim.new(1, 0) or UDim.new(0, 18)
+    local stroke = Instance.new("UIStroke", btn); stroke.Thickness = 2; stroke.Color = Color3.fromRGB(60, 60, 60)
+    return btn, stroke
+end
 
--- GRAB GUN BUTTON (90x90, Circle, 0.7 Opacity)
-local GunButton = Instance.new("TextButton", ScreenGui)
-GunButton.Visible = false
-GunButton.Size = UDim2.new(0, 90, 0, 90)
-GunButton.Position = UDim2.new(0.5, 10, 0.5, -45)
-GunButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-GunButton.BackgroundTransparency = 0.7 
-GunButton.Text = "GUN"
-GunButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-GunButton.Font = Enum.Font.GothamBold
-GunButton.TextSize = 16
-GunButton.ZIndex = 10
-Instance.new("UICorner", GunButton).CornerRadius = UDim.new(1, 0)
-local GunStroke = Instance.new("UIStroke", GunButton)
-GunStroke.Thickness = 2
-GunStroke.Color = Color3.fromRGB(60, 60, 60)
+local ShootButton, ShootStroke = createBaseButton("ShootButton", "SHOOT", UDim2.new(0.5, -100, 0.5, -45), false)
+local GunButton, GunStroke = createBaseButton("GunButton", "GUN", UDim2.new(0.5, 10, 0.5, -45), true)
+
+--- NOCLIP LOGIC ---
+RunService.Stepped:Connect(function()
+    if AutoCollectCoins and lp.Character then
+        for _, part in pairs(lp.Character:GetDescendants()) do
+            if part:IsA("BasePart") then part.CanCollide = false end
+        end
+    elseif not AutoCollectCoins and lp.Character then
+        local hrp = lp.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then hrp.CanCollide = true end
+    end
+end)
 
 --- LOGIC FUNCTIONS ---
-
-local function getMurdererHRP()
+local function getSheriff()
     for _, v in pairs(Players:GetPlayers()) do
-        if v ~= lp and v.Character and (v.Character:FindFirstChild("Knife") or v.Backpack:FindFirstChild("Knife")) then
-            return v.Character:FindFirstChild("HumanoidRootPart")
-        end
+        if v ~= lp and v.Character and (v.Character:FindFirstChild("Gun") or v.Backpack:FindFirstChild("Gun")) then return v end
     end
     return nil
 end
 
+local function getMurderer()
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= lp and v.Character and (v.Character:FindFirstChild("Knife") or v.Backpack:FindFirstChild("Knife")) then return v end
+    end
+    return nil
+end
+
+local function stab()
+    local char = lp.Character
+    local knife = char and (char:FindFirstChild("Knife") or lp.Backpack:FindFirstChild("Knife"))
+    if knife then
+        if knife.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(knife) end
+        knife.Events.KnifeStabbed:FireServer()
+    end
+end
+
 local function fireGun()
     local char = lp.Character
-    local gun = (char and char:FindFirstChild("Gun")) or (lp.Backpack:FindFirstChild("Gun"))
-    if gun then
-        if gun.Parent == lp.Backpack then 
-            lp.Character.Humanoid:EquipTool(gun) 
-            task.wait(0.1) 
-        end
-        local targetHRP = getMurdererHRP()
-        local origin = Camera.CFrame
-        local targetPos
-        
-        if targetHRP then
-            targetPos = targetHRP.Position + (targetHRP.Velocity * PredictionIntensity)
-        else
-            targetPos = origin.Position + (origin.LookVector * 500)
-        end
-        
+    local gun = char and (char:FindFirstChild("Gun") or lp.Backpack:FindFirstChild("Gun"))
+    local target = getMurderer()
+    if gun and target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+        if gun.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(gun) task.wait(0.1) end
+        local targetHRP = target.Character.HumanoidRootPart
+        local targetPos = targetHRP.Position + (targetHRP.Velocity * PredictionIntensity)
+        local direction = (targetPos - Camera.CFrame.Position).Unit
+        local originPos = targetPos - (direction * 3) -- ADJUSTED TO 3 STUDS
         if gun:FindFirstChild("Shoot") then
-            gun.Shoot:FireServer(CFrame.new(origin.Position, targetPos), CFrame.new(targetPos))
+            gun.Shoot:FireServer(CFrame.new(originPos, targetPos), CFrame.new(targetPos))
         end
     end
 end
 
-local function tpToGun()
+-- Main Loop
+task.spawn(function()
+    while true do 
+        task.wait(0.01)
+        local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+        if not hrp then continue end
+
+        if AutoKillSheriff then
+            local target = getSheriff()
+            if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+                hrp.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 1.2); stab()
+            end
+        end
+
+        if AutoCollectCoins then
+            local container = workspace:FindFirstChild("CoinContainer", true)
+            if container then
+                local coin = container:FindFirstChildWhichIsA("BasePart", true) or container:FindFirstChildWhichIsA("Model", true)
+                if coin then
+                    hrp.CFrame = coin:IsA("Model") and coin:GetModelCFrame() or coin.CFrame
+                    task.wait(_G.TPDelay or 0.5)
+                end
+            end
+        end
+
+        if AutoWin then
+            local isMurderer = lp.Backpack:FindFirstChild("Knife") or lp.Character:FindFirstChild("Knife")
+            local isSheriff = lp.Backpack:FindFirstChild("Gun") or lp.Character:FindFirstChild("Gun")
+            if isMurderer then
+                for _, v in pairs(Players:GetPlayers()) do
+                    if v ~= lp and v.Character and v.Character:FindFirstChild("HumanoidRootPart") and v.Character.Humanoid.Health > 0 then
+                        hrp.CFrame = v.Character.HumanoidRootPart.CFrame; stab()
+                    end
+                end
+            elseif isSheriff then
+                fireGun()
+            end
+        end
+    end
+end)
+
+--- ESP (Vibrant Colors) ---
+local function setupESP(player)
+    local function createESP(char)
+        if player == lp then return end
+        if char:FindFirstChild("ExodusHighlight") then char.ExodusHighlight:Destroy() end
+        if not ESPEnabled then return end
+        local head = char:WaitForChild("Head", 5)
+        local highlight = Instance.new("Highlight", char); highlight.Name = "ExodusHighlight"
+        local bill = Instance.new("BillboardGui", head); bill.Name = "ExodusTag"; bill.Size = UDim2.new(0, 100, 0, 50); bill.StudsOffset = Vector3.new(0, 3, 0); bill.AlwaysOnTop = true
+        local label = Instance.new("TextLabel", bill); label.BackgroundTransparency = 1; label.Size = UDim2.new(1, 0, 1, 0); label.Font = Enum.Font.GothamBold; label.TextSize = 14; label.TextStrokeTransparency = 0
+        task.spawn(function()
+            while char.Parent and ESPEnabled do
+                local hasKnife = player.Backpack:FindFirstChild("Knife") or char:FindFirstChild("Knife")
+                local hasGun = player.Backpack:FindFirstChild("Gun") or char:FindFirstChild("Gun")
+                if hasKnife then 
+                    highlight.FillColor = Color3.fromRGB(255, 0, 0); label.TextColor3 = Color3.fromRGB(255, 0, 0); label.Text = "MURDERER"; label.Visible = true
+                elseif hasGun then 
+                    highlight.FillColor = Color3.fromRGB(0, 150, 255); label.TextColor3 = Color3.fromRGB(0, 150, 255); label.Text = "SHERIFF"; label.Visible = true
+                else 
+                    highlight.FillColor = Color3.fromRGB(0, 255, 100); label.Visible = false 
+                end
+                task.wait(1)
+            end
+            if highlight then highlight:Destroy() end
+            if bill then bill:Destroy() end
+        end)
+    end
+    player.CharacterAdded:Connect(createESP)
+    if player.Character then createESP(player.Character) end
+end
+
+-- Buttons Logic
+GunButton.MouseButton1Click:Connect(function()
     local drop = workspace:FindFirstChild("GunDrop", true)
     local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
     if drop and hrp then
-        local oldPos = hrp.CFrame
-        hrp.CFrame = drop.CFrame
-        task.wait(0.1)
-        hrp.CFrame = oldPos
+        local oldPos = hrp.CFrame; hrp.CFrame = drop.CFrame; task.wait(0.15); hrp.CFrame = oldPos
     end
-end
+end)
 
--- Draggable Logic
 local function makeDraggable(btn, lockKey)
     local dragging, dragStart, startPos
     btn.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            if btn == GunButton then tpToGun() else fireGun() end
-            if not _G[lockKey] then dragging = true dragStart = input.Position startPos = btn.Position end
+        if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and not _G[lockKey] then
+            dragging = true; dragStart = input.Position; startPos = btn.Position
         end
     end)
     UserInputService.InputChanged:Connect(function(input)
@@ -141,187 +195,23 @@ end
 
 makeDraggable(ShootButton, "ShootLocked")
 makeDraggable(GunButton, "GunLocked")
+ShootButton.MouseButton1Click:Connect(fireGun)
 
---- RELIABLE ESP SYSTEM ---
+--- UI TABS ---
+MainTab:CreateToggle({Name = "Esp role toggle", CurrentValue = false, Callback = function(V) ESPEnabled = V for _, p in pairs(Players:GetPlayers()) do if p.Character then setupESP(p) end end end})
+MainTab:CreateSection("Floating Buttons")
+MainTab:CreateToggle({Name = "Show Shoot Button", CurrentValue = false, Callback = function(V) ShootButton.Visible = V end})
+MainTab:CreateToggle({Name = "Lock Shoot Position", CurrentValue = false, Callback = function(V) _G.ShootLocked = V end})
+MainTab:CreateToggle({Name = "Show Gun Button", CurrentValue = false, Callback = function(V) GunButton.Visible = V end})
+MainTab:CreateToggle({Name = "Lock Gun Position", CurrentValue = false, Callback = function(V) _G.GunLocked = V end})
 
-local function setupESP(player)
-    local function createESP(char)
-        if player == lp then return end
-        
-        -- Cleanup existing
-        if char:FindFirstChild("ExodusHighlight") then char.ExodusHighlight:Destroy() end
-        if char:FindFirstChild("Head") and char.Head:FindFirstChild("ExodusTag") then char.Head.ExodusTag:Destroy() end
+AutoTab:CreateSection("Combat")
+AutoTab:CreateToggle({Name = "Auto kill sheriff", CurrentValue = false, Callback = function(V) AutoKillSheriff = V end})
+AutoTab:CreateToggle({Name = "Auto win", CurrentValue = false, Callback = function(V) AutoWin = V end})
+AutoTab:CreateSection("Farming")
+AutoTab:CreateToggle({Name = "Auto collect coins", CurrentValue = false, Callback = function(V) AutoCollectCoins = V end})
+AutoTab:CreateInput({Name = "TP Delay", PlaceholderText = "Default: 0.5", Callback = function(T) _G.TPDelay = tonumber(T) or 0.5 end})
 
-        if not ESPEnabled then return end
-
-        local head = char:WaitForChild("Head", 10)
-        if not head then return end
-
-        local highlight = Instance.new("Highlight")
-        highlight.Name = "ExodusHighlight"
-        highlight.FillTransparency = 0.5
-        highlight.OutlineTransparency = 0
-        highlight.Parent = char
-
-        local bill = Instance.new("BillboardGui")
-        bill.Name = "ExodusTag"
-        bill.Size = UDim2.new(0, 100, 0, 50)
-        bill.StudsOffset = Vector3.new(0, 2.5, 0)
-        bill.AlwaysOnTop = true
-        bill.Parent = head
-        
-        local label = Instance.new("TextLabel")
-        label.Name = "RoleLabel"
-        label.BackgroundTransparency = 1
-        label.Size = UDim2.new(1, 0, 1, 0)
-        label.Font = Enum.Font.GothamBold
-        label.TextSize = 14
-        label.TextColor3 = Color3.fromRGB(255, 255, 255)
-        label.TextStrokeTransparency = 0
-        label.Parent = bill
-
-        task.spawn(function()
-            while char.Parent and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0 and ESPEnabled do
-                local hasKnife = player.Backpack:FindFirstChild("Knife") or char:FindFirstChild("Knife")
-                local hasGun = player.Backpack:FindFirstChild("Gun") or char:FindFirstChild("Gun")
-
-                if hasKnife then
-                    highlight.FillColor = Color3.fromRGB(255, 0, 0)
-                    label.Text = "MURDERER"
-                    label.TextColor3 = Color3.fromRGB(255, 0, 0)
-                    bill.Enabled = true
-                elseif hasGun then
-                    highlight.FillColor = Color3.fromRGB(0, 0, 255)
-                    label.Text = "SHERIFF"
-                    label.TextColor3 = Color3.fromRGB(0, 0, 255)
-                    bill.Enabled = true
-                else
-                    highlight.FillColor = Color3.fromRGB(0, 255, 0)
-                    label.Text = "INNOCENT"
-                    label.TextColor3 = Color3.fromRGB(0, 255, 0)
-                    bill.Enabled = false -- Change to true if you want to see Innocent tags
-                end
-                task.wait(1)
-            end
-            if highlight then highlight:Destroy() end
-            if bill then bill:Destroy() end
-        end)
-    end
-
-    player.CharacterAdded:Connect(createESP)
-    if player.Character then createESP(player.Character) end
-end
-
--- Initialize ESP for everyone
-for _, p in pairs(Players:GetPlayers()) do
-    setupESP(p)
-end
-Players.PlayerAdded:Connect(setupESP)
-
---- PERSISTENT STATS LOGIC ---
-lp.CharacterAdded:Connect(function(character)
-    local humanoid = character:WaitForChild("Humanoid")
-    task.wait(0.5)
-    humanoid.WalkSpeed = currentSpeed
-    humanoid.UseJumpPower = true
-    humanoid.JumpPower = currentJump
-end)
-
---- RAYFIELD CATEGORIES ---
-
-MainTab:CreateButton({
-   Name = "Copy Discord Invite",
-   Callback = function()
-      setclipboard("https://discord.gg/PVSceQsNA")
-      Rayfield:Notify({Title = "Exodus", Content = "Invite copied to clipboard!", Duration = 3})
-   end,
-})
-
-MainTab:CreateSection("Esp")
-MainTab:CreateToggle({
-   Name = "Esp role toggle",
-   CurrentValue = false,
-   Callback = function(Value)
-      ESPEnabled = Value
-      -- Refresh all ESP on toggle
-      for _, p in pairs(Players:GetPlayers()) do
-          if p.Character then
-              if Value then
-                  setupESP(p)
-              else
-                  if p.Character:FindFirstChild("ExodusHighlight") then p.Character.ExodusHighlight:Destroy() end
-                  if p.Character:FindFirstChild("Head") and p.Character.Head:FindFirstChild("ExodusTag") then p.Character.Head.ExodusTag:Destroy() end
-              end
-          end
-      end
-   end,
-})
-
-MainTab:CreateSection("Auto Shoot")
-MainTab:CreateToggle({
-   Name = "Show toggle",
-   CurrentValue = false,
-   Callback = function(Value) ShootButton.Visible = Value end,
-})
-MainTab:CreateToggle({
-   Name = "Lock toggle",
-   CurrentValue = false,
-   Callback = function(Value) _G.ShootLocked = Value end,
-})
-MainTab:CreateInput({
-   Name = "Opacity text box",
-   PlaceholderText = "0.7",
-   Callback = function(Text)
-      local val = tonumber(Text)
-      if val then ShootButton.BackgroundTransparency = val ShootStroke.Transparency = val end
-   end,
-})
-
-MainTab:CreateSection("Grab Gun")
-MainTab:CreateToggle({
-   Name = "Show toggle",
-   CurrentValue = false,
-   Callback = function(Value) GunButton.Visible = Value end,
-})
-MainTab:CreateToggle({
-   Name = "Lock toggle",
-   CurrentValue = false,
-   Callback = function(Value) _G.GunLocked = Value end,
-})
-MainTab:CreateInput({
-   Name = "Opacity text box",
-   PlaceholderText = "0.7",
-   Callback = function(Text)
-      local val = tonumber(Text)
-      if val then GunButton.BackgroundTransparency = val GunStroke.Transparency = val end
-   end,
-})
-
-PlayerTab:CreateSection("Movement")
-PlayerTab:CreateInput({
-   Name = "Set speed text box",
-   PlaceholderText = "Default: 18",
-   Callback = function(Text)
-      local val = tonumber(Text)
-      if val then 
-          currentSpeed = val 
-          if lp.Character and lp.Character:FindFirstChild("Humanoid") then lp.Character.Humanoid.WalkSpeed = val end
-      end
-   end,
-})
-PlayerTab:CreateInput({
-   Name = "Set jump text box",
-   PlaceholderText = "Default: 52",
-   Callback = function(Text)
-      local val = tonumber(Text)
-      if val then 
-          currentJump = val 
-          if lp.Character and lp.Character:FindFirstChild("Humanoid") then 
-              lp.Character.Humanoid.UseJumpPower = true
-              lp.Character.Humanoid.JumpPower = val 
-          end
-      end
-   end,
-})
+PlayerTab:CreateInput({Name = "Walkspeed", PlaceholderText = "18", Callback = function(T) if tonumber(T) and lp.Character then lp.Character.Humanoid.WalkSpeed = tonumber(T) end end})
 
 Rayfield:LoadConfiguration()
