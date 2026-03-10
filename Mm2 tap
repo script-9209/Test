@@ -16,6 +16,7 @@ local AutoTab = Window:CreateTab("Auto", 4483362458)
 local PlayerTab = Window:CreateTab("Player", 4483362458)
 
 -- Global State
+_G.LockAll = false
 _G.ShootLocked = false
 _G.GunLocked = false
 _G.ThrowLocked = false
@@ -23,7 +24,6 @@ local ESPEnabled = false
 local AutoKillSheriff = false
 local AutoCollectCoins = false
 local AutoWin = false
-local PredictionIntensity = 0.15
 local currentSpeed = 18
 local currentJump = 52
 
@@ -32,7 +32,7 @@ local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
 ScreenGui.Name = "ExodusFloatingUI"
 ScreenGui.ResetOnSpawn = false
 
--- Helper for Creating Buttons
+-- Button Factory
 local function createBaseButton(name, text, pos, isCircle)
     local btn = Instance.new("TextButton", ScreenGui)
     btn.Name = name
@@ -54,11 +54,11 @@ local function createBaseButton(name, text, pos, isCircle)
     return btn, stroke
 end
 
-local ShootButton, ShootStroke = createBaseButton("ShootButton", "SHOOT", UDim2.new(0.5, -145, 0.5, -45), false)
-local GunButton, GunStroke = createBaseButton("GunButton", "GUN", UDim2.new(0.5, -45, 0.5, -45), true)
-local ThrowButton, ThrowStroke = createBaseButton("ThrowButton", "THROW", UDim2.new(0.5, 55, 0.5, -45), false)
+local ShootBtn, ShootStrk = createBaseButton("ShootButton", "SHOOT", UDim2.new(0.5, -145, 0.5, -45), false)
+local GunBtn, GunStrk = createBaseButton("GunButton", "GUN", UDim2.new(0.5, -45, 0.5, -45), true)
+local ThrowBtn, ThrowStrk = createBaseButton("ThrowButton", "THROW", UDim2.new(0.5, 55, 0.5, -45), false)
 
---- LOGIC FUNCTIONS ---
+--- COMBAT FUNCTIONS ---
 
 local function getMurderer()
     for _, v in pairs(Players:GetPlayers()) do
@@ -67,108 +67,61 @@ local function getMurderer()
     return nil
 end
 
-local function getSheriff()
-    for _, v in pairs(Players:GetPlayers()) do
-        if v ~= lp and v.Character and (v.Character:FindFirstChild("Gun") or v.Backpack:FindFirstChild("Gun")) then return v end
-    end
-    return nil
-end
-
-local function getNearestPlayer()
-    local nearest, dist = nil, math.huge
+local function getNearest()
+    local near, dist = nil, math.huge
     for _, v in pairs(Players:GetPlayers()) do
         if v ~= lp and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
             local d = (lp.Character.HumanoidRootPart.Position - v.Character.HumanoidRootPart.Position).Magnitude
-            if d < dist then dist = d nearest = v end
+            if d < dist then dist = d near = v end
         end
     end
-    return nearest
+    return near
 end
 
-local function stab()
-    local knife = lp.Character:FindFirstChild("Knife") or lp.Backpack:FindFirstChild("Knife")
-    if knife then
-        if knife.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(knife) end
-        knife.Events.KnifeStabbed:FireServer()
+local function fireGun()
+    local gun = lp.Character:FindFirstChild("Gun") or lp.Backpack:FindFirstChild("Gun")
+    local m = getMurderer()
+    if gun and m and m.Character:FindFirstChild("HumanoidRootPart") then
+        if gun.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(gun) task.wait(0.1) end
+        local mHRP = m.Character.HumanoidRootPart
+        -- 2 studs away from murderer hrp (origin)
+        local originPos = mHRP.Position + Vector3.new(0, 0, 2)
+        local targetPos = mHRP.Position + (mHRP.Velocity * 0.15)
+        if gun:FindFirstChild("Shoot") then 
+            gun.Shoot:FireServer(CFrame.new(originPos, targetPos), CFrame.new(targetPos)) 
+        end
     end
 end
 
 local function throwKnife()
     local knife = lp.Character:FindFirstChild("Knife") or lp.Backpack:FindFirstChild("Knife")
-    local target = getNearestPlayer()
+    local target = getNearest()
     if knife and target and target.Character:FindFirstChild("HumanoidRootPart") then
         if knife.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(knife) end
-        local targetHRP = target.Character.HumanoidRootPart
-        local originCF = CFrame.new(targetHRP.Position + Vector3.new(0, 0, 1), targetHRP.Position)
-        local targetCF = CFrame.new(targetHRP.Position)
-        knife.Events.KnifeThrown:FireServer({[1] = originCF, [2] = targetCF})
+        local hrp = target.Character.HumanoidRootPart
+        local args = { [1] = CFrame.new(hrp.Position + Vector3.new(0,0,1), hrp.Position), [2] = CFrame.new(hrp.Position) }
+        knife.Events.KnifeThrown:FireServer(unpack(args))
     end
 end
 
-local function fireGun()
-    local gun = lp.Character:FindFirstChild("Gun") or lp.Backpack:FindFirstChild("Gun")
-    local target = getMurderer()
-    if gun and target and target.Character:FindFirstChild("HumanoidRootPart") then
-        if gun.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(gun) task.wait(0.1) end
-        local targetHRP = target.Character.HumanoidRootPart
-        local targetPos = targetHRP.Position + (targetHRP.Velocity * PredictionIntensity)
-        if gun:FindFirstChild("Shoot") then
-            gun.Shoot:FireServer(CFrame.new(Camera.CFrame.Position, targetPos), CFrame.new(targetPos))
-        end
-    end
-end
+--- LOOPS ---
 
--- Main Automation Loop
 task.spawn(function()
     while task.wait(0.1) do
         local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
         if not hrp then continue end
-
-        if AutoKillSheriff then
-            local s = getSheriff()
-            if s and s.Character:FindFirstChild("HumanoidRootPart") then
-                hrp.CFrame = s.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 1.5)
-                stab()
-            end
-        end
-
         if AutoCollectCoins then
-            local container = workspace:FindFirstChild("Factory") and workspace.Factory:FindFirstChild("CoinContainer")
-            if container then
-                local coinCount = tonumber(lp.PlayerGui.MainGui.Game.Coins.Text:match("%d+")) or 0
-                if coinCount >= 40 then
+            local cont = workspace:FindFirstChild("Factory") and workspace.Factory:FindFirstChild("CoinContainer")
+            if cont then
+                local coins = tonumber(lp.PlayerGui.MainGui.Game.Coins.Text:match("%d+")) or 0
+                if coins >= 40 then
                     local m = getMurderer()
-                    if m and m.Character:FindFirstChild("HumanoidRootPart") then
-                        hrp.CFrame = m.Character.HumanoidRootPart.CFrame
-                        local bV = Instance.new("BodyVelocity", hrp)
-                        bV.Velocity = Vector3.new(0, 1000, 0) task.wait(0.1) bV:Destroy()
-                    end
+                    if m then hrp.CFrame = m.Character.HumanoidRootPart.CFrame local bV = Instance.new("BodyVelocity", hrp) bV.Velocity = Vector3.new(0, 1000, 0) task.wait(0.1) bV:Destroy() end
                 else
-                    for _, coin in pairs(container:GetChildren()) do
-                        if coin:IsA("BasePart") then hrp.CFrame = coin.CFrame task.wait(0.15) end
+                    for _, c in pairs(cont:GetChildren()) do
+                        if c:IsA("BasePart") then hrp.CFrame = c.CFrame task.wait(0.15) end
                         if not AutoCollectCoins or tonumber(lp.PlayerGui.MainGui.Game.Coins.Text:match("%d+")) >= 40 then break end
                     end
-                end
-            end
-        end
-
-        if AutoWin then
-            local isM = lp.Backpack:FindFirstChild("Knife") or lp.Character:FindFirstChild("Knife")
-            local isS = lp.Backpack:FindFirstChild("Gun") or lp.Character:FindFirstChild("Gun")
-            if isM then
-                for _, v in pairs(Players:GetPlayers()) do
-                    if v ~= lp and v.Character and v.Character.Humanoid.Health > 0 then
-                        hrp.CFrame = v.Character.HumanoidRootPart.CFrame; stab(); task.wait(0.2)
-                    end
-                end
-            elseif isS then
-                local m = getMurderer()
-                if m then hrp.CFrame = m.Character.HumanoidRootPart.CFrame * CFrame.new(0,0,3); fireGun() end
-            else
-                local drop = workspace:FindFirstChild("GunDrop", true)
-                if drop then hrp.CFrame = drop.CFrame else
-                    local lobby = workspace:FindFirstChild("Lobby")
-                    if lobby then hrp.CFrame = lobby.CFrame + Vector3.new(0,5,0) end
                 end
             end
         end
@@ -181,7 +134,7 @@ local function makeDraggable(btn, lockKey, action)
     btn.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             if action then action() end
-            if not _G[lockKey] then dragging = true dragStart = input.Position startPos = btn.Position end
+            if not _G[lockKey] and not _G.LockAll then dragging = true dragStart = input.Position startPos = btn.Position end
         end
     end)
     UserInputService.InputChanged:Connect(function(input)
@@ -193,68 +146,84 @@ local function makeDraggable(btn, lockKey, action)
     UserInputService.InputEnded:Connect(function(input) dragging = false end)
 end
 
-makeDraggable(ShootButton, "ShootLocked", fireGun)
-makeDraggable(ThrowButton, "ThrowLocked", throwKnife)
-makeDraggable(GunButton, "GunLocked", function()
-    local drop = workspace:FindFirstChild("GunDrop", true)
-    if drop and lp.Character:FindFirstChild("HumanoidRootPart") then
-        local old = lp.Character.HumanoidRootPart.CFrame
-        lp.Character.HumanoidRootPart.CFrame = drop.CFrame task.wait(0.1)
-        lp.Character.HumanoidRootPart.CFrame = old
+makeDraggable(ShootBtn, "ShootLocked", fireGun)
+makeDraggable(ThrowBtn, "ThrowLocked", throwKnife)
+makeDraggable(GunBtn, "GunLocked", function()
+    local d = workspace:FindFirstChild("GunDrop", true)
+    if d and lp.Character:FindFirstChild("HumanoidRootPart") then
+        local old = lp.Character.HumanoidRootPart.CFrame lp.Character.HumanoidRootPart.CFrame = d.CFrame task.wait(0.1) lp.Character.HumanoidRootPart.CFrame = old
     end
 end)
 
--- ESP SYSTEM
-local function setupESP(player)
-    local function createESP(char)
-        if player == lp then return end
+--- REFINED ESP SYSTEM ---
+local function setupESP(p)
+    local function create(char)
+        if p == lp then return end
         local head = char:WaitForChild("Head", 15)
-        if not head or not ESPEnabled then return end
-        local highlight = Instance.new("Highlight", char)
-        highlight.Name = "ExodusHighlight"
-        local bill = Instance.new("BillboardGui", head)
-        bill.Name = "ExodusTag"
-        bill.Size = UDim2.new(0, 100, 0, 50)
-        bill.AlwaysOnTop = true
-        local label = Instance.new("TextLabel", bill)
-        label.BackgroundTransparency = 1; label.Size = UDim2.new(1, 0, 1, 0); label.Font = Enum.Font.GothamBold; label.TextSize = 14
+        if not head then return end
+        
+        local h = Instance.new("Highlight", char)
+        h.Name = "ExodusHighlight"
+        local b = Instance.new("BillboardGui", head)
+        b.Name = "ExodusTag"
+        b.Size = UDim2.new(0, 100, 0, 50); b.AlwaysOnTop = true
+        local l = Instance.new("TextLabel", b)
+        l.BackgroundTransparency = 1; l.Size = UDim2.new(1, 0, 1, 0); l.Font = Enum.Font.GothamBold; l.TextSize = 14
+        
         task.spawn(function()
             while char.Parent and ESPEnabled do
-                local hasK = player.Backpack:FindFirstChild("Knife") or char:FindFirstChild("Knife")
-                local hasG = player.Backpack:FindFirstChild("Gun") or char:FindFirstChild("Gun")
-                highlight.FillColor = hasK and Color3.new(1,0,0) or (hasG and Color3.new(0,0,1) or Color3.new(0,1,0))
-                label.Text = hasK and "MURDERER" or (hasG and "SHERIFF" or "INNOCENT")
-                label.TextColor3 = highlight.FillColor; task.wait(1)
+                local hasK = p.Backpack:FindFirstChild("Knife") or char:FindFirstChild("Knife")
+                local hasG = p.Backpack:FindFirstChild("Gun") or char:FindFirstChild("Gun")
+                
+                h.FillColor = hasK and Color3.new(1,0,0) or (hasG and Color3.new(0,0,1) or Color3.new(0,1,0))
+                
+                -- Remove Innocent Billboard label, only show for roles
+                if hasK then
+                    l.Text = "MURDERER"; l.TextColor3 = Color3.new(1,0,0)
+                elseif hasG then
+                    l.Text = "SHERIFF"; l.TextColor3 = Color3.new(0,0,1)
+                else
+                    l.Text = "" -- Innocent Billboard removed
+                end
+                task.wait(1)
             end
-            highlight:Destroy(); bill:Destroy()
+            h:Destroy(); b:Destroy()
         end)
     end
-    player.CharacterAdded:Connect(createESP)
-    if player.Character then createESP(player.Character) end
+    p.CharacterAdded:Connect(create)
+    if p.Character then create(p.Character) end
 end
-for _, p in pairs(Players:GetPlayers()) do setupESP(p) end
+
 Players.PlayerAdded:Connect(setupESP)
+for _, p in pairs(Players:GetPlayers()) do setupESP(p) end
 
---- RAYFIELD INTERFACE ---
-AutoTab:CreateSection("Combat Automation")
-AutoTab:CreateToggle({Name = "Auto kill sheriff", CurrentValue = false, Callback = function(V) AutoKillSheriff = V end})
-AutoTab:CreateToggle({Name = "Auto win", CurrentValue = false, Callback = function(V) AutoWin = V end})
-AutoTab:CreateSection("Farming")
-AutoTab:CreateToggle({Name = "Auto collect coins", CurrentValue = false, Callback = function(V) AutoCollectCoins = V end})
+--- UI SETUP ---
+MainTab:CreateSection("Master Control")
+MainTab:CreateToggle({Name = "Lock All Buttons", CurrentValue = false, Callback = function(V) _G.LockAll = V end})
 
-MainTab:CreateButton({Name = "Copy Discord Invite", Callback = function() setclipboard("https://discord.gg/PVSceQsNA") end})
-MainTab:CreateToggle({Name = "Esp role toggle", CurrentValue = false, Callback = function(V) ESPEnabled = V for _, p in pairs(Players:GetPlayers()) do if p.Character then setupESP(p) end end end})
-MainTab:CreateSection("Throw Button")
-MainTab:CreateToggle({Name = "Show Throw", CurrentValue = false, Callback = function(V) ThrowButton.Visible = V end})
-MainTab:CreateToggle({Name = "Lock Throw", CurrentValue = false, Callback = function(V) _G.ThrowLocked = V end})
-MainTab:CreateInput({Name = "Opacity", PlaceholderText = "0.7", Callback = function(T) if tonumber(T) then ThrowButton.BackgroundTransparency = tonumber(T) ThrowStroke.Transparency = tonumber(T) end end})
-MainTab:CreateSection("Other Buttons")
-MainTab:CreateToggle({Name = "Show Shoot", CurrentValue = false, Callback = function(V) ShootButton.Visible = V end})
-MainTab:CreateToggle({Name = "Show Gun", CurrentValue = false, Callback = function(V) GunButton.Visible = V end})
+MainTab:CreateSection("Shoot Button Settings")
+MainTab:CreateToggle({Name = "Show Shoot", CurrentValue = false, Callback = function(V) ShootBtn.Visible = V end})
+MainTab:CreateToggle({Name = "Lock Shoot Position", CurrentValue = false, Callback = function(V) _G.ShootLocked = V end})
+MainTab:CreateInput({Name = "Shoot Opacity", PlaceholderText = "0.7", Callback = function(T) if tonumber(T) then ShootBtn.BackgroundTransparency = tonumber(T) ShootStrk.Transparency = tonumber(T) end end})
 
-PlayerTab:CreateSection("Movement")
-PlayerTab:CreateInput({Name = "Set speed", PlaceholderText = "18", Callback = function(T) if tonumber(T) then currentSpeed = tonumber(T) if lp.Character.Humanoid then lp.Character.Humanoid.WalkSpeed = tonumber(T) end end end})
-PlayerTab:CreateInput({Name = "Set jump", PlaceholderText = "52", Callback = function(T) if tonumber(T) then currentJump = tonumber(T) if lp.Character.Humanoid then lp.Character.Humanoid.JumpPower = tonumber(T) end end end})
+MainTab:CreateSection("Gun Button Settings")
+MainTab:CreateToggle({Name = "Show Gun", CurrentValue = false, Callback = function(V) GunBtn.Visible = V end})
+MainTab:CreateToggle({Name = "Lock Gun Position", CurrentValue = false, Callback = function(V) _G.GunLocked = V end})
+MainTab:CreateInput({Name = "Gun Opacity", PlaceholderText = "0.7", Callback = function(T) if tonumber(T) then GunBtn.BackgroundTransparency = tonumber(T) GunStrk.Transparency = tonumber(T) end end})
+
+MainTab:CreateSection("Throw Button Settings")
+MainTab:CreateToggle({Name = "Show Throw", CurrentValue = false, Callback = function(V) ThrowBtn.Visible = V end})
+MainTab:CreateToggle({Name = "Lock Throw Position", CurrentValue = false, Callback = function(V) _G.ThrowLocked = V end})
+MainTab:CreateInput({Name = "Throw Opacity", PlaceholderText = "0.7", Callback = function(T) if tonumber(T) then ThrowBtn.BackgroundTransparency = tonumber(T) ThrowStrk.Transparency = tonumber(T) end end})
+
+AutoTab:CreateToggle({Name = "Auto Collect Coins (Factory)", CurrentValue = false, Callback = function(V) AutoCollectCoins = V end})
+AutoTab:CreateToggle({Name = "ESP Role Highlights", CurrentValue = false, Callback = function(V) 
+    ESPEnabled = V 
+    if V then for _, p in pairs(Players:GetPlayers()) do if p.Character then setupESP(p) end end end 
+end})
+
+PlayerTab:CreateInput({Name = "WalkSpeed", PlaceholderText = "18", Callback = function(T) if tonumber(T) then lp.Character.Humanoid.WalkSpeed = tonumber(T) end end})
+PlayerTab:CreateInput({Name = "JumpPower", PlaceholderText = "52", Callback = function(T) if tonumber(T) then lp.Character.Humanoid.JumpPower = tonumber(T) end end})
 
 Rayfield:LoadConfiguration()
 
