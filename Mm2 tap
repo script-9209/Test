@@ -21,9 +21,7 @@ _G.ShootLocked = false
 _G.GunLocked = false
 _G.ThrowLocked = false
 local ESPEnabled = false
-local AutoKillSheriff = false
 local AutoCollectCoins = false
-local AutoWin = false
 local currentSpeed = 18
 local currentJump = 52
 
@@ -32,33 +30,56 @@ local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
 ScreenGui.Name = "ExodusFloatingUI"
 ScreenGui.ResetOnSpawn = false
 
--- Button Factory
-local function createBaseButton(name, text, pos, isCircle)
+-- RGB Logic
+local function syncRGB(stroke)
+    task.spawn(function()
+        while true do
+            local hue = tick() % 5 / 5
+            stroke.Color = Color3.fromHSV(hue, 1, 1)
+            task.wait()
+        end
+    end)
+end
+
+-- Button Factory with Updated Visuals
+local function createBaseButton(name, text, pos, isCircle, isRect)
     local btn = Instance.new("TextButton", ScreenGui)
     btn.Name = name
     btn.Visible = false
-    btn.Size = UDim2.new(0, 90, 0, 90)
+    
+    -- Visual Styling
+    if isRect then
+        btn.Size = UDim2.new(0, 140, 0, 60) -- Rectangular Shoot
+    else
+        btn.Size = UDim2.new(0, 80, 0, 80) -- Standard size
+    end
+    
     btn.Position = pos
-    btn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    btn.BackgroundTransparency = 0.7 
+    btn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+    btn.BackgroundTransparency = 0.5 
     btn.Text = text
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 16
+    btn.TextSize = 18
     btn.ZIndex = 10
+    
     local corner = Instance.new("UICorner", btn)
-    corner.CornerRadius = isCircle and UDim.new(1, 0) or UDim.new(0, 18)
+    corner.CornerRadius = isCircle and UDim.new(1, 0) or UDim.new(0, 12)
+    
+    -- RGB Stroke
     local stroke = Instance.new("UIStroke", btn)
-    stroke.Thickness = 2
-    stroke.Color = Color3.fromRGB(60, 60, 60)
+    stroke.Thickness = 2.5
+    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    syncRGB(stroke)
+    
     return btn, stroke
 end
 
-local ShootBtn, ShootStrk = createBaseButton("ShootButton", "SHOOT", UDim2.new(0.5, -145, 0.5, -45), false)
-local GunBtn, GunStrk = createBaseButton("GunButton", "GUN", UDim2.new(0.5, -45, 0.5, -45), true)
-local ThrowBtn, ThrowStrk = createBaseButton("ThrowButton", "THROW", UDim2.new(0.5, 55, 0.5, -45), false)
+local ShootBtn, ShootStrk = createBaseButton("ShootButton", "SHOOT", UDim2.new(0.5, -160, 0.5, -30), false, true)
+local GunBtn, GunStrk = createBaseButton("GunButton", "GUN", UDim2.new(0.5, -40, 0.5, -40), true, false)
+local ThrowBtn, ThrowStrk = createBaseButton("ThrowButton", "THROW", UDim2.new(0.5, 60, 0.5, -40), false, false)
 
---- COMBAT FUNCTIONS ---
+--- COMBAT FUNCTIONS (Unchanged) ---
 
 local function getMurderer()
     for _, v in pairs(Players:GetPlayers()) do
@@ -84,8 +105,7 @@ local function fireGun()
     if gun and m and m.Character:FindFirstChild("HumanoidRootPart") then
         if gun.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(gun) task.wait(0.1) end
         local mHRP = m.Character.HumanoidRootPart
-        -- 2 studs away from murderer hrp (origin)
-        local originPos = mHRP.Position + Vector3.new(0, 0, 2)
+        local originPos = mHRP.Position + Vector3.new(0, 0, 1)
         local targetPos = mHRP.Position + (mHRP.Velocity * 0.15)
         if gun:FindFirstChild("Shoot") then 
             gun.Shoot:FireServer(CFrame.new(originPos, targetPos), CFrame.new(targetPos)) 
@@ -104,7 +124,7 @@ local function throwKnife()
     end
 end
 
---- LOOPS ---
+--- LOOPS & ESP (Unchanged) ---
 
 task.spawn(function()
     while task.wait(0.1) do
@@ -128,7 +148,6 @@ task.spawn(function()
     end
 end)
 
--- Draggable Logic
 local function makeDraggable(btn, lockKey, action)
     local dragging, dragStart, startPos
     btn.InputBegan:Connect(function(input)
@@ -155,13 +174,11 @@ makeDraggable(GunBtn, "GunLocked", function()
     end
 end)
 
---- REFINED ESP SYSTEM ---
 local function setupESP(p)
     local function create(char)
         if p == lp then return end
         local head = char:WaitForChild("Head", 15)
         if not head then return end
-        
         local h = Instance.new("Highlight", char)
         h.Name = "ExodusHighlight"
         local b = Instance.new("BillboardGui", head)
@@ -169,22 +186,14 @@ local function setupESP(p)
         b.Size = UDim2.new(0, 100, 0, 50); b.AlwaysOnTop = true
         local l = Instance.new("TextLabel", b)
         l.BackgroundTransparency = 1; l.Size = UDim2.new(1, 0, 1, 0); l.Font = Enum.Font.GothamBold; l.TextSize = 14
-        
         task.spawn(function()
             while char.Parent and ESPEnabled do
                 local hasK = p.Backpack:FindFirstChild("Knife") or char:FindFirstChild("Knife")
                 local hasG = p.Backpack:FindFirstChild("Gun") or char:FindFirstChild("Gun")
-                
                 h.FillColor = hasK and Color3.new(1,0,0) or (hasG and Color3.new(0,0,1) or Color3.new(0,1,0))
-                
-                -- Remove Innocent Billboard label, only show for roles
-                if hasK then
-                    l.Text = "MURDERER"; l.TextColor3 = Color3.new(1,0,0)
-                elseif hasG then
-                    l.Text = "SHERIFF"; l.TextColor3 = Color3.new(0,0,1)
-                else
-                    l.Text = "" -- Innocent Billboard removed
-                end
+                if hasK then l.Text = "MURDERER"; l.TextColor3 = Color3.new(1,0,0)
+                elseif hasG then l.Text = "SHERIFF"; l.TextColor3 = Color3.new(0,0,1)
+                else l.Text = "" end
                 task.wait(1)
             end
             h:Destroy(); b:Destroy()
@@ -201,29 +210,25 @@ for _, p in pairs(Players:GetPlayers()) do setupESP(p) end
 MainTab:CreateSection("Master Control")
 MainTab:CreateToggle({Name = "Lock All Buttons", CurrentValue = false, Callback = function(V) _G.LockAll = V end})
 
-MainTab:CreateSection("Shoot Button Settings")
+MainTab:CreateSection("Shoot Settings")
 MainTab:CreateToggle({Name = "Show Shoot", CurrentValue = false, Callback = function(V) ShootBtn.Visible = V end})
-MainTab:CreateToggle({Name = "Lock Shoot Position", CurrentValue = false, Callback = function(V) _G.ShootLocked = V end})
-MainTab:CreateInput({Name = "Shoot Opacity", PlaceholderText = "0.7", Callback = function(T) if tonumber(T) then ShootBtn.BackgroundTransparency = tonumber(T) ShootStrk.Transparency = tonumber(T) end end})
+MainTab:CreateToggle({Name = "Lock Shoot", CurrentValue = false, Callback = function(V) _G.ShootLocked = V end})
+MainTab:CreateInput({Name = "Shoot Opacity", PlaceholderText = "0.5", Callback = function(T) if tonumber(T) then ShootBtn.BackgroundTransparency = tonumber(T) end end})
 
-MainTab:CreateSection("Gun Button Settings")
+MainTab:CreateSection("Gun Settings")
 MainTab:CreateToggle({Name = "Show Gun", CurrentValue = false, Callback = function(V) GunBtn.Visible = V end})
-MainTab:CreateToggle({Name = "Lock Gun Position", CurrentValue = false, Callback = function(V) _G.GunLocked = V end})
-MainTab:CreateInput({Name = "Gun Opacity", PlaceholderText = "0.7", Callback = function(T) if tonumber(T) then GunBtn.BackgroundTransparency = tonumber(T) GunStrk.Transparency = tonumber(T) end end})
+MainTab:CreateToggle({Name = "Lock Gun", CurrentValue = false, Callback = function(V) _G.GunLocked = V end})
+MainTab:CreateInput({Name = "Gun Opacity", PlaceholderText = "0.5", Callback = function(T) if tonumber(T) then GunBtn.BackgroundTransparency = tonumber(T) end end})
 
-MainTab:CreateSection("Throw Button Settings")
+MainTab:CreateSection("Throw Settings")
 MainTab:CreateToggle({Name = "Show Throw", CurrentValue = false, Callback = function(V) ThrowBtn.Visible = V end})
-MainTab:CreateToggle({Name = "Lock Throw Position", CurrentValue = false, Callback = function(V) _G.ThrowLocked = V end})
-MainTab:CreateInput({Name = "Throw Opacity", PlaceholderText = "0.7", Callback = function(T) if tonumber(T) then ThrowBtn.BackgroundTransparency = tonumber(T) ThrowStrk.Transparency = tonumber(T) end end})
+MainTab:CreateToggle({Name = "Lock Throw", CurrentValue = false, Callback = function(V) _G.ThrowLocked = V end})
+MainTab:CreateInput({Name = "Throw Opacity", PlaceholderText = "0.5", Callback = function(T) if tonumber(T) then ThrowBtn.BackgroundTransparency = tonumber(T) end end})
 
-AutoTab:CreateToggle({Name = "Auto Collect Coins (Factory)", CurrentValue = false, Callback = function(V) AutoCollectCoins = V end})
-AutoTab:CreateToggle({Name = "ESP Role Highlights", CurrentValue = false, Callback = function(V) 
-    ESPEnabled = V 
-    if V then for _, p in pairs(Players:GetPlayers()) do if p.Character then setupESP(p) end end end 
-end})
+AutoTab:CreateToggle({Name = "Auto Coins (Factory)", CurrentValue = false, Callback = function(V) AutoCollectCoins = V end})
+AutoTab:CreateToggle({Name = "ESP Roles", CurrentValue = false, Callback = function(V) ESPEnabled = V if V then for _, p in pairs(Players:GetPlayers()) do if p.Character then setupESP(p) end end end end})
 
-PlayerTab:CreateInput({Name = "WalkSpeed", PlaceholderText = "18", Callback = function(T) if tonumber(T) then lp.Character.Humanoid.WalkSpeed = tonumber(T) end end})
-PlayerTab:CreateInput({Name = "JumpPower", PlaceholderText = "52", Callback = function(T) if tonumber(T) then lp.Character.Humanoid.JumpPower = tonumber(T) end end})
+PlayerTab:CreateInput({Name = "Speed", PlaceholderText = "18", Callback = function(T) if tonumber(T) then lp.Character.Humanoid.WalkSpeed = tonumber(T) end end})
+PlayerTab:CreateInput({Name = "Jump", PlaceholderText = "52", Callback = function(T) if tonumber(T) then lp.Character.Humanoid.JumpPower = tonumber(T) end end})
 
 Rayfield:LoadConfiguration()
-
