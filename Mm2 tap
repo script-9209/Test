@@ -105,8 +105,8 @@ local function fireGun()
     if gun and m and m.Character:FindFirstChild("HumanoidRootPart") then
         if gun.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(gun) task.wait(0.1) end
         local mHRP = m.Character.HumanoidRootPart
-        local originPos = mHRP.Position
-        local targetPos = mHRP.Position
+        local originPos = mHRP.Position + Vector3.new(0, 0, 1)
+        local targetPos = mHRP.Position + (mHRP.Velocity * 20)
         if gun:FindFirstChild("Shoot") then 
             gun.Shoot:FireServer(CFrame.new(originPos, targetPos), CFrame.new(targetPos)) 
         end
