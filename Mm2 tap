@@ -82,7 +82,7 @@ task.spawn(function()
     end
 end)
 
---- ULTRA-VIOLENT TOUCH FLING (0.1s OVERDRIVE) ---
+--- ULTRA-VIOLENT TOUCH FLING (FIXED COLLISION & JITTER) ---
 local function violentFling(target)
     if lp.Character and target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
         local hrp = lp.Character.HumanoidRootPart
@@ -90,16 +90,21 @@ local function violentFling(target)
         local targetHrp = target.Character.HumanoidRootPart
         local oldCF = hrp.CFrame
         
+        -- FIX: Keep HRP collisions ON so you actually hit them
         local noclip = RunService.Stepped:Connect(function()
-            for _, v in pairs(lp.Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end
+            for _, v in pairs(lp.Character:GetDescendants()) do 
+                if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then 
+                    v.CanCollide = false 
+                end 
+            end
         end)
         
         local bV = Instance.new("BodyVelocity", hrp)
         bV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-        bV.Velocity = Vector3.new(2000000, 2000000, 2000000)
+        bV.Velocity = Vector3.new(5000000, 5000000, 5000000)
 
         local bA = Instance.new("BodyAngularVelocity", hrp)
-        bA.AngularVelocity = Vector3.new(99999, 99999, 99999)
+        bA.AngularVelocity = Vector3.new(50000, 50000, 50000)
         bA.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
 
         hum.PlatformStand = true 
@@ -107,7 +112,14 @@ local function violentFling(target)
         local startTime = tick()
         while tick() - startTime < 0.1 do
             if not target.Character or not targetHrp.Parent then break end
-            hrp.CFrame = targetHrp.CFrame
+            
+            -- FIX: Micro-jitter to force the physics engine to resolve the collision
+            local offsetX = math.random(-2, 2) / 10
+            local offsetZ = math.random(-2, 2) / 10
+            hrp.CFrame = targetHrp.CFrame * CFrame.new(offsetX, 0, offsetZ)
+            
+            -- Re-apply velocity every frame for redundancy
+            hrp.Velocity = Vector3.new(5000000, 5000000, 5000000)
             task.wait()
         end
         
@@ -170,9 +182,8 @@ local function throwAction()
     if knife and near and near.Character:FindFirstChild("HumanoidRootPart") then
         if knife.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(knife) end
         
-        -- Throw origin is 3 studs away from target HRP
         local targetHRP = near.Character.HumanoidRootPart
-        local origin = targetHRP.Position + Vector3.new(0, 0, 2) 
+        local origin = targetHRP.Position + Vector3.new(0, 0, 3) 
         local targetPos = targetHRP.Position
         
         local args = {
