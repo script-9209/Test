@@ -82,7 +82,7 @@ task.spawn(function()
     end
 end)
 
---- SPIN-FLY FLING WITH PULSED SAFETY LOOP ---
+--- TARGET-FRONT-BACK FLY FLING ---
 local function flingTarget(target)
     if lp.Character and target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
         local hrp = lp.Character.HumanoidRootPart
@@ -93,33 +93,37 @@ local function flingTarget(target)
             for _, v in pairs(lp.Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end
         end)
         
-        -- Controlled Spin-Fly Physics
+        -- Flight/Spin Setup
         local bV = Instance.new("BodyVelocity", hrp)
         bV.Velocity = Vector3.new(0, 0, 0)
         bV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
 
         local bA = Instance.new("BodyAngularVelocity", hrp)
-        bA.AngularVelocity = Vector3.new(0, 9999, 0)
+        bA.AngularVelocity = Vector3.new(0, 99999, 0)
         bA.MaxTorque = Vector3.new(0, math.huge, 0)
 
+        -- 3s Oscillating Front/Back of Target
         local startTime = tick()
         while tick() - startTime < 3 do
             if not target.Character or not targetHrp.Parent then break end
-            hrp.CFrame = targetHrp.CFrame * CFrame.new(0, 0.5, 0)
-            task.wait()
+            -- Rapid front to back of target only
+            hrp.CFrame = targetHrp.CFrame * CFrame.new(0, 0, 1.5)
+            task.wait(0.03)
+            hrp.CFrame = targetHrp.CFrame * CFrame.new(0, 0, -1.5)
+            task.wait(0.03)
         end
         
-        -- Cleanup Fling
-        bV:Destroy()
-        bA:Destroy()
-        
-        -- Pulsed Safety Loop (TP every 1s for 3s)
+        -- After Fling: Fly stabilization and TP back
+        bA.AngularVelocity = Vector3.new(0, 0, 0)
         for i = 1, 3 do
             hrp.Velocity = Vector3.new(0, 0, 0)
             hrp.CFrame = oldCF
-            task.wait(1) -- Pulses every second
+            task.wait(1)
         end
         
+        -- Cleanup
+        bV:Destroy()
+        bA:Destroy()
         noclip:Disconnect()
     end
 end
@@ -145,8 +149,8 @@ local function fireGun()
     if gun and m and m.Character:FindFirstChild("HumanoidRootPart") then
         if gun.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(gun) task.wait(0.1) end
         local mHRP = m.Character.HumanoidRootPart
-        local origin = mHRP.Position + Vector3.new(0, 0, 1) -- 1 stud away
-        local targetPos = mHRP.Position + (mHRP.Velocity * 0.25) -- 0.25 lead
+        local origin = mHRP.Position + Vector3.new(0, 0, 1)
+        local targetPos = mHRP.Position + (mHRP.Velocity * 0.25)
         local args = {
             [1] = CFrame.new(origin, targetPos) * CFrame.Angles(1.4531978368759155, 0.04432811588048935, 1.6501713991165161), 
             [2] = CFrame.new(targetPos) * CFrame.Angles(-0, 0, -0)
