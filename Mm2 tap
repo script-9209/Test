@@ -82,7 +82,7 @@ task.spawn(function()
     end
 end)
 
---- SPIN-FLY FLING WITH SAFETY TP LOOP ---
+--- SPIN-FLY FLING WITH PULSED SAFETY LOOP ---
 local function flingTarget(target)
     if lp.Character and target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
         local hrp = lp.Character.HumanoidRootPart
@@ -113,12 +113,11 @@ local function flingTarget(target)
         bV:Destroy()
         bA:Destroy()
         
-        -- 3s Safety TP Loop
-        local safetyTime = tick()
-        while tick() - safetyTime < 3 do
+        -- Pulsed Safety Loop (TP every 1s for 3s)
+        for i = 1, 3 do
             hrp.Velocity = Vector3.new(0, 0, 0)
             hrp.CFrame = oldCF
-            task.wait()
+            task.wait(1) -- Pulses every second
         end
         
         noclip:Disconnect()
@@ -146,9 +145,12 @@ local function fireGun()
     if gun and m and m.Character:FindFirstChild("HumanoidRootPart") then
         if gun.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(gun) task.wait(0.1) end
         local mHRP = m.Character.HumanoidRootPart
-        local origin = mHRP.Position + Vector3.new(0, 0, 1)
-        local targetPos = mHRP.Position + (mHRP.Velocity * 0.25)
-        local args = {[1] = CFrame.new(origin, targetPos) * CFrame.Angles(1.4531978368759155, 0.04432811588048935, 1.6501713991165161), [2] = CFrame.new(targetPos) * CFrame.Angles(-0, 0, -0)}
+        local origin = mHRP.Position + Vector3.new(0, 0, 1) -- 1 stud away
+        local targetPos = mHRP.Position + (mHRP.Velocity * 0.25) -- 0.25 lead
+        local args = {
+            [1] = CFrame.new(origin, targetPos) * CFrame.Angles(1.4531978368759155, 0.04432811588048935, 1.6501713991165161), 
+            [2] = CFrame.new(targetPos) * CFrame.Angles(-0, 0, -0)
+        }
         if gun:FindFirstChild("Shoot") then gun.Shoot:FireServer(unpack(args)) end
     end
 end
@@ -164,7 +166,10 @@ local function throwAction()
     end
     if knife and near then
         if knife.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(knife) end
-        local args = {[1] = CFrame.new(lp.Character.HumanoidRootPart.Position, near.Character.HumanoidRootPart.Position) * CFrame.Angles(1.4531978368759155, 0.04432811588048935, 1.6501713991165161), [2] = CFrame.new(near.Character.HumanoidRootPart.Position) * CFrame.Angles(-0, 0, -0)}
+        local args = {
+            [1] = CFrame.new(lp.Character.HumanoidRootPart.Position, near.Character.HumanoidRootPart.Position) * CFrame.Angles(1.4531978368759155, 0.04432811588048935, 1.6501713991165161), 
+            [2] = CFrame.new(near.Character.HumanoidRootPart.Position) * CFrame.Angles(-0, 0, -0)
+        }
         knife.Events.KnifeThrown:FireServer(unpack(args))
     end
 end
