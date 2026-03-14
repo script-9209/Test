@@ -26,7 +26,7 @@ local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
 ScreenGui.Name = "ExodusFloatingUI"
 ScreenGui.ResetOnSpawn = false
 
--- RGB Sync
+-- RGB Sync Logic
 local function syncRGB(stroke)
     task.spawn(function()
         while true do
@@ -66,49 +66,50 @@ local ThrowBtn = createBaseButton("ThrowButton", "THROW", UDim2.new(0.5, -40, 0.
 
 --- COMBAT FUNCTIONS ---
 
+local function getMurderer()
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= lp and v.Character and (v.Character:FindFirstChild("Knife") or v.Backpack:FindFirstChild("Knife")) then return v end
+    end
+    return nil
+end
+
+local function getSheriff()
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= lp and v.Character and (v.Character:FindFirstChild("Gun") or v.Backpack:FindFirstChild("Gun")) then return v end
+    end
+    return nil
+end
+
 local function fireGun()
     local gun = lp.Character:FindFirstChild("Gun") or lp.Backpack:FindFirstChild("Gun")
-    local murderer = nil
-    for _, v in pairs(Players:GetPlayers()) do
-        if v ~= lp and v.Character and (v.Character:FindFirstChild("Knife") or v.Backpack:FindFirstChild("Knife")) then
-            murderer = v
-            break
-        end
-    end
-    
-    if gun and murderer and murderer.Character:FindFirstChild("HumanoidRootPart") then
+    local m = getMurderer()
+    if gun and m and m.Character:FindFirstChild("HumanoidRootPart") then
         if gun.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(gun) task.wait(0.1) end
-        local mHRP = murderer.Character.HumanoidRootPart
+        local mHRP = m.Character.HumanoidRootPart
         local originPos = mHRP.Position + Vector3.new(0, 0, 1)
-        local targetPos = mHRP.Position + (mHRP.Velocity * 0.28)
-        if gun:FindFirstChild("Shoot") then 
-            gun.Shoot:FireServer(CFrame.new(originPos, targetPos), CFrame.new(targetPos)) 
-        end
+        local targetPos = mHRP.Position + (mHRP.Velocity * 0.25)
+        if gun:FindFirstChild("Shoot") then gun.Shoot:FireServer(CFrame.new(originPos, targetPos), CFrame.new(targetPos)) end
     end
 end
 
 local function throwAction()
     local knife = lp.Character:FindFirstChild("Knife") or lp.Backpack:FindFirstChild("Knife")
-    if not knife then return end
-    
-    local target, dist = nil, math.huge
+    local near, dist = nil, math.huge
     for _, v in pairs(Players:GetPlayers()) do
         if v ~= lp and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
             local d = (lp.Character.HumanoidRootPart.Position - v.Character.HumanoidRootPart.Position).Magnitude
-            if d < dist then dist = d target = v end
+            if d < dist then dist = d near = v end
         end
     end
-
-    if target then
+    if knife and near then
         if knife.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(knife) end
-        local targetPos = target.Character.HumanoidRootPart.Position
+        local targetPos = near.Character.HumanoidRootPart.Position
         knife.Events.KnifeThrown:FireServer(CFrame.new(lp.Character.HumanoidRootPart.Position, targetPos), targetPos)
     end
 end
 
-local function flingSheriff()
-    local s = (function() for _, v in pairs(Players:GetPlayers()) do if v ~= lp and v.Character and (v.Character:FindFirstChild("Gun") or v.Backpack:FindFirstChild("Gun")) then return v end end return nil end)()
-    if lp.Character and s and s.Character then
+local function flingTarget(target)
+    if lp.Character and target and target.Character then
         local hrp = lp.Character.HumanoidRootPart
         local oldCF = hrp.CFrame
         local noclip = game:GetService("RunService").Stepped:Connect(function()
@@ -118,7 +119,7 @@ local function flingSheriff()
         spin.Attachment0 = hrp:FindFirstChild("RootAttachment") or Instance.new("Attachment", hrp)
         spin.MaxTorque = math.huge
         spin.AngularVelocity = Vector3.new(0, 180000, 0)
-        hrp.CFrame = s.Character.HumanoidRootPart.CFrame
+        hrp.CFrame = target.Character.HumanoidRootPart.CFrame
         task.wait(0.4)
         spin:Destroy(); noclip:Disconnect()
         hrp.CFrame = oldCF
@@ -149,7 +150,7 @@ local function applyESP(p)
         end)
     end)
 end
-for _, p in pairs(Players:GetPlayers()) do applyESP(p) if p.Character then p.CharacterAdded:Fire(p.Character) end end
+for _, p in pairs(Players:GetPlayers()) do applyESP(p) end
 Players.PlayerAdded:Connect(applyESP)
 
 -- Draggable logic
@@ -181,7 +182,8 @@ makeDraggable(GunBtn, "GunLocked", function()
 end)
 makeDraggable(ThrowBtn, "ThrowLocked", throwAction)
 
---- MENU STRUCTURE ---
+--- STRICT MENU STRUCTURE ---
+
 MainTab:CreateSection("Esp")
 MainTab:CreateToggle({Name = "Esp Roles", CurrentValue = false, Callback = function(V) _G.ESPEnabled = V end})
 
@@ -194,7 +196,8 @@ MainTab:CreateToggle({Name = "Show Shoot", CurrentValue = false, Callback = func
 MainTab:CreateToggle({Name = "Show Throw", CurrentValue = false, Callback = function(V) ThrowBtn.Visible = V end})
 
 MainTab:CreateSection("Fling")
-MainTab:CreateButton({Name = "Sheriff", Callback = function() flingSheriff() end})
+MainTab:CreateButton({Name = "Sheriff", Callback = function() flingTarget(getSheriff()) end})
+MainTab:CreateButton({Name = "Murderer", Callback = function() flingTarget(getMurderer()) end})
 
 AutoTab:CreateToggle({Name = "Auto Collect Coins (Factory)", CurrentValue = false, Callback = function(V) _G.AutoCoins = V end})
 PlayerTab:CreateInput({Name = "WalkSpeed", PlaceholderText = "16", Callback = function(T) if tonumber(T) then lp.Character.Humanoid.WalkSpeed = tonumber(T) end end})
