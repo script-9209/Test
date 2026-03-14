@@ -82,8 +82,50 @@ task.spawn(function()
     end
 end)
 
---- COMBAT FUNCTIONS ---
+--- SPIN-FLY FLING WITH SAFETY TP LOOP ---
+local function flingTarget(target)
+    if lp.Character and target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+        local hrp = lp.Character.HumanoidRootPart
+        local targetHrp = target.Character.HumanoidRootPart
+        local oldCF = hrp.CFrame
+        
+        local noclip = RunService.Stepped:Connect(function()
+            for _, v in pairs(lp.Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end
+        end)
+        
+        -- Controlled Spin-Fly Physics
+        local bV = Instance.new("BodyVelocity", hrp)
+        bV.Velocity = Vector3.new(0, 0, 0)
+        bV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
 
+        local bA = Instance.new("BodyAngularVelocity", hrp)
+        bA.AngularVelocity = Vector3.new(0, 9999, 0)
+        bA.MaxTorque = Vector3.new(0, math.huge, 0)
+
+        local startTime = tick()
+        while tick() - startTime < 3 do
+            if not target.Character or not targetHrp.Parent then break end
+            hrp.CFrame = targetHrp.CFrame * CFrame.new(0, 0.5, 0)
+            task.wait()
+        end
+        
+        -- Cleanup Fling
+        bV:Destroy()
+        bA:Destroy()
+        
+        -- 3s Safety TP Loop
+        local safetyTime = tick()
+        while tick() - safetyTime < 3 do
+            hrp.Velocity = Vector3.new(0, 0, 0)
+            hrp.CFrame = oldCF
+            task.wait()
+        end
+        
+        noclip:Disconnect()
+    end
+end
+
+--- COMBAT FUNCTIONS ---
 local function getMurderer()
     for _, v in pairs(Players:GetPlayers()) do
         if v ~= lp and v.Character and (v.Character:FindFirstChild("Knife") or v.Backpack:FindFirstChild("Knife")) then return v end
@@ -103,20 +145,11 @@ local function fireGun()
     local m = getMurderer()
     if gun and m and m.Character:FindFirstChild("HumanoidRootPart") then
         if gun.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(gun) task.wait(0.1) end
-        
         local mHRP = m.Character.HumanoidRootPart
-        -- Modified: Origin 1 stud away, lead increased to 0.25
         local origin = mHRP.Position + Vector3.new(0, 0, 1)
         local targetPos = mHRP.Position + (mHRP.Velocity * 0.25)
-        
-        local args = {
-            [1] = CFrame.new(origin, targetPos) * CFrame.Angles(1.4531978368759155, 0.04432811588048935, 1.6501713991165161),
-            [2] = CFrame.new(targetPos) * CFrame.Angles(-0, 0, -0)
-        }
-        
-        if gun:FindFirstChild("Shoot") then
-            gun.Shoot:FireServer(unpack(args))
-        end
+        local args = {[1] = CFrame.new(origin, targetPos) * CFrame.Angles(1.4531978368759155, 0.04432811588048935, 1.6501713991165161), [2] = CFrame.new(targetPos) * CFrame.Angles(-0, 0, -0)}
+        if gun:FindFirstChild("Shoot") then gun.Shoot:FireServer(unpack(args)) end
     end
 end
 
@@ -131,70 +164,10 @@ local function throwAction()
     end
     if knife and near then
         if knife.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(knife) end
-        local args = {
-            [1] = CFrame.new(lp.Character.HumanoidRootPart.Position, near.Character.HumanoidRootPart.Position) * CFrame.Angles(1.4531978368759155, 0.04432811588048935, 1.6501713991165161),
-            [2] = CFrame.new(near.Character.HumanoidRootPart.Position) * CFrame.Angles(-0, 0, -0)
-        }
+        local args = {[1] = CFrame.new(lp.Character.HumanoidRootPart.Position, near.Character.HumanoidRootPart.Position) * CFrame.Angles(1.4531978368759155, 0.04432811588048935, 1.6501713991165161), [2] = CFrame.new(near.Character.HumanoidRootPart.Position) * CFrame.Angles(-0, 0, -0)}
         knife.Events.KnifeThrown:FireServer(unpack(args))
     end
 end
-
-local function flingTarget(target)
-    if lp.Character and target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-        local hrp = lp.Character.HumanoidRootPart
-        local targetHrp = target.Character.HumanoidRootPart
-        local oldCF = hrp.CFrame
-        local noclip = RunService.Stepped:Connect(function()
-            for _, v in pairs(lp.Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end
-        end)
-        local bA = Instance.new("BodyAngularVelocity", hrp)
-        bA.AngularVelocity = Vector3.new(0, 999999, 0); bA.MaxTorque = Vector3.new(0, math.huge, 0); bA.P = 1500
-
-        local startTime = tick()
-        while tick() - startTime < 3 do
-            if not target.Character or not targetHrp.Parent then break end
-            hrp.CFrame = targetHrp.CFrame
-            task.wait()
-        end
-        bA:Destroy(); noclip:Disconnect(); hrp.CFrame = oldCF
-    end
-end
-
---- ESP SYSTEM ---
-local function createESP(p)
-    p.CharacterAdded:Connect(function(char)
-        if p == lp then return end
-        local highlight = Instance.new("Highlight", char)
-        highlight.OutlineTransparency = 0; highlight.FillTransparency = 0.5
-        local bill = Instance.new("BillboardGui", char:WaitForChild("Head", 10))
-        bill.Size = UDim2.new(0, 100, 0, 50); bill.AlwaysOnTop = true; bill.ExtentsOffset = Vector3.new(0, 3, 0)
-        local label = Instance.new("TextLabel", bill)
-        label.Size = UDim2.new(1, 0, 1, 0); label.BackgroundTransparency = 1; label.Font = Enum.Font.GothamBold; label.TextSize = 14
-        task.spawn(function()
-            while char.Parent do
-                if _G.ESPEnabled then
-                    local isM = p.Backpack:FindFirstChild("Knife") or char:FindFirstChild("Knife")
-                    local isS = p.Backpack:FindFirstChild("Gun") or char:FindFirstChild("Gun")
-                    highlight.Enabled = true
-                    if isM then
-                        bill.Enabled = true; highlight.FillColor = Color3.new(1, 0, 0)
-                        label.Text = "MURDERER"; label.TextColor3 = Color3.new(1, 0, 0)
-                    elseif isS then
-                        bill.Enabled = true; highlight.FillColor = Color3.new(0, 0, 1)
-                        label.Text = "SHERIFF"; label.TextColor3 = Color3.new(0, 0, 1)
-                    else
-                        bill.Enabled = false; highlight.FillColor = Color3.new(0, 1, 0) -- Innocent Billboard Removed
-                    end
-                else
-                    highlight.Enabled = false; bill.Enabled = false
-                end
-                task.wait(1)
-            end
-        end)
-    end)
-end
-for _, p in pairs(Players:GetPlayers()) do createESP(p) end
-Players.PlayerAdded:Connect(createESP)
 
 --- DRAGGABLE LOGIC ---
 local function makeDraggable(btn, lockKey, customAction)
@@ -222,6 +195,42 @@ makeDraggable(GunBtn, "GunLocked", function()
     end
 end)
 makeDraggable(ThrowBtn, "ThrowLocked", throwAction)
+
+--- ESP SYSTEM ---
+local function createESP(p)
+    p.CharacterAdded:Connect(function(char)
+        if p == lp then return end
+        local highlight = Instance.new("Highlight", char)
+        highlight.OutlineTransparency = 0; highlight.FillTransparency = 0.5
+        local bill = Instance.new("BillboardGui", char:WaitForChild("Head", 10))
+        bill.Size = UDim2.new(0, 100, 0, 50); bill.AlwaysOnTop = true; bill.ExtentsOffset = Vector3.new(0, 3, 0)
+        local label = Instance.new("TextLabel", bill)
+        label.Size = UDim2.new(1, 0, 1, 0); label.BackgroundTransparency = 1; label.Font = Enum.Font.GothamBold; label.TextSize = 14
+        task.spawn(function()
+            while char.Parent do
+                if _G.ESPEnabled then
+                    local isM = p.Backpack:FindFirstChild("Knife") or char:FindFirstChild("Knife")
+                    local isS = p.Backpack:FindFirstChild("Gun") or char:FindFirstChild("Gun")
+                    highlight.Enabled = true
+                    if isM then
+                        bill.Enabled = true; highlight.FillColor = Color3.new(1, 0, 0)
+                        label.Text = "MURDERER"; label.TextColor3 = Color3.new(1, 0, 0)
+                    elseif isS then
+                        bill.Enabled = true; highlight.FillColor = Color3.new(0, 0, 1)
+                        label.Text = "SHERIFF"; label.TextColor3 = Color3.new(0, 0, 1)
+                    else
+                        bill.Enabled = false; highlight.FillColor = Color3.new(0, 1, 0)
+                    end
+                else
+                    highlight.Enabled = false; bill.Enabled = false
+                end
+                task.wait(1)
+            end
+        end)
+    end)
+end
+for _, p in pairs(Players:GetPlayers()) do createESP(p) end
+Players.PlayerAdded:Connect(createESP)
 
 --- STRICT MENU STRUCTURE ---
 MainTab:CreateSection("Esp")
