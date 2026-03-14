@@ -23,6 +23,7 @@ _G.ThrowLocked = false
 _G.FlingLocked = false
 local ESPEnabled = false
 local AutoCollectCoins = false
+local AutoWin = false
 
 -- UI Container
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
@@ -68,7 +69,14 @@ local GunBtn, GunStrk = createBaseButton("GunButton", "GUN", UDim2.new(0.5, -120
 local ThrowBtn, ThrowStrk = createBaseButton("ThrowButton", "THROW", UDim2.new(0.5, -40, 0.5, 0), false, false)
 local FlingBtn, FlingStrk = createBaseButton("FlingButton", "FLING", UDim2.new(0.5, 40, 0.5, 0), false, false)
 
---- NEW REFINED LOGIC ---
+--- COMBAT LOGIC ---
+
+local function getMurderer()
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= lp and v.Character and (v.Character:FindFirstChild("Knife") or v.Backpack:FindFirstChild("Knife")) then return v end
+    end
+    return nil
+end
 
 local function getSheriff()
     for _, v in pairs(Players:GetPlayers()) do
@@ -77,83 +85,14 @@ local function getSheriff()
     return nil
 end
 
-local function flingAction()
-    local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
-    local s = getSheriff()
-    if hrp and s and s.Character and s.Character:FindFirstChild("HumanoidRootPart") then
-        local oldCF = hrp.CFrame
-        -- Create Fling Force
-        local Velocity = Instance.new("AngularVelocity")
-        Velocity.Attachment0 = hrp:FindFirstChild("RootAttachment") or Instance.new("Attachment", hrp)
-        Velocity.MaxTorque = math.huge
-        Velocity.AngularVelocity = Vector3.new(0, 99999, 0)
-        Velocity.Parent = hrp
-
-        -- Teleport and Fling
-        hrp.CFrame = s.Character.HumanoidRootPart.CFrame
-        task.wait(0.3)
-        
-        -- Cleanup and Return
-        Velocity:Destroy()
-        hrp.CFrame = oldCF
-    end
-end
-
--- ESP SYSTEM (Force Refresh)
-local function setupESP(p)
-    p.CharacterAdded:Connect(function(char)
-        if p == lp then return end
-        task.wait(0.5) -- Wait for character load
-        
-        local h = char:FindFirstChild("ExodusHighlight") or Instance.new("Highlight", char)
-        h.Name = "ExodusHighlight"
-        
-        local head = char:WaitForChild("Head", 10)
-        local b = head:FindFirstChild("ExodusTag") or Instance.new("BillboardGui", head)
-        b.Name = "ExodusTag"
-        b.Size = UDim2.new(0, 100, 0, 50)
-        b.AlwaysOnTop = true
-        
-        local l = b:FindFirstChild("Label") or Instance.new("TextLabel", b)
-        l.Name = "Label"
-        l.BackgroundTransparency = 1; l.Size = UDim2.new(1, 0, 1, 0); l.Font = Enum.Font.GothamBold; l.TextSize = 14
-
-        task.spawn(function()
-            while char.Parent and ESPEnabled do
-                local hasK = p.Backpack:FindFirstChild("Knife") or char:FindFirstChild("Knife")
-                local hasG = p.Backpack:FindFirstChild("Gun") or char:FindFirstChild("Gun")
-                
-                h.Enabled = true
-                h.FillColor = hasK and Color3.new(1,0,0) or (hasG and Color3.new(0,0,1) or Color3.new(0,1,0))
-                
-                if hasK then 
-                    l.Text = "MURDERER"; l.TextColor3 = Color3.new(1,0,0)
-                elseif hasG then 
-                    l.Text = "SHERIFF"; l.TextColor3 = Color3.new(0,0,1)
-                else 
-                    l.Text = "" 
-                end
-                task.wait(1)
-            end
-            h.Enabled = false
-            l.Text = ""
-        end)
-    end)
-end
-
--- Initialize ESP for current players
-for _, p in pairs(Players:GetPlayers()) do setupESP(p) if p.Character then p.CharacterAdded:Fire(p.Character) end end
-Players.PlayerAdded:Connect(setupESP)
-
--- Combat Functions (Unchanged as requested)
 local function fireGun()
     local gun = lp.Character:FindFirstChild("Gun") or lp.Backpack:FindFirstChild("Gun")
-    local m = (function() for _, v in pairs(Players:GetPlayers()) do if v ~= lp and v.Character and (v.Character:FindFirstChild("Knife") or v.Backpack:FindFirstChild("Knife")) then return v end end return nil end)()
+    local m = getMurderer()
     if gun and m and m.Character:FindFirstChild("HumanoidRootPart") then
         if gun.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(gun) task.wait(0.1) end
         local mHRP = m.Character.HumanoidRootPart
-        local originPos = mHRP.Position + Vector3.new(0, 0, 0)
-        local targetPos = mHRP.Position + (mHRP.Velocity * 0.25)
+        local originPos = mHRP.Position + Vector3.new(0, 0, 2)
+        local targetPos = mHRP.Position + (mHRP.Velocity * 0.15)
         if gun:FindFirstChild("Shoot") then gun.Shoot:FireServer(CFrame.new(originPos, targetPos), CFrame.new(targetPos)) end
     end
 end
@@ -174,7 +113,92 @@ local function throwKnife()
     end
 end
 
--- Draggable Setup
+local function flingAction()
+    local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+    local s = getSheriff()
+    if hrp and s and s.Character and s.Character:FindFirstChild("HumanoidRootPart") then
+        local oldCF = hrp.CFrame
+        local Velocity = Instance.new("AngularVelocity", hrp)
+        Velocity.Attachment0 = hrp:FindFirstChild("RootAttachment") or Instance.new("Attachment", hrp)
+        Velocity.MaxTorque = math.huge
+        Velocity.AngularVelocity = Vector3.new(0, 99999, 0)
+        hrp.CFrame = s.Character.HumanoidRootPart.CFrame
+        task.wait(0.3)
+        Velocity:Destroy()
+        hrp.CFrame = oldCF
+    end
+end
+
+--- AUTOMATION LOOPS ---
+
+task.spawn(function()
+    while task.wait(0.1) do
+        local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+        if not hrp then continue end
+
+        if AutoCollectCoins then
+            local cont = workspace:FindFirstChild("Factory") and workspace.Factory:FindFirstChild("CoinContainer")
+            if cont then
+                local coins = tonumber(lp.PlayerGui.MainGui.Game.Coins.Text:match("%d+")) or 0
+                if coins < 40 then
+                    for _, c in pairs(cont:GetChildren()) do
+                        if c:IsA("BasePart") then hrp.CFrame = c.CFrame task.wait(0.15) end
+                        if not AutoCollectCoins or (tonumber(lp.PlayerGui.MainGui.Game.Coins.Text:match("%d+")) or 0) >= 40 then break end
+                    end
+                end
+            end
+        end
+
+        if AutoWin then
+            local isM = lp.Backpack:FindFirstChild("Knife") or lp.Character:FindFirstChild("Knife")
+            local isS = lp.Backpack:FindFirstChild("Gun") or lp.Character:FindFirstChild("Gun")
+            if isM then
+                for _, v in pairs(Players:GetPlayers()) do
+                    if v ~= lp and v.Character and v.Character.Humanoid.Health > 0 then
+                        hrp.CFrame = v.Character.HumanoidRootPart.CFrame
+                        local k = lp.Character:FindFirstChild("Knife") or lp.Backpack:FindFirstChild("Knife")
+                        if k then if k.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(k) end k.Events.KnifeStabbed:FireServer() end
+                        task.wait(0.2)
+                    end
+                end
+            elseif isS then
+                local m = getMurderer()
+                if m then hrp.CFrame = m.Character.HumanoidRootPart.CFrame * CFrame.new(0,0,3) fireGun() end
+            else
+                local d = workspace:FindFirstChild("GunDrop", true)
+                if d then hrp.CFrame = d.CFrame end
+            end
+        end
+    end
+end)
+
+--- ESP SYSTEM ---
+local function setupESP(p)
+    p.CharacterAdded:Connect(function(char)
+        if p == lp then return end
+        task.wait(0.5)
+        local h = Instance.new("Highlight", char)
+        local b = Instance.new("BillboardGui", char:WaitForChild("Head"))
+        b.Size = UDim2.new(0, 100, 0, 50); b.AlwaysOnTop = true
+        local l = Instance.new("TextLabel", b)
+        l.BackgroundTransparency = 1; l.Size = UDim2.new(1, 0, 1, 0); l.Font = Enum.Font.GothamBold; l.TextSize = 14
+        task.spawn(function()
+            while char.Parent and ESPEnabled do
+                local hasK = p.Backpack:FindFirstChild("Knife") or char:FindFirstChild("Knife")
+                local hasG = p.Backpack:FindFirstChild("Gun") or char:FindFirstChild("Gun")
+                h.FillColor = hasK and Color3.new(1,0,0) or (hasG and Color3.new(0,0,1) or Color3.new(0,1,0))
+                l.Text = hasK and "MURDERER" or (hasG and "SHERIFF" or "")
+                l.TextColor3 = h.FillColor
+                task.wait(1)
+            end
+            h:Destroy(); b:Destroy()
+        end)
+    end)
+end
+for _, p in pairs(Players:GetPlayers()) do setupESP(p) if p.Character then setupESP(p) end end
+Players.PlayerAdded:Connect(setupESP)
+
+--- DRAGGABLE SETUP ---
 local function makeDraggable(btn, lockKey, action)
     local dragging, dragStart, startPos
     btn.InputBegan:Connect(function(input)
@@ -202,7 +226,7 @@ makeDraggable(GunBtn, "GunLocked", function()
     end
 end)
 
---- UI SETUP ---
+--- RAYFIELD INTERFACE ---
 MainTab:CreateSection("Master Control")
 MainTab:CreateToggle({Name = "Lock All Buttons", CurrentValue = false, Callback = function(V) _G.LockAll = V end})
 
@@ -222,10 +246,11 @@ MainTab:CreateSection("Fling Settings")
 MainTab:CreateToggle({Name = "Show Fling", CurrentValue = false, Callback = function(V) FlingBtn.Visible = V end})
 MainTab:CreateToggle({Name = "Lock Fling", CurrentValue = false, Callback = function(V) _G.FlingLocked = V end})
 
+AutoTab:CreateToggle({Name = "Auto Win", CurrentValue = false, Callback = function(V) AutoWin = V end})
 AutoTab:CreateToggle({Name = "Auto Coins (Factory)", CurrentValue = false, Callback = function(V) AutoCollectCoins = V end})
 AutoTab:CreateToggle({Name = "ESP Roles", CurrentValue = false, Callback = function(V) ESPEnabled = V end})
 
-PlayerTab:CreateInput({Name = "Speed", PlaceholderText = "18", Callback = function(T) if tonumber(T) then lp.Character.Humanoid.WalkSpeed = tonumber(T) end end})
-PlayerTab:CreateInput({Name = "Jump", PlaceholderText = "52", Callback = function(T) if tonumber(T) then lp.Character.Humanoid.JumpPower = tonumber(T) end end})
+PlayerTab:CreateInput({Name = "WalkSpeed", PlaceholderText = "18", Callback = function(T) if tonumber(T) then lp.Character.Humanoid.WalkSpeed = tonumber(T) end end})
+PlayerTab:CreateInput({Name = "JumpPower", PlaceholderText = "52", Callback = function(T) if tonumber(T) then lp.Character.Humanoid.JumpPower = tonumber(T) end end})
 
 Rayfield:LoadConfiguration()
