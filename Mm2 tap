@@ -27,7 +27,7 @@ local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
 ScreenGui.Name = "ExodusFloatingUI"
 ScreenGui.ResetOnSpawn = false
 
--- RGB Sync for UI
+-- RGB Sync
 local function syncRGB(stroke)
     task.spawn(function()
         while true do
@@ -82,8 +82,8 @@ task.spawn(function()
     end
 end)
 
---- OPTIMIZED TOUCH FLING (0.25s Strike + 1s Fly TP Return) ---
-local function touchFling(target)
+--- ULTRA-VIOLENT TOUCH FLING (0.1s OVERDRIVE) ---
+local function violentFling(target)
     if lp.Character and target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
         local hrp = lp.Character.HumanoidRootPart
         local hum = lp.Character.Humanoid
@@ -94,31 +94,27 @@ local function touchFling(target)
             for _, v in pairs(lp.Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end
         end)
         
-        -- Velocity Overdrive
         local bV = Instance.new("BodyVelocity", hrp)
         bV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-        bV.Velocity = Vector3.new(900000, 900000, 900000)
+        bV.Velocity = Vector3.new(2000000, 2000000, 2000000)
 
         local bA = Instance.new("BodyAngularVelocity", hrp)
-        bA.AngularVelocity = Vector3.new(0, 99999, 0)
-        bA.MaxTorque = Vector3.new(0, math.huge, 0)
+        bA.AngularVelocity = Vector3.new(99999, 99999, 99999)
+        bA.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
 
-        hum.PlatformStand = true
+        hum.PlatformStand = true 
 
-        -- 0.25s High-Speed Strike
         local startTime = tick()
-        while tick() - startTime < 0.25 do
+        while tick() - startTime < 0.1 do
             if not target.Character or not targetHrp.Parent then break end
             hrp.CFrame = targetHrp.CFrame
             task.wait()
         end
         
-        -- Cleanup Strike
         bV:Destroy()
         bA:Destroy()
         hum.PlatformStand = false
         
-        -- 1s Fly TP Safety Return
         local returnTime = tick()
         while tick() - returnTime < 1 do
             hrp.Velocity = Vector3.new(0, 0, 0)
@@ -152,13 +148,38 @@ local function fireGun()
     if gun and m and m.Character:FindFirstChild("HumanoidRootPart") then
         if gun.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(gun) task.wait(0.1) end
         local mHRP = m.Character.HumanoidRootPart
-        local origin = mHRP.Position + Vector3.new(0, 0, 0) -- 1 stud away
-        local targetPos = mHRP.Position + (mHRP.Velocity * 0.15) -- 0.25 lead
+        local origin = mHRP.Position + Vector3.new(0, 0, 1)
+        local targetPos = mHRP.Position + (mHRP.Velocity * 0.25)
         local args = {
             [1] = CFrame.new(origin, targetPos) * CFrame.Angles(1.4531978368759155, 0.04432811588048935, 1.6501713991165161), 
             [2] = CFrame.new(targetPos) * CFrame.Angles(-0, 0, -0)
         }
         if gun:FindFirstChild("Shoot") then gun.Shoot:FireServer(unpack(args)) end
+    end
+end
+
+local function throwAction()
+    local knife = lp.Character:FindFirstChild("Knife") or lp.Backpack:FindFirstChild("Knife")
+    local near, dist = nil, math.huge
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= lp and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+            local d = (lp.Character.HumanoidRootPart.Position - v.Character.HumanoidRootPart.Position).Magnitude
+            if d < dist then dist = d near = v end
+        end
+    end
+    if knife and near and near.Character:FindFirstChild("HumanoidRootPart") then
+        if knife.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(knife) end
+        
+        -- Throw origin is 3 studs away from target HRP
+        local targetHRP = near.Character.HumanoidRootPart
+        local origin = targetHRP.Position + Vector3.new(0, 0, 2) 
+        local targetPos = targetHRP.Position
+        
+        local args = {
+            [1] = CFrame.new(origin, targetPos) * CFrame.Angles(1.4531978368759155, 0.04432811588048935, 1.6501713991165161), 
+            [2] = CFrame.new(targetPos) * CFrame.Angles(-0, 0, -0)
+        }
+        knife.Events.KnifeThrown:FireServer(unpack(args))
     end
 end
 
@@ -187,6 +208,7 @@ makeDraggable(GunBtn, "GunLocked", function()
         local old = lp.Character.HumanoidRootPart.CFrame lp.Character.HumanoidRootPart.CFrame = d.CFrame task.wait(0.1) lp.Character.HumanoidRootPart.CFrame = old
     end
 end)
+makeDraggable(ThrowBtn, "ThrowLocked", throwAction)
 
 --- ESP SYSTEM ---
 local function createESP(p)
@@ -211,7 +233,7 @@ local function createESP(p)
                         bill.Enabled = true; highlight.FillColor = Color3.new(0, 0, 1)
                         label.Text = "SHERIFF"; label.TextColor3 = Color3.new(0, 0, 1)
                     else
-                        bill.Enabled = false; highlight.FillColor = Color3.new(0, 1, 0) -- Innocent Billboards Removed
+                        bill.Enabled = false; highlight.FillColor = Color3.new(0, 1, 0)
                     end
                 else
                     highlight.Enabled = false; bill.Enabled = false
@@ -234,10 +256,11 @@ MainTab:CreateToggle({Name = "Lock all", CurrentValue = false, Callback = functi
 MainTab:CreateSection("Buttons")
 MainTab:CreateToggle({Name = "Show Gun", CurrentValue = false, Callback = function(V) GunBtn.Visible = V end})
 MainTab:CreateToggle({Name = "Show Shoot", CurrentValue = false, Callback = function(V) ShootBtn.Visible = V end})
+MainTab:CreateToggle({Name = "Show Throw", CurrentValue = false, Callback = function(V) ThrowBtn.Visible = V end})
 
 MainTab:CreateSection("Fling")
-MainTab:CreateButton({Name = "Sheriff", Callback = function() touchFling(getSheriff()) end})
-MainTab:CreateButton({Name = "Murderer", Callback = function() touchFling(getMurderer()) end})
+MainTab:CreateButton({Name = "Sheriff", Callback = function() violentFling(getSheriff()) end})
+MainTab:CreateButton({Name = "Murderer", Callback = function() violentFling(getMurderer()) end})
 
 AutoTab:CreateToggle({Name = "Auto Collect Coins (Factory)", CurrentValue = false, Callback = function(V) _G.AutoCoins = V end})
 PlayerTab:CreateInput({Name = "WalkSpeed", PlaceholderText = "16", Callback = function(T) if tonumber(T) then lp.Character.Humanoid.WalkSpeed = tonumber(T) end end})
