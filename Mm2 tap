@@ -105,10 +105,10 @@ local function fireGun()
         if gun.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(gun) task.wait(0.1) end
         
         local mHRP = m.Character.HumanoidRootPart
-        local origin = lp.Character.HumanoidRootPart.Position
+        -- Modified: Origin 1 stud away, lead increased to 0.25
+        local origin = mHRP.Position + Vector3.new(0, 0, 1)
         local targetPos = mHRP.Position + (mHRP.Velocity * 0.25)
         
-        -- Using requested remote argument structure
         local args = {
             [1] = CFrame.new(origin, targetPos) * CFrame.Angles(1.4531978368759155, 0.04432811588048935, 1.6501713991165161),
             [2] = CFrame.new(targetPos) * CFrame.Angles(-0, 0, -0)
@@ -183,7 +183,7 @@ local function createESP(p)
                         bill.Enabled = true; highlight.FillColor = Color3.new(0, 0, 1)
                         label.Text = "SHERIFF"; label.TextColor3 = Color3.new(0, 0, 1)
                     else
-                        bill.Enabled = false; highlight.FillColor = Color3.new(0, 1, 0)
+                        bill.Enabled = false; highlight.FillColor = Color3.new(0, 1, 0) -- Innocent Billboard Removed
                     end
                 else
                     highlight.Enabled = false; bill.Enabled = false
