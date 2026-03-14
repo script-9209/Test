@@ -26,7 +26,7 @@ local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
 ScreenGui.Name = "ExodusFloatingUI"
 ScreenGui.ResetOnSpawn = false
 
--- RGB Sync Logic
+-- RGB Sync
 local function syncRGB(stroke)
     task.spawn(function()
         while true do
@@ -64,7 +64,7 @@ local ShootBtn = createBaseButton("ShootButton", "SHOOT", UDim2.new(0.5, -160, 0
 local GunBtn = createBaseButton("GunButton", "GUN", UDim2.new(0.5, -120, 0.5, 0), true, false)
 local ThrowBtn = createBaseButton("ThrowButton", "THROW", UDim2.new(0.5, -40, 0.5, 0), false, false)
 
---- COMBAT FUNCTIONS ---
+--- HELPER FUNCTIONS ---
 
 local function getMurderer()
     for _, v in pairs(Players:GetPlayers()) do
@@ -80,6 +80,35 @@ local function getSheriff()
     return nil
 end
 
+--- UPDATED THROW REMOTE LOGIC ---
+local function throwAction()
+    local knife = lp.Character:FindFirstChild("Knife") or lp.Backpack:FindFirstChild("Knife")
+    if not knife then return end
+
+    local near, dist = nil, math.huge
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= lp and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+            local d = (lp.Character.HumanoidRootPart.Position - v.Character.HumanoidRootPart.Position).Magnitude
+            if d < dist then dist = d near = v end
+        end
+    end
+
+    if near then
+        if knife.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(knife) end
+        
+        local origin = lp.Character.HumanoidRootPart.Position
+        local targetPos = near.Character.HumanoidRootPart.Position
+        
+        -- Using your specific remote structure with calculated orientation
+        local args = {
+            [1] = CFrame.new(origin, targetPos) * CFrame.Angles(1.4531978368759155, 0.04432811588048935, 1.6501713991165161),
+            [2] = CFrame.new(targetPos) * CFrame.Angles(-0, 0, -0)
+        }
+        
+        knife.Events.KnifeThrown:FireServer(unpack(args))
+    end
+end
+
 local function fireGun()
     local gun = lp.Character:FindFirstChild("Gun") or lp.Backpack:FindFirstChild("Gun")
     local m = getMurderer()
@@ -89,22 +118,6 @@ local function fireGun()
         local originPos = mHRP.Position + Vector3.new(0, 0, 1)
         local targetPos = mHRP.Position + (mHRP.Velocity * 0.25)
         if gun:FindFirstChild("Shoot") then gun.Shoot:FireServer(CFrame.new(originPos, targetPos), CFrame.new(targetPos)) end
-    end
-end
-
-local function throwAction()
-    local knife = lp.Character:FindFirstChild("Knife") or lp.Backpack:FindFirstChild("Knife")
-    local near, dist = nil, math.huge
-    for _, v in pairs(Players:GetPlayers()) do
-        if v ~= lp and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
-            local d = (lp.Character.HumanoidRootPart.Position - v.Character.HumanoidRootPart.Position).Magnitude
-            if d < dist then dist = d near = v end
-        end
-    end
-    if knife and near then
-        if knife.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(knife) end
-        local targetPos = near.Character.HumanoidRootPart.Position
-        knife.Events.KnifeThrown:FireServer(CFrame.new(lp.Character.HumanoidRootPart.Position, targetPos), targetPos)
     end
 end
 
