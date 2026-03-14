@@ -20,10 +20,8 @@ _G.LockAll = false
 _G.ShootLocked = false
 _G.GunLocked = false
 _G.ThrowLocked = false
-_G.FlingLocked = false
 local ESPEnabled = false
 local AutoCollectCoins = false
-local AutoWin = false
 
 -- UI Container
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
@@ -41,7 +39,7 @@ local function syncRGB(stroke)
     end)
 end
 
--- Button Factory
+-- Floating Button Factory
 local function createBaseButton(name, text, pos, isCircle, isRect)
     local btn = Instance.new("TextButton", ScreenGui)
     btn.Name = name
@@ -67,9 +65,8 @@ end
 local ShootBtn, ShootStrk = createBaseButton("ShootButton", "SHOOT", UDim2.new(0.5, -160, 0.5, -100), false, true)
 local GunBtn, GunStrk = createBaseButton("GunButton", "GUN", UDim2.new(0.5, -120, 0.5, 0), true, false)
 local ThrowBtn, ThrowStrk = createBaseButton("ThrowButton", "THROW", UDim2.new(0.5, -40, 0.5, 0), false, false)
-local FlingBtn, FlingStrk = createBaseButton("FlingButton", "FLING", UDim2.new(0.5, 40, 0.5, 0), false, false)
 
---- COMBAT LOGIC ---
+--- COMBAT FUNCTIONS ---
 
 local function getMurderer()
     for _, v in pairs(Players:GetPlayers()) do
@@ -97,23 +94,7 @@ local function fireGun()
     end
 end
 
-local function throwKnife()
-    local knife = lp.Character:FindFirstChild("Knife") or lp.Backpack:FindFirstChild("Knife")
-    local near, dist = nil, math.huge
-    for _, v in pairs(Players:GetPlayers()) do
-        if v ~= lp and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
-            local d = (lp.Character.HumanoidRootPart.Position - v.Character.HumanoidRootPart.Position).Magnitude
-            if d < dist then dist = d near = v end
-        end
-    end
-    if knife and near then
-        if knife.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(knife) end
-        local hrp = near.Character.HumanoidRootPart
-        knife.Events.KnifeThrown:FireServer({[1] = CFrame.new(hrp.Position + Vector3.new(0,0,1), hrp.Position), [2] = CFrame.new(hrp.Position)})
-    end
-end
-
-local function flingAction()
+local function flingSheriffAction()
     local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
     local s = getSheriff()
     if hrp and s and s.Character and s.Character:FindFirstChild("HumanoidRootPart") then
@@ -129,56 +110,13 @@ local function flingAction()
     end
 end
 
---- AUTOMATION LOOPS ---
-
-task.spawn(function()
-    while task.wait(0.1) do
-        local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
-        if not hrp then continue end
-
-        if AutoCollectCoins then
-            local cont = workspace:FindFirstChild("Factory") and workspace.Factory:FindFirstChild("CoinContainer")
-            if cont then
-                local coins = tonumber(lp.PlayerGui.MainGui.Game.Coins.Text:match("%d+")) or 0
-                if coins < 40 then
-                    for _, c in pairs(cont:GetChildren()) do
-                        if c:IsA("BasePart") then hrp.CFrame = c.CFrame task.wait(0.15) end
-                        if not AutoCollectCoins or (tonumber(lp.PlayerGui.MainGui.Game.Coins.Text:match("%d+")) or 0) >= 40 then break end
-                    end
-                end
-            end
-        end
-
-        if AutoWin then
-            local isM = lp.Backpack:FindFirstChild("Knife") or lp.Character:FindFirstChild("Knife")
-            local isS = lp.Backpack:FindFirstChild("Gun") or lp.Character:FindFirstChild("Gun")
-            if isM then
-                for _, v in pairs(Players:GetPlayers()) do
-                    if v ~= lp and v.Character and v.Character.Humanoid.Health > 0 then
-                        hrp.CFrame = v.Character.HumanoidRootPart.CFrame
-                        local k = lp.Character:FindFirstChild("Knife") or lp.Backpack:FindFirstChild("Knife")
-                        if k then if k.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(k) end k.Events.KnifeStabbed:FireServer() end
-                        task.wait(0.2)
-                    end
-                end
-            elseif isS then
-                local m = getMurderer()
-                if m then hrp.CFrame = m.Character.HumanoidRootPart.CFrame * CFrame.new(0,0,3) fireGun() end
-            else
-                local d = workspace:FindFirstChild("GunDrop", true)
-                if d then hrp.CFrame = d.CFrame end
-            end
-        end
-    end
-end)
-
 --- ESP SYSTEM ---
 local function setupESP(p)
     p.CharacterAdded:Connect(function(char)
         if p == lp then return end
         task.wait(0.5)
         local h = Instance.new("Highlight", char)
-        local b = Instance.new("BillboardGui", char:WaitForChild("Head"))
+        local b = Instance.new("BillboardGui", char:WaitForChild("Head", 5))
         b.Size = UDim2.new(0, 100, 0, 50); b.AlwaysOnTop = true
         local l = Instance.new("TextLabel", b)
         l.BackgroundTransparency = 1; l.Size = UDim2.new(1, 0, 1, 0); l.Font = Enum.Font.GothamBold; l.TextSize = 14
@@ -195,10 +133,10 @@ local function setupESP(p)
         end)
     end)
 end
-for _, p in pairs(Players:GetPlayers()) do setupESP(p) if p.Character then setupESP(p) end end
+for _, p in pairs(Players:GetPlayers()) do setupESP(p) end
 Players.PlayerAdded:Connect(setupESP)
 
---- DRAGGABLE SETUP ---
+--- DRAGGABLE LOGIC ---
 local function makeDraggable(btn, lockKey, action)
     local dragging, dragStart, startPos
     btn.InputBegan:Connect(function(input)
@@ -217,40 +155,45 @@ local function makeDraggable(btn, lockKey, action)
 end
 
 makeDraggable(ShootBtn, "ShootLocked", fireGun)
-makeDraggable(ThrowBtn, "ThrowLocked", throwKnife)
-makeDraggable(FlingBtn, "FlingLocked", flingAction)
 makeDraggable(GunBtn, "GunLocked", function()
     local d = workspace:FindFirstChild("GunDrop", true)
     if d and lp.Character:FindFirstChild("HumanoidRootPart") then
         local old = lp.Character.HumanoidRootPart.CFrame lp.Character.HumanoidRootPart.CFrame = d.CFrame task.wait(0.1) lp.Character.HumanoidRootPart.CFrame = old
     end
 end)
+makeDraggable(ThrowBtn, "ThrowLocked", function() -- Throw logic
+    local knife = lp.Character:FindFirstChild("Knife") or lp.Backpack:FindFirstChild("Knife")
+    local near, dist = nil, math.huge
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= lp and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+            local d = (lp.Character.HumanoidRootPart.Position - v.Character.HumanoidRootPart.Position).Magnitude
+            if d < dist then dist = d near = v end
+        end
+    end
+    if knife and near then
+        if knife.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(knife) end
+        local hrp = near.Character.HumanoidRootPart
+        knife.Events.KnifeThrown:FireServer({[1] = CFrame.new(hrp.Position + Vector3.new(0,0,1), hrp.Position), [2] = CFrame.new(hrp.Position)})
+    end
+end)
 
---- RAYFIELD INTERFACE ---
-MainTab:CreateSection("Master Control")
-MainTab:CreateToggle({Name = "Lock All Buttons", CurrentValue = false, Callback = function(V) _G.LockAll = V end})
+--- REWORKED MENU SETUP ---
 
-MainTab:CreateSection("Shoot Settings")
-MainTab:CreateToggle({Name = "Show Shoot", CurrentValue = false, Callback = function(V) ShootBtn.Visible = V end})
-MainTab:CreateToggle({Name = "Lock Shoot", CurrentValue = false, Callback = function(V) _G.ShootLocked = V end})
+MainTab:CreateSection("Esp")
+MainTab:CreateToggle({Name = "Esp Roles", CurrentValue = false, Callback = function(V) ESPEnabled = V end})
 
-MainTab:CreateSection("Gun Settings")
+MainTab:CreateSection("Master Lock")
+MainTab:CreateToggle({Name = "Lock all", CurrentValue = false, Callback = function(V) _G.LockAll = V end})
+
+MainTab:CreateSection("Buttons")
 MainTab:CreateToggle({Name = "Show Gun", CurrentValue = false, Callback = function(V) GunBtn.Visible = V end})
-MainTab:CreateToggle({Name = "Lock Gun", CurrentValue = false, Callback = function(V) _G.GunLocked = V end})
-
-MainTab:CreateSection("Throw Settings")
+MainTab:CreateToggle({Name = "Show Shoot", CurrentValue = false, Callback = function(V) ShootBtn.Visible = V end})
 MainTab:CreateToggle({Name = "Show Throw", CurrentValue = false, Callback = function(V) ThrowBtn.Visible = V end})
-MainTab:CreateToggle({Name = "Lock Throw", CurrentValue = false, Callback = function(V) _G.ThrowLocked = V end})
 
-MainTab:CreateSection("Fling Settings")
-MainTab:CreateToggle({Name = "Show Fling", CurrentValue = false, Callback = function(V) FlingBtn.Visible = V end})
-MainTab:CreateToggle({Name = "Lock Fling", CurrentValue = false, Callback = function(V) _G.FlingLocked = V end})
+MainTab:CreateSection("Fling")
+MainTab:CreateButton({Name = "Sheriff", Callback = function() flingSheriffAction() end})
 
-AutoTab:CreateToggle({Name = "Auto Win", CurrentValue = false, Callback = function(V) AutoWin = V end})
-AutoTab:CreateToggle({Name = "Auto Coins (Factory)", CurrentValue = false, Callback = function(V) AutoCollectCoins = V end})
-AutoTab:CreateToggle({Name = "ESP Roles", CurrentValue = false, Callback = function(V) ESPEnabled = V end})
-
+AutoTab:CreateToggle({Name = "Auto Collect Coins (Factory)", CurrentValue = false, Callback = function(V) AutoCollectCoins = V end})
 PlayerTab:CreateInput({Name = "WalkSpeed", PlaceholderText = "18", Callback = function(T) if tonumber(T) then lp.Character.Humanoid.WalkSpeed = tonumber(T) end end})
-PlayerTab:CreateInput({Name = "JumpPower", PlaceholderText = "52", Callback = function(T) if tonumber(T) then lp.Character.Humanoid.JumpPower = tonumber(T) end end})
 
 Rayfield:LoadConfiguration()
