@@ -1,7 +1,6 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
-local Camera = workspace.CurrentCamera
 local lp = Players.LocalPlayer
 
 -- Window Setup
@@ -17,18 +16,17 @@ local PlayerTab = Window:CreateTab("Player", 4483362458)
 
 -- Global State
 _G.LockAll = false
+_G.ESPEnabled = false
 _G.ShootLocked = false
 _G.GunLocked = false
 _G.ThrowLocked = false
-local ESPEnabled = false
-local AutoCollectCoins = false
 
 -- UI Container
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
 ScreenGui.Name = "ExodusFloatingUI"
 ScreenGui.ResetOnSpawn = false
 
--- RGB Logic
+-- RGB Sync
 local function syncRGB(stroke)
     task.spawn(function()
         while true do
@@ -44,7 +42,7 @@ local function createBaseButton(name, text, pos, isCircle, isRect)
     local btn = Instance.new("TextButton", ScreenGui)
     btn.Name = name
     btn.Visible = false
-    if isRect then btn.Size = UDim2.new(0, 140, 0, 60) else btn.Size = UDim2.new(0, 80, 0, 80) end
+    btn.Size = isRect and UDim2.new(0, 140, 0, 60) or UDim2.new(0, 80, 0, 80)
     btn.Position = pos
     btn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
     btn.BackgroundTransparency = 0.5 
@@ -59,90 +57,76 @@ local function createBaseButton(name, text, pos, isCircle, isRect)
     stroke.Thickness = 2.5
     stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     syncRGB(stroke)
-    return btn, stroke
+    return btn
 end
 
-local ShootBtn, ShootStrk = createBaseButton("ShootButton", "SHOOT", UDim2.new(0.5, -160, 0.5, -100), false, true)
-local GunBtn, GunStrk = createBaseButton("GunButton", "GUN", UDim2.new(0.5, -120, 0.5, 0), true, false)
-local ThrowBtn, ThrowStrk = createBaseButton("ThrowButton", "THROW", UDim2.new(0.5, -40, 0.5, 0), false, false)
+local ShootBtn = createBaseButton("ShootButton", "SHOOT", UDim2.new(0.5, -160, 0.5, -100), false, true)
+local GunBtn = createBaseButton("GunButton", "GUN", UDim2.new(0.5, -120, 0.5, 0), true, false)
+local ThrowBtn = createBaseButton("ThrowButton", "THROW", UDim2.new(0.5, -40, 0.5, 0), false, false)
 
---- COMBAT FUNCTIONS ---
-
-local function getMurderer()
-    for _, v in pairs(Players:GetPlayers()) do
-        if v ~= lp and v.Character and (v.Character:FindFirstChild("Knife") or v.Backpack:FindFirstChild("Knife")) then return v end
-    end
-    return nil
-end
-
-local function getSheriff()
-    for _, v in pairs(Players:GetPlayers()) do
-        if v ~= lp and v.Character and (v.Character:FindFirstChild("Gun") or v.Backpack:FindFirstChild("Gun")) then return v end
-    end
-    return nil
-end
-
-local function fireGun()
-    local gun = lp.Character:FindFirstChild("Gun") or lp.Backpack:FindFirstChild("Gun")
-    local m = getMurderer()
-    if gun and m and m.Character:FindFirstChild("HumanoidRootPart") then
-        if gun.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(gun) task.wait(0.1) end
-        local mHRP = m.Character.HumanoidRootPart
-        local originPos = mHRP.Position + Vector3.new(0, 0, 2)
-        local targetPos = mHRP.Position + (mHRP.Velocity * 0.15)
-        if gun:FindFirstChild("Shoot") then gun.Shoot:FireServer(CFrame.new(originPos, targetPos), CFrame.new(targetPos)) end
-    end
-end
-
-local function flingSheriffAction()
-    local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
-    local s = getSheriff()
-    if hrp and s and s.Character and s.Character:FindFirstChild("HumanoidRootPart") then
-        local oldCF = hrp.CFrame
-        local Velocity = Instance.new("AngularVelocity", hrp)
-        Velocity.Attachment0 = hrp:FindFirstChild("RootAttachment") or Instance.new("Attachment", hrp)
-        Velocity.MaxTorque = math.huge
-        Velocity.AngularVelocity = Vector3.new(0, 99999, 0)
-        hrp.CFrame = s.Character.HumanoidRootPart.CFrame
-        task.wait(0.3)
-        Velocity:Destroy()
-        hrp.CFrame = oldCF
-    end
-end
-
---- ESP SYSTEM ---
-local function setupESP(p)
-    p.CharacterAdded:Connect(function(char)
+--- ESP SYSTEM (REBUILT) ---
+local function applyESP(p)
+    local function createESP(char)
         if p == lp then return end
-        task.wait(0.5)
-        local h = Instance.new("Highlight", char)
-        local b = Instance.new("BillboardGui", char:WaitForChild("Head", 5))
-        b.Size = UDim2.new(0, 100, 0, 50); b.AlwaysOnTop = true
-        local l = Instance.new("TextLabel", b)
+        local h = char:FindFirstChild("ExodusHighlight") or Instance.new("Highlight", char)
+        h.Name = "ExodusHighlight"
+        h.OutlineTransparency = 0
+        
+        local head = char:WaitForChild("Head", 10)
+        local b = head:FindFirstChild("ExodusTag") or Instance.new("BillboardGui", head)
+        b.Name = "ExodusTag"
+        b.Size = UDim2.new(0, 100, 0, 50)
+        b.AlwaysOnTop = true
+        
+        local l = b:FindFirstChild("Label") or Instance.new("TextLabel", b)
+        l.Name = "Label"
         l.BackgroundTransparency = 1; l.Size = UDim2.new(1, 0, 1, 0); l.Font = Enum.Font.GothamBold; l.TextSize = 14
+
         task.spawn(function()
-            while char.Parent and ESPEnabled do
+            while char.Parent and _G.ESPEnabled do
                 local hasK = p.Backpack:FindFirstChild("Knife") or char:FindFirstChild("Knife")
                 local hasG = p.Backpack:FindFirstChild("Gun") or char:FindFirstChild("Gun")
+                
+                h.Enabled = true
                 h.FillColor = hasK and Color3.new(1,0,0) or (hasG and Color3.new(0,0,1) or Color3.new(0,1,0))
                 l.Text = hasK and "MURDERER" or (hasG and "SHERIFF" or "")
                 l.TextColor3 = h.FillColor
                 task.wait(1)
             end
-            h:Destroy(); b:Destroy()
+            h.Enabled = false
+            l.Text = ""
         end)
-    end)
+    end
+    p.CharacterAdded:Connect(createESP)
+    if p.Character then createESP(p.Character) end
 end
-for _, p in pairs(Players:GetPlayers()) do setupESP(p) end
-Players.PlayerAdded:Connect(setupESP)
 
---- DRAGGABLE LOGIC ---
-local function makeDraggable(btn, lockKey, action)
+Players.PlayerAdded:Connect(applyESP)
+for _, p in pairs(Players:GetPlayers()) do applyESP(p) end
+
+--- COMBAT FUNCTIONS ---
+local function flingSheriff()
+    local s = (function() for _, v in pairs(Players:GetPlayers()) do if v ~= lp and v.Character and (v.Character:FindFirstChild("Gun") or v.Backpack:FindFirstChild("Gun")) then return v end end return nil end)()
+    if lp.Character and s and s.Character then
+        local hrp = lp.Character.HumanoidRootPart
+        local oldCF = hrp.CFrame
+        local spin = Instance.new("AngularVelocity", hrp)
+        spin.Attachment0 = hrp:FindFirstChild("RootAttachment") or Instance.new("Attachment", hrp)
+        spin.MaxTorque = math.huge
+        spin.AngularVelocity = Vector3.new(0, 99999, 0)
+        hrp.CFrame = s.Character.HumanoidRootPart.CFrame
+        task.wait(0.3)
+        spin:Destroy()
+        hrp.CFrame = oldCF
+    end
+end
+
+-- Draggable logic
+local function makeDraggable(btn, lockKey)
     local dragging, dragStart, startPos
     btn.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            if action then action() end
-            if not _G[lockKey] and not _G.LockAll then dragging = true dragStart = input.Position startPos = btn.Position end
+        if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and not _G[lockKey] and not _G.LockAll then
+            dragging = true dragStart = input.Position startPos = btn.Position
         end
     end)
     UserInputService.InputChanged:Connect(function(input)
@@ -151,36 +135,20 @@ local function makeDraggable(btn, lockKey, action)
             btn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
         end
     end)
-    UserInputService.InputEnded:Connect(function(input) dragging = false end)
+    UserInputService.InputEnded:Connect(function() dragging = false end)
 end
 
-makeDraggable(ShootBtn, "ShootLocked", fireGun)
-makeDraggable(GunBtn, "GunLocked", function()
-    local d = workspace:FindFirstChild("GunDrop", true)
-    if d and lp.Character:FindFirstChild("HumanoidRootPart") then
-        local old = lp.Character.HumanoidRootPart.CFrame lp.Character.HumanoidRootPart.CFrame = d.CFrame task.wait(0.1) lp.Character.HumanoidRootPart.CFrame = old
-    end
-end)
-makeDraggable(ThrowBtn, "ThrowLocked", function() -- Throw logic
-    local knife = lp.Character:FindFirstChild("Knife") or lp.Backpack:FindFirstChild("Knife")
-    local near, dist = nil, math.huge
-    for _, v in pairs(Players:GetPlayers()) do
-        if v ~= lp and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
-            local d = (lp.Character.HumanoidRootPart.Position - v.Character.HumanoidRootPart.Position).Magnitude
-            if d < dist then dist = d near = v end
-        end
-    end
-    if knife and near then
-        if knife.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(knife) end
-        local hrp = near.Character.HumanoidRootPart
-        knife.Events.KnifeThrown:FireServer({[1] = CFrame.new(hrp.Position + Vector3.new(0,0,1), hrp.Position), [2] = CFrame.new(hrp.Position)})
-    end
-end)
+makeDraggable(ShootBtn, "ShootLocked")
+makeDraggable(GunBtn, "GunLocked")
+makeDraggable(ThrowBtn, "ThrowLocked")
 
---- REWORKED MENU SETUP ---
+--- REWORKED MENU (STRICT ORDER) ---
 
 MainTab:CreateSection("Esp")
-MainTab:CreateToggle({Name = "Esp Roles", CurrentValue = false, Callback = function(V) ESPEnabled = V end})
+MainTab:CreateToggle({Name = "Esp Roles", CurrentValue = false, Callback = function(V) 
+    _G.ESPEnabled = V 
+    if V then for _, p in pairs(Players:GetPlayers()) do if p.Character then applyESP(p) end end end
+end})
 
 MainTab:CreateSection("Master Lock")
 MainTab:CreateToggle({Name = "Lock all", CurrentValue = false, Callback = function(V) _G.LockAll = V end})
@@ -191,9 +159,9 @@ MainTab:CreateToggle({Name = "Show Shoot", CurrentValue = false, Callback = func
 MainTab:CreateToggle({Name = "Show Throw", CurrentValue = false, Callback = function(V) ThrowBtn.Visible = V end})
 
 MainTab:CreateSection("Fling")
-MainTab:CreateButton({Name = "Sheriff", Callback = function() flingSheriffAction() end})
+MainTab:CreateButton({Name = "Sheriff", Callback = function() flingSheriff() end})
 
-AutoTab:CreateToggle({Name = "Auto Collect Coins (Factory)", CurrentValue = false, Callback = function(V) AutoCollectCoins = V end})
-PlayerTab:CreateInput({Name = "WalkSpeed", PlaceholderText = "18", Callback = function(T) if tonumber(T) then lp.Character.Humanoid.WalkSpeed = tonumber(T) end end})
+AutoTab:CreateToggle({Name = "Auto Collect Coins (Factory)", CurrentValue = false, Callback = function(V) _G.AutoCoins = V end})
+PlayerTab:CreateInput({Name = "WalkSpeed", PlaceholderText = "16", Callback = function(T) if tonumber(T) then lp.Character.Humanoid.WalkSpeed = tonumber(T) end end})
 
 Rayfield:LoadConfiguration()
