@@ -64,69 +64,103 @@ local ShootBtn = createBaseButton("ShootButton", "SHOOT", UDim2.new(0.5, -160, 0
 local GunBtn = createBaseButton("GunButton", "GUN", UDim2.new(0.5, -120, 0.5, 0), true, false)
 local ThrowBtn = createBaseButton("ThrowButton", "THROW", UDim2.new(0.5, -40, 0.5, 0), false, false)
 
---- ESP SYSTEM (REBUILT) ---
-local function applyESP(p)
-    local function createESP(char)
-        if p == lp then return end
-        local h = char:FindFirstChild("ExodusHighlight") or Instance.new("Highlight", char)
-        h.Name = "ExodusHighlight"
-        h.OutlineTransparency = 0
-        
-        local head = char:WaitForChild("Head", 10)
-        local b = head:FindFirstChild("ExodusTag") or Instance.new("BillboardGui", head)
-        b.Name = "ExodusTag"
-        b.Size = UDim2.new(0, 100, 0, 50)
-        b.AlwaysOnTop = true
-        
-        local l = b:FindFirstChild("Label") or Instance.new("TextLabel", b)
-        l.Name = "Label"
-        l.BackgroundTransparency = 1; l.Size = UDim2.new(1, 0, 1, 0); l.Font = Enum.Font.GothamBold; l.TextSize = 14
+--- COMBAT FUNCTIONS ---
 
-        task.spawn(function()
-            while char.Parent and _G.ESPEnabled do
-                local hasK = p.Backpack:FindFirstChild("Knife") or char:FindFirstChild("Knife")
-                local hasG = p.Backpack:FindFirstChild("Gun") or char:FindFirstChild("Gun")
-                
-                h.Enabled = true
-                h.FillColor = hasK and Color3.new(1,0,0) or (hasG and Color3.new(0,0,1) or Color3.new(0,1,0))
-                l.Text = hasK and "MURDERER" or (hasG and "SHERIFF" or "")
-                l.TextColor3 = h.FillColor
-                task.wait(1)
-            end
-            h.Enabled = false
-            l.Text = ""
-        end)
+local function fireGun()
+    local gun = lp.Character:FindFirstChild("Gun") or lp.Backpack:FindFirstChild("Gun")
+    local murderer = nil
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= lp and v.Character and (v.Character:FindFirstChild("Knife") or v.Backpack:FindFirstChild("Knife")) then
+            murderer = v
+            break
+        end
     end
-    p.CharacterAdded:Connect(createESP)
-    if p.Character then createESP(p.Character) end
+    
+    if gun and murderer and murderer.Character:FindFirstChild("HumanoidRootPart") then
+        if gun.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(gun) task.wait(0.1) end
+        local mHRP = murderer.Character.HumanoidRootPart
+        local originPos = mHRP.Position + Vector3.new(0, 0, 1)
+        local targetPos = mHRP.Position + (mHRP.Velocity * 0.28)
+        if gun:FindFirstChild("Shoot") then 
+            gun.Shoot:FireServer(CFrame.new(originPos, targetPos), CFrame.new(targetPos)) 
+        end
+    end
 end
 
-Players.PlayerAdded:Connect(applyESP)
-for _, p in pairs(Players:GetPlayers()) do applyESP(p) end
+local function throwAction()
+    local knife = lp.Character:FindFirstChild("Knife") or lp.Backpack:FindFirstChild("Knife")
+    if not knife then return end
+    
+    local target, dist = nil, math.huge
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= lp and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+            local d = (lp.Character.HumanoidRootPart.Position - v.Character.HumanoidRootPart.Position).Magnitude
+            if d < dist then dist = d target = v end
+        end
+    end
 
---- COMBAT FUNCTIONS ---
+    if target then
+        if knife.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(knife) end
+        local targetPos = target.Character.HumanoidRootPart.Position
+        knife.Events.KnifeThrown:FireServer(CFrame.new(lp.Character.HumanoidRootPart.Position, targetPos), targetPos)
+    end
+end
+
 local function flingSheriff()
     local s = (function() for _, v in pairs(Players:GetPlayers()) do if v ~= lp and v.Character and (v.Character:FindFirstChild("Gun") or v.Backpack:FindFirstChild("Gun")) then return v end end return nil end)()
     if lp.Character and s and s.Character then
         local hrp = lp.Character.HumanoidRootPart
         local oldCF = hrp.CFrame
+        local noclip = game:GetService("RunService").Stepped:Connect(function()
+            for _, v in pairs(lp.Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end
+        end)
         local spin = Instance.new("AngularVelocity", hrp)
         spin.Attachment0 = hrp:FindFirstChild("RootAttachment") or Instance.new("Attachment", hrp)
         spin.MaxTorque = math.huge
-        spin.AngularVelocity = Vector3.new(0, 99999, 0)
+        spin.AngularVelocity = Vector3.new(0, 180000, 0)
         hrp.CFrame = s.Character.HumanoidRootPart.CFrame
-        task.wait(0.3)
-        spin:Destroy()
+        task.wait(0.4)
+        spin:Destroy(); noclip:Disconnect()
         hrp.CFrame = oldCF
     end
 end
 
+--- ESP SYSTEM ---
+local function applyESP(p)
+    p.CharacterAdded:Connect(function(char)
+        if p == lp then return end
+        task.wait(0.5)
+        local h = Instance.new("Highlight", char)
+        h.Name = "ExodusHighlight"
+        local b = Instance.new("BillboardGui", char:WaitForChild("Head", 10))
+        b.Size = UDim2.new(0, 100, 0, 50); b.AlwaysOnTop = true
+        local l = Instance.new("TextLabel", b)
+        l.BackgroundTransparency = 1; l.Size = UDim2.new(1, 0, 1, 0); l.Font = Enum.Font.GothamBold; l.TextSize = 14
+        task.spawn(function()
+            while char.Parent and _G.ESPEnabled do
+                local hasK = p.Backpack:FindFirstChild("Knife") or char:FindFirstChild("Knife")
+                local hasG = p.Backpack:FindFirstChild("Gun") or char:FindFirstChild("Gun")
+                h.FillColor = hasK and Color3.new(1,0,0) or (hasG and Color3.new(0,0,1) or Color3.new(0,1,0))
+                l.Text = hasK and "MURDERER" or (hasG and "SHERIFF" or "")
+                l.TextColor3 = h.FillColor
+                task.wait(0.5)
+            end
+            h:Destroy(); b:Destroy()
+        end)
+    end)
+end
+for _, p in pairs(Players:GetPlayers()) do applyESP(p) if p.Character then p.CharacterAdded:Fire(p.Character) end end
+Players.PlayerAdded:Connect(applyESP)
+
 -- Draggable logic
-local function makeDraggable(btn, lockKey)
+local function makeDraggable(btn, lockKey, customAction)
     local dragging, dragStart, startPos
     btn.InputBegan:Connect(function(input)
-        if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and not _G[lockKey] and not _G.LockAll then
-            dragging = true dragStart = input.Position startPos = btn.Position
+        if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+            if customAction then customAction() end
+            if not _G[lockKey] and not _G.LockAll then
+                dragging = true dragStart = input.Position startPos = btn.Position
+            end
         end
     end)
     UserInputService.InputChanged:Connect(function(input)
@@ -138,17 +172,18 @@ local function makeDraggable(btn, lockKey)
     UserInputService.InputEnded:Connect(function() dragging = false end)
 end
 
-makeDraggable(ShootBtn, "ShootLocked")
-makeDraggable(GunBtn, "GunLocked")
-makeDraggable(ThrowBtn, "ThrowLocked")
+makeDraggable(ShootBtn, "ShootLocked", fireGun)
+makeDraggable(GunBtn, "GunLocked", function()
+    local d = workspace:FindFirstChild("GunDrop", true)
+    if d and lp.Character:FindFirstChild("HumanoidRootPart") then
+        local old = lp.Character.HumanoidRootPart.CFrame lp.Character.HumanoidRootPart.CFrame = d.CFrame task.wait(0.1) lp.Character.HumanoidRootPart.CFrame = old
+    end
+end)
+makeDraggable(ThrowBtn, "ThrowLocked", throwAction)
 
---- REWORKED MENU (STRICT ORDER) ---
-
+--- MENU STRUCTURE ---
 MainTab:CreateSection("Esp")
-MainTab:CreateToggle({Name = "Esp Roles", CurrentValue = false, Callback = function(V) 
-    _G.ESPEnabled = V 
-    if V then for _, p in pairs(Players:GetPlayers()) do if p.Character then applyESP(p) end end end
-end})
+MainTab:CreateToggle({Name = "Esp Roles", CurrentValue = false, Callback = function(V) _G.ESPEnabled = V end})
 
 MainTab:CreateSection("Master Lock")
 MainTab:CreateToggle({Name = "Lock all", CurrentValue = false, Callback = function(V) _G.LockAll = V end})
