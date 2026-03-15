@@ -58,17 +58,22 @@ local function getMurderer()
     return nil
 end
 
---- COMBAT FUNCTIONS (ORIGIN & 2ND ARG TARGETED) ---
+--- COMBAT FUNCTIONS (0.15 LEAD & 1-STUD ORIGIN) ---
 local function fireGun()
     local gun = lp.Character:FindFirstChild("Gun") or lp.Backpack:FindFirstChild("Gun")
     local m = getMurderer()
     if gun and m and m.Character:FindFirstChild("HumanoidRootPart") then
-        if gun.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(gun) task.wait(0.1) end
+        if gun.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(gun) task.wait(0.2) end
         
-        local murdHRP = m.Character.HumanoidRootPart
+        local mHRP = m.Character.HumanoidRootPart
+        -- Leading 0.15 on 2nd Arg
+        local targetPos = mHRP.Position + (mHRP.Velocity * 0.15)
+        -- Origin 1 stud away from predicted target
+        local originPos = targetPos + Vector3.new(0, 0, 1)
+        
         local args = {
-            [1] = CFrame.new(murdHRP.Position, murdHRP.Position) * CFrame.Angles(1.4531978368759155, 0.04432811588048935, 1.6501713991165161), 
-            [2] = murdHRP.Position -- Target Position as 2nd Argument
+            [1] = CFrame.new(originPos, targetPos) * CFrame.Angles(1.4531978368759155, 0.04432811588048935, 1.6501713991165161), 
+            [2] = targetPos
         }
         if gun:FindFirstChild("Shoot") then gun.Shoot:FireServer(unpack(args)) end
     end
@@ -80,12 +85,19 @@ local function throwAction()
     if knife and m and m.Character:FindFirstChild("HumanoidRootPart") then
         if knife.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(knife) end
         
-        local murdHRP = m.Character.HumanoidRootPart
+        local mHRP = m.Character.HumanoidRootPart
+        -- Leading 0.15 on 2nd Arg
+        local targetPos = mHRP.Position + (mHRP.Velocity * 0.15)
+        -- Origin 1 stud away from predicted target
+        local originPos = targetPos + Vector3.new(0, 0, 1)
+        
         local args = {
-            [1] = CFrame.new(murdHRP.Position, murdHRP.Position) * CFrame.Angles(1.4531978368759155, 0.04432811588048935, 1.6501713991165161), 
-            [2] = murdHRP.Position -- Target Position as 2nd Argument
+            [1] = CFrame.new(originPos, targetPos) * CFrame.Angles(1.4531978368759155, 0.04432811588048935, 1.6501713991165161), 
+            [2] = targetPos
         }
-        knife.Events.KnifeThrown:FireServer(unpack(args))
+        if knife:FindFirstChild("Events") and knife.Events:FindFirstChild("KnifeThrown") then
+            knife.Events.KnifeThrown:FireServer(unpack(args))
+        end
     end
 end
 
