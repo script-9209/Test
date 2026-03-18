@@ -1,0 +1,165 @@
+-- [[ MM2 VISUAL DUPER V3 - PRECISION VERSION ]] --
+
+local Players = game:GetService("Players")
+local CoreGui = game:GetService("CoreGui")
+local localPlayer = Players.LocalPlayer
+
+local uiParent = (gethui and gethui()) or CoreGui:FindFirstChild("RobloxGui") or CoreGui
+
+if uiParent:FindFirstChild("MM2_VisualDupe_UI") then
+    uiParent.MM2_VisualDupe_UI:Destroy()
+end
+
+-- ==========================================
+-- 1. UI SETUP (1/4 Mobile Screen, Smooth Edges)
+-- ==========================================
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "MM2_VisualDupe_UI"
+screenGui.Parent = uiParent
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 240, 0, 150) -- Compact for mobile
+mainFrame.Position = UDim2.new(0.5, -120, 0.3, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 20)
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = screenGui
+
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 12) -- Smooth edges
+mainCorner.Parent = mainFrame
+
+local layout = Instance.new("UIListLayout")
+layout.Padding = UDim.new(0, 8)
+layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+layout.Parent = mainFrame
+
+local padding = Instance.new("UIPadding")
+padding.PaddingTop = UDim.new(0, 12)
+padding.Parent = mainFrame
+
+-- Title
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(0.9, 0, 0, 25)
+title.BackgroundTransparency = 1
+title.Text = "MM2 DUPER"
+title.TextColor3 = Color3.fromRGB(255, 60, 60)
+title.TextScaled = true
+title.Font = Enum.Font.GothamBold
+title.Parent = mainFrame
+
+-- TextBox
+local inputField = Instance.new("TextBox")
+inputField.Size = UDim2.new(0.85, 0, 0, 35)
+inputField.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+inputField.PlaceholderText = "Enter Weapon Name..."
+inputField.Text = ""
+inputField.TextColor3 = Color3.fromRGB(255, 255, 255)
+inputField.TextScaled = true
+inputField.Font = Enum.Font.Gotham
+inputField.Parent = mainFrame
+
+local inputCorner = Instance.new("UICorner")
+inputCorner.CornerRadius = UDim.new(0, 6)
+inputCorner.Parent = inputField
+
+-- Button
+local dupeButton = Instance.new("TextButton")
+dupeButton.Size = UDim2.new(0.85, 0, 0, 35)
+dupeButton.BackgroundColor3 = Color3.fromRGB(255, 40, 40)
+dupeButton.Text = "DUPE"
+dupeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+dupeButton.TextScaled = true
+dupeButton.Font = Enum.Font.GothamBold
+dupeButton.Parent = mainFrame
+
+local btnCorner = Instance.new("UICorner")
+btnCorner.CornerRadius = UDim.new(0, 6)
+btnCorner.Parent = dupeButton
+
+-- ==========================================
+-- 2. DUPING LOGIC
+-- ==========================================
+
+dupeButton.MouseButton1Click:Connect(function()
+    -- Clean the input every time we click
+    local targetText = inputField.Text:lower():gsub("%s+", "")
+    if targetText == "" then return end
+
+    local container = nil
+    pcall(function()
+        container = localPlayer.PlayerGui.MainGUI.Lobby.Screens.Inventory.Main.Weapons.Items.Container
+    end)
+
+    if not container then
+        dupeButton.Text = "PATH ERROR"
+        task.wait(1)
+        dupeButton.Text = "DUPE"
+        return
+    end
+
+    -- Strictly reset foundItem for every search
+    local foundItem = nil
+
+    -- Search loop
+    for _, itemFrame in pairs(container:GetChildren()) do
+        if itemFrame:IsA("GuiObject") then
+            -- We look for any TextLabel inside the frame that contains our target text
+            for _, child in pairs(itemFrame:GetDescendants()) do
+                if child:IsA("TextLabel") then
+                    local labelText = child.Text:lower():gsub("%s+", "")
+                    if labelText:find(targetText) then
+                        foundItem = itemFrame
+                        break
+                    end
+                end
+            end
+        end
+        if foundItem then break end
+    end
+
+    if foundItem then
+        -- Check if our visual label already exists
+        local quantityLabel = foundItem:FindFirstChild("VisualQuantity_MM2")
+        
+        if not quantityLabel then
+            -- CREATE NEW LABEL
+            quantityLabel = Instance.new("TextLabel")
+            quantityLabel.Name = "VisualQuantity_MM2"
+            
+            -- SIZE & POSITION (Matches your image: Small x2 in top right)
+            quantityLabel.Size = UDim2.new(0, 40, 0, 25) -- Small fixed pixel size
+            quantityLabel.Position = UDim2.new(1, -5, 0, 5) -- 5px offset from top right
+            quantityLabel.AnchorPoint = Vector2.new(1, 0)
+            
+            quantityLabel.BackgroundTransparency = 1
+            quantityLabel.ZIndex = 100
+            quantityLabel.Text = "x2"
+            quantityLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            quantityLabel.TextScaled = true
+            quantityLabel.Font = Enum.Font.GothamMedium
+            quantityLabel.TextXAlignment = Enum.TextXAlignment.Right
+            
+            -- Subtle outline to match MM2 style
+            local stroke = Instance.new("UIStroke")
+            stroke.Thickness = 1.2
+            stroke.Transparency = 0.3
+            stroke.Parent = quantityLabel
+            
+            quantityLabel.Parent = foundItem
+        else
+            -- INCREMENT EXISTING
+            local currentVal = tonumber(quantityLabel.Text:match("%d+")) or 1
+            quantityLabel.Text = "x" .. (currentVal + 1)
+        end
+        
+        dupeButton.Text = "SUCCESS"
+        task.wait(0.5)
+        dupeButton.Text = "DUPE"
+    else
+        dupeButton.Text = "NOT FOUND"
+        task.wait(1)
+        dupeButton.Text = "DUPE"
+    end
+end)
