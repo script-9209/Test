@@ -1,5 +1,6 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local lp = Players.LocalPlayer
 
@@ -7,12 +8,14 @@ local lp = Players.LocalPlayer
 _G.LockAll = false
 _G.ESPEnabled = false
 _G.AutoCoins = false
+_G.AutoGrabGun = false
+_G.DesiredSpeed = 16
 
 -- UI Container
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
 ScreenGui.Name = "ExodusFloatingUI"; ScreenGui.ResetOnSpawn = false
 
--- RGB Sync
+--- FLOATING UI SETUP ---
 local function syncRGB(stroke)
     task.spawn(function()
         while true do
@@ -23,23 +26,22 @@ local function syncRGB(stroke)
     end)
 end
 
--- Floating Button Factory
-local function createBaseButton(name, text, pos, isCircle, isRect)
+local function createBaseButton(name, text, pos, isRect)
     local btn = Instance.new("TextButton", ScreenGui)
     btn.Name = name; btn.Visible = false
     btn.Size = isRect and UDim2.new(0, 140, 0, 60) or UDim2.new(0, 80, 0, 80)
     btn.Position = pos; btn.BackgroundColor3 = Color3.fromRGB(15, 15, 15); btn.BackgroundTransparency = 0.5 
-    btn.Text = text; btn.TextColor3 = Color3.fromRGB(255, 255, 255); btn.Font = Enum.Font.GothamBold; btn.TextSize = 18; btn.ZIndex = 10
-    local corner = Instance.new("UICorner", btn); corner.CornerRadius = isCircle and UDim.new(1, 0) or UDim.new(0, 12)
+    btn.Text = text; btn.TextColor3 = Color3.fromRGB(255, 255, 255); btn.Font = Enum.Font.GothamBold; btn.TextSize = 18
+    local corner = Instance.new("UICorner", btn); corner.CornerRadius = isRect and UDim.new(0, 12) or UDim.new(1, 0)
     local stroke = Instance.new("UIStroke", btn); stroke.Thickness = 2.5; stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     syncRGB(stroke); return btn
 end
 
-local ShootBtn = createBaseButton("ShootButton", "SHOOT", UDim2.new(0.5, -160, 0.5, -100), false, true)
-local GunBtn = createBaseButton("GunButton", "GUN", UDim2.new(0.5, -120, 0.5, 0), true, false)
-local ThrowBtn = createBaseButton("ThrowButton", "THROW", UDim2.new(0.5, -40, 0.5, 0), false, false)
+local ShootBtn = createBaseButton("ShootButton", "SHOOT", UDim2.new(0.5, -160, 0.5, -100), true)
+local GunBtn = createBaseButton("GunButton", "GUN", UDim2.new(0.5, -120, 0.5, 0), false)
+local ThrowBtn = createBaseButton("ThrowButton", "THROW", UDim2.new(0.5, -40, 0.5, 0), false)
 
---- UTILITY ---
+--- COMBAT UTILITY ---
 local function getMurderer()
     for _, v in pairs(Players:GetPlayers()) do
         if v ~= lp and v.Character and (v.Character:FindFirstChild("Knife") or v.Backpack:FindFirstChild("Knife")) then return v end
@@ -47,15 +49,14 @@ local function getMurderer()
     return nil
 end
 
---- STRICT COMBAT LOGIC ---
 local function fireGun()
     local gun = lp.Character:FindFirstChild("Gun") or lp.Backpack:FindFirstChild("Gun")
     local m = getMurderer()
     if gun and m and m.Character:FindFirstChild("HumanoidRootPart") then
         if gun.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(gun) task.wait(0.1) end
         local mHRP = m.Character.HumanoidRootPart
-        local origin = mHRP.Position + Vector3.new(0, 0, 0.5)
-        local targetPos = mHRP.Position + (mHRP.Velocity * 0.1)
+        local origin = mHRP.Position + Vector3.new(0, 0, 1)
+        local targetPos = mHRP.Position + (mHRP.Velocity * 0.25)
         local args = {
             [1] = CFrame.new(origin, targetPos) * CFrame.Angles(1.4531978368759155, 0.04432811588048935, 1.6501713991165161), 
             [2] = CFrame.new(targetPos) * CFrame.Angles(-0, 0, -0)
@@ -76,7 +77,7 @@ local function throwAction()
     if knife and near and near.Character:FindFirstChild("HumanoidRootPart") then
         if knife.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(knife) end
         local targetHRP = near.Character.HumanoidRootPart
-        local origin = targetHRP.Position + Vector3.new(0, 0, 1) 
+        local origin = targetHRP.Position + Vector3.new(0, 0, 3) 
         local targetPos = targetHRP.Position
         local args = {
             [1] = CFrame.new(origin, targetPos) * CFrame.Angles(1.4531978368759155, 0.04432811588048935, 1.6501713991165161), 
@@ -88,12 +89,132 @@ local function throwAction()
     end
 end
 
---- DRAGGABLE LOGIC ---
-local function makeDraggable(btn, customAction)
+--- PLAYER & ROLE ESP ---
+local function applyPlayerESP(p)
+    if p == lp then return end
+    local function setup(char)
+        if not char then return end
+        local highlight = char:FindFirstChild("ExodusHighlight") or Instance.new("Highlight", char)
+        highlight.Name = "ExodusHighlight"; highlight.FillTransparency = 0.5
+        local head = char:WaitForChild("Head", 10)
+        local bill = head:FindFirstChild("ExodusBill") or Instance.new("BillboardGui", head)
+        bill.Name = "ExodusBill"; bill.Size = UDim2.new(0, 100, 0, 50); bill.AlwaysOnTop = true; bill.ExtentsOffset = Vector3.new(0, 3, 0)
+        local label = bill:FindFirstChild("ExodusLabel") or Instance.new("TextLabel", bill)
+        label.Name = "ExodusLabel"; label.Size = UDim2.new(1, 0, 1, 0); label.BackgroundTransparency = 1; label.Font = "GothamBold"; label.TextSize = 14
+
+        task.spawn(function()
+            while char and char.Parent do
+                if _G.ESPEnabled then
+                    local isM = p.Backpack:FindFirstChild("Knife") or char:FindFirstChild("Knife")
+                    local isS = p.Backpack:FindFirstChild("Gun") or char:FindFirstChild("Gun")
+                    highlight.Enabled = true
+                    if isM then
+                        bill.Enabled = true; highlight.FillColor = Color3.new(1, 0, 0); label.Text = "[MURDERER]"; label.TextColor3 = Color3.new(1, 0, 0)
+                    elseif isS then
+                        bill.Enabled = true; highlight.FillColor = Color3.new(0, 0, 1); label.Text = "[SHERIFF]"; label.TextColor3 = Color3.new(0, 0, 1)
+                    else
+                        bill.Enabled = false; highlight.FillColor = Color3.new(0, 1, 0)
+                    end
+                else
+                    highlight.Enabled = false; bill.Enabled = false
+                end
+                task.wait(0.5)
+            end
+        end)
+    end
+    p.CharacterAdded:Connect(setup)
+    if p.Character then setup(p.Character) end
+end
+for _, v in pairs(Players:GetPlayers()) do applyPlayerESP(v) end
+Players.PlayerAdded:Connect(applyPlayerESP)
+
+--- GUN ESP (ALWAYS ON) ---
+task.spawn(function()
+    while true do
+        local drop = workspace:FindFirstChild("GunDrop", true)
+        if drop then
+            if not drop:FindFirstChild("ExodusGunBill") then
+                local bill = Instance.new("BillboardGui", drop)
+                bill.Name = "ExodusGunBill"; bill.Size = UDim2.new(0, 100, 0, 50); bill.AlwaysOnTop = true; bill.ExtentsOffset = Vector3.new(0, 2, 0)
+                local label = Instance.new("TextLabel", bill)
+                label.Size = UDim2.new(1, 0, 1, 0); label.BackgroundTransparency = 1; label.Font = "GothamBold"; label.TextSize = 18
+                label.Text = "GUN"; label.TextColor3 = Color3.fromRGB(0, 170, 255)
+                label.TextStrokeTransparency = 0; label.TextStrokeColor3 = Color3.new(0, 0, 0)
+            end
+        end
+        task.wait(1)
+    end
+end)
+
+--- AUTOMATION ---
+task.spawn(function()
+    while true do
+        task.wait(0.5)
+        if _G.AutoGrabGun and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+            local drop = workspace:FindFirstChild("GunDrop", true)
+            if drop and drop:FindFirstChild("TouchInterest") then
+                firetouchinterest(lp.Character.HumanoidRootPart, drop, 0)
+                firetouchinterest(lp.Character.HumanoidRootPart, drop, 1)
+            end
+        end
+    end
+end)
+
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        if _G.AutoCoins and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+            local coins = workspace:FindFirstChild("CoinContainer", true) or workspace:FindFirstChild("Coins", true)
+            if coins then
+                for _, c in pairs(coins:GetChildren()) do
+                    if not _G.AutoCoins or not c:FindFirstChild("TouchInterest") then continue end
+                    local tween = TweenService:Create(lp.Character.HumanoidRootPart, TweenInfo.new(0.4, Enum.EasingStyle.Linear), {CFrame = c.CFrame * CFrame.new(0, 1, 0)})
+                    tween:Play()
+                    tween.Completed:Wait()
+                    task.wait(1.5)
+                end
+            end
+        end
+    end
+end)
+
+--- MENU ---
+local Window = Rayfield:CreateWindow({
+   Name = "Exodus Suite | MM2",
+   LoadingTitle = "Exodus Suite",
+   ConfigurationSaving = {Enabled = true, FolderName = "ExodusConfigs", FileName = "MM2_Final"}
+})
+
+local MainTab = Window:CreateTab("Main", 4483362458)
+local AutoTab = Window:CreateTab("Auto", 4483362458)
+local PlayerTab = Window:CreateTab("Player", 4483362458)
+
+MainTab:CreateToggle({Name = "Enable Player/Role ESP", CurrentValue = false, Flag = "ESP_F", Callback = function(V) _G.ESPEnabled = V end})
+MainTab:CreateToggle({Name = "Lock Floating UI", CurrentValue = false, Flag = "Lock_F", Callback = function(V) _G.LockAll = V end})
+MainTab:CreateToggle({Name = "Show Gun Button", CurrentValue = false, Flag = "SGB_F", Callback = function(V) GunBtn.Visible = V end})
+MainTab:CreateToggle({Name = "Show Shoot Button", CurrentValue = false, Flag = "SSB_F", Callback = function(V) ShootBtn.Visible = V end})
+MainTab:CreateToggle({Name = "Show Throw Button", CurrentValue = false, Flag = "STB_F", Callback = function(V) ThrowBtn.Visible = V end})
+
+AutoTab:CreateToggle({Name = "Auto Collect Coins (Safe)", CurrentValue = false, Flag = "AC_F", Callback = function(V) _G.AutoCoins = V end})
+AutoTab:CreateToggle({Name = "Auto Grab Gun", CurrentValue = false, Flag = "AGG_F", Callback = function(V) _G.AutoGrabGun = V end})
+
+PlayerTab:CreateInput({Name = "WalkSpeed", PlaceholderText = "16", Flag = "WS_F", Callback = function(T)
+    local s = tonumber(T)
+    if s then _G.DesiredSpeed = s if lp.Character and lp.Character:FindFirstChild("Humanoid") then lp.Character.Humanoid.WalkSpeed = s end end
+end})
+
+-- Character Respawn Handler
+lp.CharacterAdded:Connect(function(char)
+    local hum = char:WaitForChild("Humanoid", 10)
+    if hum then hum.WalkSpeed = _G.DesiredSpeed end
+end)
+
+-- Draggables
+local function makeDraggable(btn, action)
     local dragging, dragStart, startPos
     btn.InputBegan:Connect(function(input)
         if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
-            if customAction then customAction() end
+            if action then action() end
             if not _G.LockAll then dragging = true dragStart = input.Position startPos = btn.Position end
         end
     end)
@@ -117,75 +238,5 @@ makeDraggable(GunBtn, function()
         lp.Character.HumanoidRootPart.CFrame = old
     end
 end)
-
---- CLEAN ESP ---
-local function applyESP(p)
-    if p == lp then return end
-    local function setup(char)
-        if not char then return end
-        local highlight = char:FindFirstChild("ExodusHighlight") or Instance.new("Highlight", char)
-        highlight.Name = "ExodusHighlight"; highlight.FillTransparency = 0.5
-        local head = char:WaitForChild("Head", 5)
-        local bill = head:FindFirstChild("ExodusBill") or Instance.new("BillboardGui", head)
-        bill.Name = "ExodusBill"; bill.Size = UDim2.new(0, 100, 0, 50); bill.AlwaysOnTop = true; bill.ExtentsOffset = Vector3.new(0, 3, 0)
-        local label = bill:FindFirstChild("ExodusLabel") or Instance.new("TextLabel", bill)
-        label.Name = "ExodusLabel"; label.Size = UDim2.new(1, 0, 1, 0); label.BackgroundTransparency = 1; label.Font = "GothamBold"; label.TextSize = 14
-        task.spawn(function()
-            while char and char.Parent do
-                if _G.ESPEnabled then
-                    local isM = p.Backpack:FindFirstChild("Knife") or char:FindFirstChild("Knife")
-                    local isS = p.Backpack:FindFirstChild("Gun") or char:FindFirstChild("Gun")
-                    highlight.Enabled = true
-                    if isM then bill.Enabled = true; highlight.FillColor = Color3.new(1, 0, 0); label.Text = "MURDERER"; label.TextColor3 = Color3.new(1, 0, 0)
-                    elseif isS then bill.Enabled = true; highlight.FillColor = Color3.new(0, 0, 1); label.Text = "SHERIFF"; label.TextColor3 = Color3.new(0, 0, 1)
-                    else bill.Enabled = false; highlight.FillColor = Color3.new(0, 1, 0) end
-                else highlight.Enabled = false; bill.Enabled = false end
-                task.wait(0.5)
-            end
-        end)
-    end
-    p.CharacterAdded:Connect(setup)
-    if p.Character then setup(p.Character) end
-end
-for _, v in pairs(Players:GetPlayers()) do applyESP(v) end
-Players.PlayerAdded:Connect(applyESP)
-
---- AUTO COINS (1.5s) ---
-task.spawn(function()
-    while true do
-        task.wait()
-        if _G.AutoCoins and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
-            local coins = workspace:FindFirstChild("CoinContainer", true) or workspace:FindFirstChild("Coins", true)
-            if coins then
-                for _, c in pairs(coins:GetChildren()) do
-                    if not _G.AutoCoins then break end
-                    lp.Character.HumanoidRootPart.CFrame = c.CFrame
-                    task.wait(1.5)
-                end
-            end
-        end
-    end
-end)
-
---- WINDOW INITIALIZATION ---
-local Window = Rayfield:CreateWindow({
-   Name = "Exodus Suite | MM2",
-   LoadingTitle = "Exodus Suite",
-   ConfigurationSaving = {Enabled = true, FolderName = "ExodusConfigs", FileName = "MM2_Final"}
-})
-
-local MainTab = Window:CreateTab("Main", 4483362458)
-local AutoTab = Window:CreateTab("Auto", 4483362458)
-local PlayerTab = Window:CreateTab("Player", 4483362458)
-
-MainTab:CreateToggle({Name = "Enable ESP", CurrentValue = false, Callback = function(V) _G.ESPEnabled = V end})
-MainTab:CreateToggle({Name = "Lock All Floating UI", CurrentValue = false, Callback = function(V) _G.LockAll = V end})
-MainTab:CreateToggle({Name = "Show Gun Button", CurrentValue = false, Callback = function(V) GunBtn.Visible = V end})
-MainTab:CreateToggle({Name = "Show Shoot Button", CurrentValue = false, Callback = function(V) ShootBtn.Visible = V end})
-MainTab:CreateToggle({Name = "Show Throw Button", CurrentValue = false, Callback = function(V) ThrowBtn.Visible = V end})
-
-AutoTab:CreateToggle({Name = "Auto Collect Coins (1.5s)", CurrentValue = false, Callback = function(V) _G.AutoCoins = V end})
-
-PlayerTab:CreateInput({Name = "WalkSpeed", PlaceholderText = "16", Callback = function(T) if tonumber(T) then lp.Character.Humanoid.WalkSpeed = tonumber(T) end end})
 
 Rayfield:LoadConfiguration()
