@@ -132,7 +132,7 @@ Players.PlayerAdded:Connect(applyPlayerESP)
 
 --- AUTOMATION ---
 
--- RESET FUNCTION (Restores Movement & Collision)
+-- RESET FUNCTION
 local function ResetCharacterPhysics()
     if lp.Character then
         local hum = lp.Character:FindFirstChild("Humanoid")
@@ -143,9 +143,7 @@ local function ResetCharacterPhysics()
             hum:ChangeState(Enum.HumanoidStateType.GettingUp)
         end
         for _, part in pairs(lp.Character:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = true
-            end
+            if part:IsA("BasePart") then part.CanCollide = true end
         end
     end
 end
@@ -155,10 +153,7 @@ RunService.Stepped:Connect(function()
         if _G.AutoCoins then
             lp.Character.Humanoid:ChangeState(11)
             for _, part in pairs(lp.Character:GetDescendants()) do
-                if part:IsA("BasePart") then 
-                    part.CanCollide = false 
-                    part.Velocity = Vector3.zero 
-                end
+                if part:IsA("BasePart") then part.CanCollide = false part.Velocity = Vector3.zero end
             end
         end
     end
@@ -174,6 +169,21 @@ task.spawn(function()
             label.Text = "GUN HERE\n▼"; label.TextColor3 = Color3.fromRGB(0, 255, 0); label.TextStrokeTransparency = 0; label.TextStrokeColor3 = Color3.new(0, 0, 0)
         end
         task.wait(1)
+    end
+end)
+
+-- REPAIRED AUTO GRAB GUN
+task.spawn(function()
+    while true do
+        task.wait(0.1) -- Fast check
+        if _G.AutoGrabGun and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+            local gunDrop = workspace:FindFirstChild("GunDrop", true)
+            if gunDrop and gunDrop:IsA("BasePart") then
+                -- FireTouch pulse to ensure collection
+                firetouchinterest(lp.Character.HumanoidRootPart, gunDrop, 0)
+                firetouchinterest(lp.Character.HumanoidRootPart, gunDrop, 1)
+            end
+        end
     end
 end)
 
@@ -235,31 +245,17 @@ AutoTab:CreateToggle({Name = "Auto Grab Gun", CurrentValue = false, Flag = "AGG_
 
 PlayerTab:CreateInput({Name = "WalkSpeed", PlaceholderText = "16", Flag = "WS_F", Callback = function(T)
     local s = tonumber(T)
-    if s then 
-        _G.DesiredSpeed = s 
-        if lp.Character and lp.Character:FindFirstChild("Humanoid") then lp.Character.Humanoid.WalkSpeed = s end 
-    end
+    if s then _G.DesiredSpeed = s if lp.Character and lp.Character:FindFirstChild("Humanoid") then lp.Character.Humanoid.WalkSpeed = s end end
 end})
 
 PlayerTab:CreateInput({Name = "JumpPower", PlaceholderText = "50", Flag = "JP_F", Callback = function(T)
     local s = tonumber(T)
-    if s then 
-        _G.DesiredJump = s 
-        if lp.Character and lp.Character:FindFirstChild("Humanoid") then 
-            lp.Character.Humanoid.UseJumpPower = true
-            lp.Character.Humanoid.JumpPower = s 
-        end 
-    end
+    if s then _G.DesiredJump = s if lp.Character and lp.Character:FindFirstChild("Humanoid") then lp.Character.Humanoid.UseJumpPower = true lp.Character.Humanoid.JumpPower = s end end
 end})
 
--- Respawn Logic
 lp.CharacterAdded:Connect(function(char)
     local hum = char:WaitForChild("Humanoid", 10)
-    if hum then 
-        hum.WalkSpeed = _G.DesiredSpeed
-        hum.UseJumpPower = true
-        hum.JumpPower = _G.DesiredJump
-    end
+    if hum then hum.WalkSpeed = _G.DesiredSpeed hum.UseJumpPower = true hum.JumpPower = _G.DesiredJump end
 end)
 
 -- Draggables
