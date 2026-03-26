@@ -11,6 +11,7 @@ _G.ESPEnabled = false
 _G.AutoCoins = false
 _G.AutoGrabGun = false
 _G.DesiredSpeed = 16
+_G.DesiredJump = 50
 
 -- UI Container
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
@@ -56,7 +57,7 @@ local function fireGun()
     if gun and m and m.Character:FindFirstChild("HumanoidRootPart") then
         if gun.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(gun) task.wait(0.1) end
         local mHRP = m.Character.HumanoidRootPart
-        local origin = mHRP.Position + Vector3.new(0, 0.5, 1.5)
+        local origin = mHRP.Position + Vector3.new(0, 0.30, 0.45)
         local targetPos = mHRP.Position + (mHRP.Velocity * 0.25)
         local args = {
             [1] = CFrame.new(origin, targetPos) * CFrame.Angles(1.4531978368759155, 0.04432811588048935, 1.6501713991165161), 
@@ -78,7 +79,7 @@ local function throwAction()
     if knife and near and near.Character:FindFirstChild("HumanoidRootPart") then
         if knife.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(knife) end
         local targetHRP = near.Character.HumanoidRootPart
-        local origin = targetHRP.Position + Vector3.new(0, 0, 3) 
+        local origin = targetHRP.Position + Vector3.new(0, 0.30, 0.45) 
         local targetPos = targetHRP.Position
         local args = {
             [1] = CFrame.new(origin, targetPos) * CFrame.Angles(1.4531978368759155, 0.04432811588048935, 1.6501713991165161), 
@@ -90,7 +91,7 @@ local function throwAction()
     end
 end
 
---- PLAYER & ROLE ESP ---
+--- ARROW ESP SYSTEM ---
 local function applyPlayerESP(p)
     if p == lp then return end
     local function setup(char)
@@ -102,19 +103,20 @@ local function applyPlayerESP(p)
         bill.Name = "ExodusBill"; bill.Size = UDim2.new(0, 100, 0, 50); bill.AlwaysOnTop = true; bill.ExtentsOffset = Vector3.new(0, 3, 0)
         local label = bill:FindFirstChild("ExodusLabel") or Instance.new("TextLabel", bill)
         label.Name = "ExodusLabel"; label.Size = UDim2.new(1, 0, 1, 0); label.BackgroundTransparency = 1; label.Font = "GothamBold"; label.TextSize = 14
+        label.TextStrokeTransparency = 0; label.TextStrokeColor3 = Color3.new(0, 0, 0)
 
         task.spawn(function()
             while char and char.Parent do
                 if _G.ESPEnabled then
                     local isM = p.Backpack:FindFirstChild("Knife") or char:FindFirstChild("Knife")
                     local isS = p.Backpack:FindFirstChild("Gun") or char:FindFirstChild("Gun")
-                    highlight.Enabled = true
+                    highlight.Enabled = true; bill.Enabled = true
                     if isM then
-                        bill.Enabled = true; highlight.FillColor = Color3.new(1, 0, 0); label.Text = "[MURDERER]"; label.TextColor3 = Color3.new(1, 0, 0)
+                        highlight.FillColor = Color3.new(1, 0, 0); label.Text = "MURDERER\n▼"; label.TextColor3 = Color3.new(1, 0, 0)
                     elseif isS then
-                        bill.Enabled = true; highlight.FillColor = Color3.new(0, 0, 1); label.Text = "[SHERIFF]"; label.TextColor3 = Color3.new(0, 0, 1)
+                        highlight.FillColor = Color3.new(0, 0, 1); label.Text = "SHERIFF\n▼"; label.TextColor3 = Color3.new(0, 0, 1)
                     else
-                        bill.Enabled = false; highlight.FillColor = Color3.new(0, 1, 0)
+                        highlight.FillColor = Color3.new(0, 1, 0); label.Text = "▼"; label.TextColor3 = Color3.new(0, 1, 0)
                     end
                 else
                     highlight.Enabled = false; bill.Enabled = false
@@ -123,39 +125,61 @@ local function applyPlayerESP(p)
             end
         end)
     end
-    p.CharacterAdded:Connect(setup)
-    if p.Character then setup(p.Character) end
+    p.CharacterAdded:Connect(setup); if p.Character then setup(p.Character) end
 end
 for _, v in pairs(Players:GetPlayers()) do applyPlayerESP(v) end
 Players.PlayerAdded:Connect(applyPlayerESP)
 
 --- AUTOMATION ---
 
--- NOCLIP HANDLER
-RunService.Stepped:Connect(function()
-    if _G.AutoCoins and lp.Character then
+-- RESET FUNCTION (Restores Movement & Collision)
+local function ResetCharacterPhysics()
+    if lp.Character then
+        local hum = lp.Character:FindFirstChild("Humanoid")
+        if hum then
+            hum.JumpPower = _G.DesiredJump
+            hum.WalkSpeed = _G.DesiredSpeed
+            hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+            hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+        end
         for _, part in pairs(lp.Character:GetDescendants()) do
             if part:IsA("BasePart") then
-                part.CanCollide = false
+                part.CanCollide = true
+            end
+        end
+    end
+end
+
+RunService.Stepped:Connect(function()
+    if lp.Character and lp.Character:FindFirstChild("Humanoid") then
+        if _G.AutoCoins then
+            lp.Character.Humanoid:ChangeState(11)
+            for _, part in pairs(lp.Character:GetDescendants()) do
+                if part:IsA("BasePart") then 
+                    part.CanCollide = false 
+                    part.Velocity = Vector3.zero 
+                end
             end
         end
     end
 end)
 
+-- PERMANENT GUN ESP
 task.spawn(function()
     while true do
-        task.wait(0.5)
-        if _G.AutoGrabGun and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
-            local drop = workspace:FindFirstChild("GunDrop", true)
-            if drop and drop:FindFirstChild("TouchInterest") then
-                firetouchinterest(lp.Character.HumanoidRootPart, drop, 0)
-                firetouchinterest(lp.Character.HumanoidRootPart, drop, 1)
-            end
+        local drop = workspace:FindFirstChild("GunDrop", true)
+        if drop and not drop:FindFirstChild("ExodusGunESP") then
+            local bill = Instance.new("BillboardGui", drop); bill.Name = "ExodusGunESP"; bill.Size = UDim2.new(0, 120, 0, 60); bill.AlwaysOnTop = true; bill.ExtentsOffset = Vector3.new(0, 2, 0)
+            local label = Instance.new("TextLabel", bill); label.Size = UDim2.new(1, 0, 1, 0); label.BackgroundTransparency = 1; label.Font = "GothamBold"; label.TextSize = 16
+            label.Text = "GUN HERE\n▼"; label.TextColor3 = Color3.fromRGB(0, 255, 0); label.TextStrokeTransparency = 0; label.TextStrokeColor3 = Color3.new(0, 0, 0)
         end
+        task.wait(1)
     end
 end)
 
+-- AUTO COIN HANDLER
 task.spawn(function()
+    local currentTween = nil
     while true do
         task.wait(0.1)
         if _G.AutoCoins and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
@@ -170,12 +194,17 @@ task.spawn(function()
                     end
                 end
                 if target then
-                    local stealthCF = (target.CFrame * CFrame.Angles(math.rad(90), 0, 0)) * CFrame.new(0, 4, 0)
-                    local tween = TweenService:Create(hrp, TweenInfo.new(sDist/40, Enum.EasingStyle.Linear), {CFrame = stealthCF})
-                    tween:Play()
-                    tween.Completed:Wait()
+                    firetouchinterest(hrp, target, 0)
+                    local undergroundPos = target.Position - Vector3.new(0, 4.5, 0)
+                    if currentTween then currentTween:Cancel() end
+                    currentTween = TweenService:Create(hrp, TweenInfo.new(sDist / 40, Enum.EasingStyle.Linear), {CFrame = CFrame.new(undergroundPos)})
+                    currentTween:Play()
+                    repeat task.wait() until not target or not target.Parent or not _G.AutoCoins or (hrp.Position - undergroundPos).Magnitude < 1
+                    firetouchinterest(hrp, target, 1)
                 end
             end
+        else
+            if currentTween then currentTween:Cancel(); currentTween = nil end
         end
     end
 end)
@@ -191,24 +220,46 @@ local MainTab = Window:CreateTab("Main", 4483362458)
 local AutoTab = Window:CreateTab("Auto", 4483362458)
 local PlayerTab = Window:CreateTab("Player", 4483362458)
 
-MainTab:CreateToggle({Name = "Enable Player/Role ESP", CurrentValue = false, Flag = "ESP_F", Callback = function(V) _G.ESPEnabled = V end})
+MainTab:CreateToggle({Name = "Enable Arrow ESP", CurrentValue = false, Flag = "ESP_F", Callback = function(V) _G.ESPEnabled = V end})
 MainTab:CreateToggle({Name = "Lock Floating UI", CurrentValue = false, Flag = "Lock_F", Callback = function(V) _G.LockAll = V end})
 MainTab:CreateToggle({Name = "Show Gun Button", CurrentValue = false, Flag = "SGB_F", Callback = function(V) GunBtn.Visible = V end})
 MainTab:CreateToggle({Name = "Show Shoot Button", CurrentValue = false, Flag = "SSB_F", Callback = function(V) ShootBtn.Visible = V end})
 MainTab:CreateToggle({Name = "Show Throw Button", CurrentValue = false, Flag = "STB_F", Callback = function(V) ThrowBtn.Visible = V end})
 
-AutoTab:CreateToggle({Name = "Auto Collect (40 studs/s + Noclip)", CurrentValue = false, Flag = "AC_F", Callback = function(V) _G.AutoCoins = V end})
+AutoTab:CreateToggle({Name = "Auto Collect (Underground)", CurrentValue = false, Flag = "AC_F", Callback = function(V) 
+    _G.AutoCoins = V 
+    if not V then ResetCharacterPhysics() end 
+end})
+
 AutoTab:CreateToggle({Name = "Auto Grab Gun", CurrentValue = false, Flag = "AGG_F", Callback = function(V) _G.AutoGrabGun = V end})
 
 PlayerTab:CreateInput({Name = "WalkSpeed", PlaceholderText = "16", Flag = "WS_F", Callback = function(T)
     local s = tonumber(T)
-    if s then _G.DesiredSpeed = s if lp.Character and lp.Character:FindFirstChild("Humanoid") then lp.Character.Humanoid.WalkSpeed = s end end
+    if s then 
+        _G.DesiredSpeed = s 
+        if lp.Character and lp.Character:FindFirstChild("Humanoid") then lp.Character.Humanoid.WalkSpeed = s end 
+    end
 end})
 
--- Character Respawn Handler
+PlayerTab:CreateInput({Name = "JumpPower", PlaceholderText = "50", Flag = "JP_F", Callback = function(T)
+    local s = tonumber(T)
+    if s then 
+        _G.DesiredJump = s 
+        if lp.Character and lp.Character:FindFirstChild("Humanoid") then 
+            lp.Character.Humanoid.UseJumpPower = true
+            lp.Character.Humanoid.JumpPower = s 
+        end 
+    end
+end})
+
+-- Respawn Logic
 lp.CharacterAdded:Connect(function(char)
     local hum = char:WaitForChild("Humanoid", 10)
-    if hum then hum.WalkSpeed = _G.DesiredSpeed end
+    if hum then 
+        hum.WalkSpeed = _G.DesiredSpeed
+        hum.UseJumpPower = true
+        hum.JumpPower = _G.DesiredJump
+    end
 end)
 
 -- Draggables
@@ -229,15 +280,10 @@ local function makeDraggable(btn, action)
     UserInputService.InputEnded:Connect(function() dragging = false end)
 end
 
-makeDraggable(ShootBtn, fireGun)
-makeDraggable(ThrowBtn, throwAction)
-makeDraggable(GunBtn, function()
+makeDraggable(ShootBtn, fireGun); makeDraggable(ThrowBtn, throwAction); makeDraggable(GunBtn, function()
     local d = workspace:FindFirstChild("GunDrop", true)
     if d and lp.Character:FindFirstChild("HumanoidRootPart") then
-        local old = lp.Character.HumanoidRootPart.CFrame
-        lp.Character.HumanoidRootPart.CFrame = d.CFrame
-        task.wait(0.1)
-        lp.Character.HumanoidRootPart.CFrame = old
+        local old = lp.Character.HumanoidRootPart.CFrame; lp.Character.HumanoidRootPart.CFrame = d.CFrame; task.wait(0.1); lp.Character.HumanoidRootPart.CFrame = old
     end
 end)
 
