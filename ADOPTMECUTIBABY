@@ -67,9 +67,46 @@ local function createBaseButton(name, text, pos, isRect)
     return btn
 end
 
+-- New Floating Text Style for Status Boxes
+local function createStatusBox(name, text, pos, size)
+    local box = Instance.new("Frame", ScreenGui)
+    box.Name = name; box.Visible = false
+    box.Size = size; box.Position = pos
+    box.BackgroundColor3 = Color3.fromRGB(10, 10, 10); box.BackgroundTransparency = 0.3
+    
+    local corner = Instance.new("UICorner", box); corner.CornerRadius = UDim.new(0, 10)
+    local stroke = Instance.new("UIStroke", box); stroke.Thickness = 3; stroke.Color = ExodusBlue; stroke.Transparency = 0.2
+
+    local label = Instance.new("TextLabel", box)
+    label.Size = UDim2.new(1, 0, 1, 0); label.BackgroundTransparency = 1
+    label.Text = text; label.TextColor3 = Color3.new(1,1,1); label.Font = "GothamBold"; label.TextSize = 16
+    label.TextStrokeTransparency = 0.5
+
+    return box, label
+end
+
 local ShootBtn = createBaseButton("ShootButton", "SHOOT", UDim2.new(0.5, -160, 0.5, -100), true)
 local GunBtn = createBaseButton("GunButton", "GUN", UDim2.new(0.5, -120, 0.5, 0), false)
 local ThrowBtn = createBaseButton("ThrowButton", "THROW", UDim2.new(0.5, -40, 0.5, 0), false)
+
+-- New Status Boxes (Adjusted Position)
+local TimerBox, TimerText = createStatusBox("TimerBox", "TIME: --", UDim2.new(0.5, -60, 0, 10), UDim2.new(0, 120, 0, 40))
+local ChanceBox, ChanceText = createStatusBox("ChanceBox", "Murd Chance: --", UDim2.new(0.5, -75, 0, 55), UDim2.new(0, 150, 0, 35))
+
+--- UPDATERS ---
+task.spawn(function()
+    while true do
+        pcall(function()
+            local t = workspace.RoundTimerPart.SurfaceGui.Timer
+            TimerText.Text = t.Text
+        end)
+        pcall(function()
+            local chance = lp.PlayerGui.MainGui.Lobby.Chance.Text
+            ChanceText.Text = "MURDERER: " .. chance
+        end)
+        task.wait(0.5)
+    end
+end)
 
 --- COMBAT UTILITY ---
 local function getMurderer()
@@ -281,6 +318,9 @@ local PlayerTab = Window:CreateTab("Player", 4483362458)
 local KeybindsTab = Window:CreateTab("Keybinds", 4483362458)
 
 MainTab:CreateToggle({Name = "Enable Arrow ESP", CurrentValue = false, Flag = "ESP_F", Callback = function(V) _G.ESPEnabled = V end})
+MainTab:CreateToggle({Name = "Show/Hide Timer", CurrentValue = false, Flag = "Timer_F", Callback = function(V) TimerBox.Visible = V end})
+MainTab:CreateToggle({Name = "Show/Hide Chance", CurrentValue = false, Flag = "Chance_F", Callback = function(V) ChanceBox.Visible = V end})
+
 MainTab:CreateToggle({Name = "Lock/Unlock Floating UI", CurrentValue = false, Flag = "Lock_F", Callback = function(V) _G.LockAll = V end})
 MainTab:CreateToggle({Name = "Show Gun Button", CurrentValue = false, Flag = "SGB_F", Callback = function(V) GunBtn.Visible = V end})
 MainTab:CreateToggle({Name = "Show Shoot Button", CurrentValue = false, Flag = "SSB_F", Callback = function(V) ShootBtn.Visible = V end})
