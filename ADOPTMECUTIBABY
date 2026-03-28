@@ -13,6 +13,11 @@ _G.AutoGrabGun = false
 _G.DesiredSpeed = 16
 _G.DesiredJump = 50
 
+-- Default Keybinds
+_G.BindShoot = Enum.KeyCode.Q
+_G.BindGun = Enum.KeyCode.R
+_G.BindThrow = Enum.KeyCode.T
+
 -- Aesthetic State (Modern Blue)
 local ExodusBlue = Color3.fromRGB(0, 162, 255)
 
@@ -27,37 +32,29 @@ ScreenGui.Name = "ExodusFloatingUI"; ScreenGui.ResetOnSpawn = false
 
 --- MODERN FLOATING UI STYLING ---
 
--- Removed RGB Sync, using fixed Blue accent
-
 local function createBaseButton(name, text, pos, isRect)
     local btn = Instance.new("TextButton", ScreenGui)
     btn.Name = name; btn.Visible = false
-    -- Modern Size adjustments
     btn.Size = isRect and UDim2.new(0, 150, 0, 50) or UDim2.new(0, 75, 0, 75)
     btn.Position = pos
-    -- Glassmorphism background
     btn.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
-    btn.BackgroundTransparency = 0.3 -- Sleek translucency
-    -- Text Styling
+    btn.BackgroundTransparency = 0.3 
     btn.Text = text
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.Font = Enum.Font.GothamBold; btn.TextSize = isRect and 18 or 16
     btn.TextTransparency = 0.1
-    -- High-Contrast outline
     btn.TextStrokeColor3 = Color3.fromRGB(0,0,0)
     btn.TextStrokeTransparency = 0.5
 
     local corner = Instance.new("UICorner", btn)
     corner.CornerRadius = isRect and UDim.new(0, 10) or UDim.new(1, 0)
     
-    -- Fixed Neon Blue Stroke
     local stroke = Instance.new("UIStroke", btn)
     stroke.Thickness = 3
     stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     stroke.Color = ExodusBlue
-    stroke.Transparency = 0.2 -- Subtle glow
+    stroke.Transparency = 0.2 
 
-    -- Subtle hover effect
     btn.MouseEnter:Connect(function()
         TweenService:Create(btn, TweenInfo.new(0.3), {BackgroundTransparency = 0.1, TextTransparency = 0}):Play()
         TweenService:Create(stroke, TweenInfo.new(0.3), {Thickness = 4, Color = Color3.new(1,1,1)}):Play()
@@ -122,6 +119,28 @@ local function throwAction()
     end
 end
 
+local function grabGunAction()
+    local d = workspace:FindFirstChild("GunDrop", true)
+    if d and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+        local old = lp.Character.HumanoidRootPart.CFrame
+        lp.Character.HumanoidRootPart.CFrame = d.CFrame
+        task.wait(0.1)
+        lp.Character.HumanoidRootPart.CFrame = old
+    end
+end
+
+--- PC KEYBIND LISTENER ---
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == _G.BindShoot then
+        fireGun()
+    elseif input.KeyCode == _G.BindThrow then
+        throwAction()
+    elseif input.KeyCode == _G.BindGun then
+        grabGunAction()
+    end
+end)
+
 --- FULL ESP SYSTEM ---
 local function applyPlayerESP(p)
     if p == lp then return end
@@ -147,7 +166,6 @@ local function applyPlayerESP(p)
                     elseif isS then
                         highlight.FillColor = Color3.new(0, 0, 1); label.Text = "SHERIFF\n▼"; label.TextColor3 = Color3.new(0, 0, 1)
                     else
-                        -- Innocents keep green accent for contrast
                         highlight.FillColor = Color3.new(0, 1, 0); label.Text = "▼"; label.TextColor3 = Color3.new(0, 1, 0)
                     end
                 else
@@ -250,7 +268,7 @@ task.spawn(function()
     end
 end)
 
---- MENU (Styled with blue theme where library allows) ---
+--- MENU ---
 local Window = Rayfield:CreateWindow({
    Name = "🔪 EXODUS HUB | MM2",
    LoadingTitle = "by @exodusstk",
@@ -260,14 +278,15 @@ local Window = Rayfield:CreateWindow({
 local MainTab = Window:CreateTab("Main", 4483362458)
 local AutoTab = Window:CreateTab("Auto", 4483362458)
 local PlayerTab = Window:CreateTab("Player", 4483362458)
+local KeybindsTab = Window:CreateTab("Keybinds", 4483362458)
 
 MainTab:CreateToggle({Name = "Enable Arrow ESP", CurrentValue = false, Flag = "ESP_F", Callback = function(V) _G.ESPEnabled = V end})
-MainTab:CreateToggle({Name = "Lock Floating UI (Dragging)", CurrentValue = false, Flag = "Lock_F", Callback = function(V) _G.LockAll = V end})
+MainTab:CreateToggle({Name = "Lock/Unlock Floating UI", CurrentValue = false, Flag = "Lock_F", Callback = function(V) _G.LockAll = V end})
 MainTab:CreateToggle({Name = "Show Gun Button", CurrentValue = false, Flag = "SGB_F", Callback = function(V) GunBtn.Visible = V end})
 MainTab:CreateToggle({Name = "Show Shoot Button", CurrentValue = false, Flag = "SSB_F", Callback = function(V) ShootBtn.Visible = V end})
 MainTab:CreateToggle({Name = "Show Throw Button", CurrentValue = false, Flag = "STB_F", Callback = function(V) ThrowBtn.Visible = V end})
 
-AutoTab:CreateToggle({Name = "Auto Collect (Emote-Walk -4.3)", CurrentValue = false, Flag = "AC_F", Callback = function(V) 
+AutoTab:CreateToggle({Name = "Auto Collect Coins", CurrentValue = false, Flag = "AC_F", Callback = function(V) 
     _G.AutoCoins = V 
     if not V then ResetCharacterPhysics() end 
 end})
@@ -282,7 +301,23 @@ PlayerTab:CreateInput({Name = "JumpPower", PlaceholderText = "50", Flag = "JP_F"
     if s then _G.DesiredJump = s if lp.Character and lp.Character:FindFirstChild("Humanoid") then lp.Character.Humanoid.UseJumpPower = true lp.Character.Humanoid.JumpPower = s end end
 end})
 
--- Draggable Logic (Untouched)
+-- KEYBINDS CONFIGURATION (Inputs)
+KeybindsTab:CreateInput({Name = "Shoot Keybind", PlaceholderText = "Q", Flag = "KB_Shoot", Callback = function(T)
+    local key = string.upper(T)
+    pcall(function() _G.BindShoot = Enum.KeyCode[key] end)
+end})
+
+KeybindsTab:CreateInput({Name = "Gun Keybind", PlaceholderText = "R", Flag = "KB_Gun", Callback = function(T)
+    local key = string.upper(T)
+    pcall(function() _G.BindGun = Enum.KeyCode[key] end)
+end})
+
+KeybindsTab:CreateInput({Name = "Throw Keybind", PlaceholderText = "T", Flag = "KB_Throw", Callback = function(T)
+    local key = string.upper(T)
+    pcall(function() _G.BindThrow = Enum.KeyCode[key] end)
+end})
+
+-- Draggable Logic
 local function makeDraggable(btn, action)
     local dragging, dragStart, startPos
     btn.InputBegan:Connect(function(input)
@@ -300,12 +335,6 @@ local function makeDraggable(btn, action)
     UserInputService.InputEnded:Connect(function() dragging = false end)
 end
 
-makeDraggable(ShootBtn, fireGun); makeDraggable(ThrowBtn, throwAction); makeDraggable(GunBtn, function()
-    local d = workspace:FindFirstChild("GunDrop", true)
-    if d and lp.Character:FindFirstChild("HumanoidRootPart") then
-        local old = lp.Character.HumanoidRootPart.CFrame; lp.Character.HumanoidRootPart.CFrame = d.CFrame; task.wait(0.1); lp.Character.HumanoidRootPart.CFrame = old
-    end
-end)
+makeDraggable(ShootBtn, fireGun); makeDraggable(ThrowBtn, throwAction); makeDraggable(GunBtn, grabGunAction)
 
 Rayfield:LoadConfiguration()
-
