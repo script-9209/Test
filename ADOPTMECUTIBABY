@@ -10,8 +10,10 @@ _G.LockAll = false
 _G.ESPEnabled = false
 _G.AutoCoins = false
 _G.AutoGrabGun = false
+_G.AutoLeap = false
 _G.DesiredSpeed = 16
 _G.DesiredJump = 50
+local leapDebounce = false
 
 -- Default Keybinds
 _G.BindShoot = Enum.KeyCode.Q
@@ -67,7 +69,6 @@ local function createBaseButton(name, text, pos, isRect)
     return btn
 end
 
--- New Floating Text Style for Status Boxes
 local function createStatusBox(name, text, pos, size)
     local box = Instance.new("Frame", ScreenGui)
     box.Name = name; box.Visible = false
@@ -89,9 +90,48 @@ local ShootBtn = createBaseButton("ShootButton", "SHOOT", UDim2.new(0.5, -160, 0
 local GunBtn = createBaseButton("GunButton", "GUN", UDim2.new(0.5, -120, 0.5, 0), false)
 local ThrowBtn = createBaseButton("ThrowButton", "THROW", UDim2.new(0.5, -40, 0.5, 0), false)
 
--- New Status Boxes (Adjusted Position)
 local TimerBox, TimerText = createStatusBox("TimerBox", "TIME: --", UDim2.new(0.5, -60, 0, 10), UDim2.new(0, 120, 0, 40))
 local ChanceBox, ChanceText = createStatusBox("ChanceBox", "Murd Chance: --", UDim2.new(0.5, -75, 0, 55), UDim2.new(0, 150, 0, 35))
+
+--- MURDERER LEAP LOGIC ---
+local function performLeap(targetHRP)
+    if leapDebounce or not lp.Character or not lp.Character:FindFirstChild("HumanoidRootPart") then return end
+    leapDebounce = true
+    
+    local hrp = lp.Character.HumanoidRootPart
+    local direction = (targetHRP.Position - hrp.Position).Unit
+    
+    local attachment = Instance.new("Attachment", hrp)
+    local lv = Instance.new("LinearVelocity", attachment)
+    lv.MaxForce = 100000
+    lv.VectorVelocity = direction * 80 -- Speed of the leap
+    lv.Attachment0 = attachment
+    
+    task.wait(0.2) -- Leap duration
+    lv:Destroy()
+    attachment:Destroy()
+    
+    task.wait(1.3) -- Cooldown (Total 1.5s)
+    leapDebounce = false
+end
+
+RunService.Heartbeat:Connect(function()
+    if _G.AutoLeap and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+        -- Updated check: Must be HOLDING the knife
+        local holdingKnife = lp.Character:FindFirstChild("Knife")
+        if holdingKnife and not leapDebounce then
+            for _, v in pairs(Players:GetPlayers()) do
+                if v ~= lp and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+                    local dist = (lp.Character.HumanoidRootPart.Position - v.Character.HumanoidRootPart.Position).Magnitude
+                    if dist <= 10 then
+                        performLeap(v.Character.HumanoidRootPart)
+                        break
+                    end
+                end
+            end
+        end
+    end
+end)
 
 --- UPDATERS ---
 task.spawn(function()
@@ -320,7 +360,6 @@ local KeybindsTab = Window:CreateTab("Keybinds", 4483362458)
 MainTab:CreateToggle({Name = "Enable Arrow ESP", CurrentValue = false, Flag = "ESP_F", Callback = function(V) _G.ESPEnabled = V end})
 MainTab:CreateToggle({Name = "Show/Hide Timer", CurrentValue = false, Flag = "Timer_F", Callback = function(V) TimerBox.Visible = V end})
 MainTab:CreateToggle({Name = "Show/Hide Chance", CurrentValue = false, Flag = "Chance_F", Callback = function(V) ChanceBox.Visible = V end})
-
 MainTab:CreateToggle({Name = "Lock/Unlock Floating UI", CurrentValue = false, Flag = "Lock_F", Callback = function(V) _G.LockAll = V end})
 MainTab:CreateToggle({Name = "Show Gun Button", CurrentValue = false, Flag = "SGB_F", Callback = function(V) GunBtn.Visible = V end})
 MainTab:CreateToggle({Name = "Show Shoot Button", CurrentValue = false, Flag = "SSB_F", Callback = function(V) ShootBtn.Visible = V end})
@@ -331,6 +370,7 @@ AutoTab:CreateToggle({Name = "Auto Collect Coins", CurrentValue = false, Flag = 
     if not V then ResetCharacterPhysics() end 
 end})
 AutoTab:CreateToggle({Name = "Auto Grab Gun", CurrentValue = false, Flag = "AGG_F", Callback = function(V) _G.AutoGrabGun = V end})
+AutoTab:CreateToggle({Name = "Murd Auto-Leap (Hold Knife)", CurrentValue = false, Flag = "AL_F", Callback = function(V) _G.AutoLeap = V end})
 
 PlayerTab:CreateInput({Name = "WalkSpeed", PlaceholderText = "16", Flag = "WS_F", Callback = function(T)
     local s = tonumber(T)
@@ -341,17 +381,15 @@ PlayerTab:CreateInput({Name = "JumpPower", PlaceholderText = "50", Flag = "JP_F"
     if s then _G.DesiredJump = s if lp.Character and lp.Character:FindFirstChild("Humanoid") then lp.Character.Humanoid.UseJumpPower = true lp.Character.Humanoid.JumpPower = s end end
 end})
 
--- KEYBINDS CONFIGURATION (Inputs)
+-- KEYBINDS
 KeybindsTab:CreateInput({Name = "Shoot Keybind", PlaceholderText = "Q", Flag = "KB_Shoot", Callback = function(T)
     local key = string.upper(T)
     pcall(function() _G.BindShoot = Enum.KeyCode[key] end)
 end})
-
 KeybindsTab:CreateInput({Name = "Gun Keybind", PlaceholderText = "R", Flag = "KB_Gun", Callback = function(T)
     local key = string.upper(T)
     pcall(function() _G.BindGun = Enum.KeyCode[key] end)
 end})
-
 KeybindsTab:CreateInput({Name = "Throw Keybind", PlaceholderText = "T", Flag = "KB_Throw", Callback = function(T)
     local key = string.upper(T)
     pcall(function() _G.BindThrow = Enum.KeyCode[key] end)
