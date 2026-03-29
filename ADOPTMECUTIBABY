@@ -15,6 +15,11 @@ _G.DesiredSpeed = 16
 _G.DesiredJump = 50
 local leapDebounce = false
 
+-- MLBB Style Default Positions (Relative to bottom right)
+local DefaultShootPos = UDim2.new(1, -190, 1, -180) -- Top Left of Jump
+local DefaultGunPos = UDim2.new(1, -100, 1, -190)   -- Top of Jump
+local DefaultThrowPos = UDim2.new(1, -195, 1, -100)  -- Left of Jump
+
 -- Default Keybinds
 _G.BindShoot = Enum.KeyCode.Q
 _G.BindGun = Enum.KeyCode.R
@@ -86,9 +91,9 @@ local function createStatusBox(name, text, pos, size)
     return box, label
 end
 
-local ShootBtn = createBaseButton("ShootButton", "SHOOT", UDim2.new(0.5, -160, 0.5, -100), true)
-local GunBtn = createBaseButton("GunButton", "GUN", UDim2.new(0.5, -120, 0.5, 0), false)
-local ThrowBtn = createBaseButton("ThrowButton", "THROW", UDim2.new(0.5, -40, 0.5, 0), false)
+local ShootBtn = createBaseButton("ShootButton", "SHOOT", DefaultShootPos, true)
+local GunBtn = createBaseButton("GunButton", "GUN", DefaultGunPos, false)
+local ThrowBtn = createBaseButton("ThrowButton", "THROW", DefaultThrowPos, false)
 
 local TimerBox, TimerText = createStatusBox("TimerBox", "TIME: --", UDim2.new(0.5, -60, 0, 10), UDim2.new(0, 120, 0, 40))
 local ChanceBox, ChanceText = createStatusBox("ChanceBox", "Murd Chance: --", UDim2.new(0.5, -75, 0, 55), UDim2.new(0, 150, 0, 35))
@@ -104,20 +109,19 @@ local function performLeap(targetHRP)
     local attachment = Instance.new("Attachment", hrp)
     local lv = Instance.new("LinearVelocity", attachment)
     lv.MaxForce = 100000
-    lv.VectorVelocity = direction * 80 -- Speed of the leap
+    lv.VectorVelocity = direction * 80 
     lv.Attachment0 = attachment
     
-    task.wait(0.2) -- Leap duration
+    task.wait(0.2) 
     lv:Destroy()
     attachment:Destroy()
     
-    task.wait(1.3) -- Cooldown (Total 1.5s)
+    task.wait(1.3) 
     leapDebounce = false
 end
 
 RunService.Heartbeat:Connect(function()
     if _G.AutoLeap and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
-        -- Updated check: Must be HOLDING the knife
         local holdingKnife = lp.Character:FindFirstChild("Knife")
         if holdingKnife and not leapDebounce then
             for _, v in pairs(Players:GetPlayers()) do
@@ -260,20 +264,35 @@ Players.PlayerAdded:Connect(applyPlayerESP)
 --- AUTOMATION ---
 
 local function ResetCharacterPhysics()
-    if lp.Character then
-        local hum = lp.Character:FindFirstChild("Humanoid")
+    if lp.Character and lp.Character:FindFirstChild("Humanoid") then
+        local hum = lp.Character.Humanoid
+        local hrp = lp.Character:FindFirstChild("HumanoidRootPart")
         if layTrack then layTrack:Stop() end
-        if hum then
-            hum.JumpPower = _G.DesiredJump
-            hum.WalkSpeed = _G.DesiredSpeed
-            hum:SetStateEnabled(Enum.HumanoidStateType.GettingUp, true)
-            hum:ChangeState(Enum.HumanoidStateType.GettingUp)
-        end
+        
+        hum.JumpPower = _G.DesiredJump
+        hum.WalkSpeed = _G.DesiredSpeed
+        hum:SetStateEnabled(Enum.HumanoidStateType.GettingUp, true)
+        hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+        
         for _, part in pairs(lp.Character:GetDescendants()) do
             if part:IsA("BasePart") then part.CanCollide = true end
         end
+
+        if hrp then
+            hrp.CFrame = hrp.CFrame * CFrame.new(0, 6, 0)
+        end
     end
 end
+
+local function applyStats(char)
+    local hum = char:WaitForChild("Humanoid")
+    hum.WalkSpeed = _G.DesiredSpeed
+    hum.UseJumpPower = true
+    hum.JumpPower = _G.DesiredJump
+end
+
+lp.CharacterAdded:Connect(applyStats)
+if lp.Character then applyStats(lp.Character) end
 
 RunService.Stepped:Connect(function()
     if lp.Character and lp.Character:FindFirstChild("Humanoid") then
@@ -364,6 +383,11 @@ MainTab:CreateToggle({Name = "Lock/Unlock Floating UI", CurrentValue = false, Fl
 MainTab:CreateToggle({Name = "Show Gun Button", CurrentValue = false, Flag = "SGB_F", Callback = function(V) GunBtn.Visible = V end})
 MainTab:CreateToggle({Name = "Show Shoot Button", CurrentValue = false, Flag = "SSB_F", Callback = function(V) ShootBtn.Visible = V end})
 MainTab:CreateToggle({Name = "Show Throw Button", CurrentValue = false, Flag = "STB_F", Callback = function(V) ThrowBtn.Visible = V end})
+MainTab:CreateButton({Name = "Reset UI Positions", Callback = function()
+    ShootBtn.Position = DefaultShootPos
+    GunBtn.Position = DefaultGunPos
+    ThrowBtn.Position = DefaultThrowPos
+end})
 
 AutoTab:CreateToggle({Name = "Auto Collect Coins", CurrentValue = false, Flag = "AC_F", Callback = function(V) 
     _G.AutoCoins = V 
