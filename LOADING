@@ -2,7 +2,7 @@
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 
-local LOADING_TIME = 6 -- 10 minutes (600 seconds)
+local LOADING_TIME = 450 -- 10 minutes (600 seconds)
 
 -- 1. Create the UI Container (Persistent)
 local screenGui = Instance.new("ScreenGui")
