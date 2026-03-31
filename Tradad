@@ -1,0 +1,110 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "TRADE SCAM",
+   LoadingTitle = "LEOBI TRADE SCAM",
+   LoadingSubtitle = "Injecting modules",
+   ConfigurationSaving = {
+      Enabled = false
+   },
+   Discord = {
+      Enabled = false
+   },
+   KeySystem = false
+})
+
+-- Main Tab
+local Main = Window:CreateTab("Main", 4483362458) -- Tab icon
+
+local WeaponInput = ""
+local AmountInput = "1"
+
+-- Weapon Name Input
+Main:CreateInput({
+   Name = "Weapon Name",
+   PlaceholderText = "Enter Item Name...",
+   RemoveTextAfterFocusLost = false,
+   Callback = function(Text)
+      WeaponInput = Text
+   end,
+})
+
+-- Amount Input (Text Box for precision)
+Main:CreateInput({
+   Name = "Amount",
+   PlaceholderText = "Amount",
+   RemoveTextAfterFocusLost = false,
+   Callback = function(Text)
+      AmountInput = Text
+   end,
+})
+
+-- Submit Button with Loading Effect
+Main:CreateButton({
+   Name = "SUBMIT",
+   Callback = function()
+      -- Trigger Loading Screen Visual
+      local Loading = Instance.new("ScreenGui")
+      local Frame = Instance.new("Frame")
+      local Bar = Instance.new("Frame")
+      local Text = Instance.new("TextLabel")
+      local UIStroke = Instance.new("UIStroke")
+
+      Loading.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+      
+      Frame.Size = UDim2.new(0.3, 0, 0.05, 0)
+      Frame.Position = UDim2.new(0.35, 0, 0.8, 0)
+      Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+      Frame.Parent = Loading
+
+      UIStroke.Color = Color3.fromRGB(160, 32, 240) -- Purple Glow
+      UIStroke.Thickness = 2
+      UIStroke.Parent = Frame
+
+      Bar.Size = UDim2.new(0, 0, 1, 0)
+      Bar.BackgroundColor3 = Color3.fromRGB(160, 32, 240)
+      Bar.Parent = Frame
+
+      Text.Size = UDim2.new(1, 0, 1, 0)
+      Text.Position = UDim2.new(0, 0, -1.2, 0)
+      Text.BackgroundTransparency = 1
+      Text.TextColor3 = Color3.fromRGB(255, 255, 255)
+      Text.Text = "EXECUTING EXPLOIT..."
+      Text.Font = Enum.Font.GothamBold
+      Text.Parent = Frame
+
+      -- Loading Animation & Remote Execution
+      Bar:TweenSize(UDim2.new(1, 0, 1, 0), "Out", "Linear", 1)
+      
+      task.wait(1)
+      
+      local iterations = tonumber(AmountInput) or 1
+      for i = 1, iterations do
+          local args = {
+              [1] = WeaponInput,
+              [2] = "Weapons"
+          }
+          game:GetService("ReplicatedStorage").Trade.OfferItem:FireServer(unpack(args))
+      end
+
+      Text.Text = "COMPLETED"
+      task.wait(0.5)
+      Loading:Destroy()
+      
+      Rayfield:Notify({
+         Title = "Success",
+         Content = "Items Offered: " .. AmountInput,
+         Duration = 3,
+         Image = 4483362458,
+         Actions = {
+            Ignore = {
+               Name = "OK",
+               Callback = function() end
+            },
+         },
+      })
+   end,
+})
+
+-- Styling the Window with a Purple Glow
+-- Note: Rayfield handles the Close/Minimize buttons automatically in the top right.
