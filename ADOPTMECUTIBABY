@@ -5,6 +5,7 @@ local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local lp = Players.LocalPlayer
 
+
 -- Global State
 _G.LockAll = false
 _G.ESPEnabled = false
@@ -13,17 +14,21 @@ _G.AutoGrabGun = false
 _G.AutoLeap = false
 _G.DesiredSpeed = 16
 _G.DesiredJump = 50
+_G.SpeedGlitchEnabled = false
+_G.SpeedGlitchValue = 40
 local leapDebounce = false
 
 -- MLBB Style Default Positions (Relative to bottom right)
 local DefaultShootPos = UDim2.new(1, -190, 1, -180) -- Top Left of Jump
 local DefaultGunPos = UDim2.new(1, -100, 1, -190)   -- Top of Jump
 local DefaultThrowPos = UDim2.new(1, -195, 1, -100)  -- Left of Jump
+local DefaultBombPos = UDim2.new(1, -100, 0, 100) -- Semi Top Right of Screen
 
 -- Default Keybinds
 _G.BindShoot = Enum.KeyCode.Q
 _G.BindGun = Enum.KeyCode.R
 _G.BindThrow = Enum.KeyCode.T
+_G.BindBomb = Enum.KeyCode.B
 
 -- Aesthetic State (Modern Blue)
 local ExodusBlue = Color3.fromRGB(0, 162, 255)
@@ -35,20 +40,23 @@ local layTrack = nil
 
 -- UI Container
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
-ScreenGui.Name = "ExodusFloatingUI"; ScreenGui.ResetOnSpawn = false
+ScreenGui.Name = "ExodusFloatingUI"
+ScreenGui.ResetOnSpawn = false
 
 --- MODERN FLOATING UI STYLING ---
 
 local function createBaseButton(name, text, pos, isRect)
     local btn = Instance.new("TextButton", ScreenGui)
-    btn.Name = name; btn.Visible = false
+    btn.Name = name
+    btn.Visible = false
     btn.Size = isRect and UDim2.new(0, 150, 0, 50) or UDim2.new(0, 75, 0, 75)
     btn.Position = pos
     btn.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
     btn.BackgroundTransparency = 0.3 
     btn.Text = text
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Font = Enum.Font.GothamBold; btn.TextSize = isRect and 18 or 16
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = isRect and 18 or 16
     btn.TextTransparency = 0.1
     btn.TextStrokeColor3 = Color3.fromRGB(0,0,0)
     btn.TextStrokeTransparency = 0.5
@@ -76,16 +84,22 @@ end
 
 local function createStatusBox(name, text, pos, size)
     local box = Instance.new("Frame", ScreenGui)
-    box.Name = name; box.Visible = false
+    box.Name = name
+    box.Visible = false
     box.Size = size; box.Position = pos
-    box.BackgroundColor3 = Color3.fromRGB(10, 10, 10); box.BackgroundTransparency = 0.3
+    box.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+    box.BackgroundTransparency = 0.3
     
-    local corner = Instance.new("UICorner", box); corner.CornerRadius = UDim.new(0, 10)
-    local stroke = Instance.new("UIStroke", box); stroke.Thickness = 3; stroke.Color = ExodusBlue; stroke.Transparency = 0.2
+    local corner = Instance.new("UICorner", box)
+    corner.CornerRadius = UDim.new(0, 10)
+    local stroke = Instance.new("UIStroke", box); stroke.Thickness = 3; stroke.Color = ExodusBlue
+    stroke.Transparency = 0.2
 
     local label = Instance.new("TextLabel", box)
-    label.Size = UDim2.new(1, 0, 1, 0); label.BackgroundTransparency = 1
-    label.Text = text; label.TextColor3 = Color3.new(1,1,1); label.Font = "GothamBold"; label.TextSize = 16
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = text; label.TextColor3 = Color3.new(1,1,1); label.Font = "GothamBold"
+    label.TextSize = 16
     label.TextStrokeTransparency = 0.5
 
     return box, label
@@ -94,6 +108,7 @@ end
 local ShootBtn = createBaseButton("ShootButton", "SHOOT", DefaultShootPos, true)
 local GunBtn = createBaseButton("GunButton", "GUN", DefaultGunPos, false)
 local ThrowBtn = createBaseButton("ThrowButton", "THROW", DefaultThrowPos, false)
+local BombBtn = createBaseButton("BombButton", "💣", DefaultBombPos, false)
 
 local TimerBox, TimerText = createStatusBox("TimerBox", "TIME: --", UDim2.new(0.5, -60, 0, 10), UDim2.new(0, 120, 0, 40))
 local ChanceBox, ChanceText = createStatusBox("ChanceBox", "Murd Chance: --", UDim2.new(0.5, -75, 0, 55), UDim2.new(0, 150, 0, 35))
@@ -135,6 +150,29 @@ RunService.Heartbeat:Connect(function()
             end
         end
     end
+end)
+
+--- PERSISTENT PLAYER STATS & SPEED GLITCH ---
+RunService.Heartbeat:Connect(function()
+    pcall(function()
+        if lp.Character and lp.Character:FindFirstChild("Humanoid") and lp.Character:FindFirstChild("HumanoidRootPart") then
+            local char = lp.Character
+            local hum = char.Humanoid
+            local hrp = char.HumanoidRootPart
+   
+            hum.WalkSpeed = _G.DesiredSpeed
+            hum.JumpPower = _G.DesiredJump
+            
+            if _G.SpeedGlitchEnabled and hum.FloorMaterial == Enum.Material.Air then
+                local moveDir = hum.MoveDirection
+                if moveDir.Magnitude > 0 then
+                    local newVel = Vector3.new(moveDir.X * _G.SpeedGlitchValue, hrp.Velocity.Y, moveDir.Z * _G.SpeedGlitchValue)
+                    hrp.Velocity = newVel
+                    hrp.AssemblyLinearVelocity = newVel
+                end
+            end
+        end
+    end)
 end)
 
 --- UPDATERS ---
@@ -210,6 +248,44 @@ local function grabGunAction()
     end
 end
 
+local function deployBomb()
+    local character = lp.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+    
+    local hrp = character.HumanoidRootPart
+    local hum = character:FindFirstChild("Humanoid")
+    
+    local toy = lp.Backpack:FindFirstChild("FakeBomb") or character:FindFirstChild("FakeBomb")
+    if not toy then
+        local reqArgs = {[1] = "FakeBomb"}
+        game:GetService("ReplicatedStorage").Remotes.Extras.ReplicateToy:InvokeServer(unpack(reqArgs))
+        task.wait(0.1)
+        toy = lp.Backpack:FindFirstChild("FakeBomb")
+    end
+
+    if toy then
+        if toy.Parent == lp.Backpack then
+            hum:EquipTool(toy)
+        end
+        
+        local bombArgs = {
+            [1] = hrp.CFrame * CFrame.new(0, -3.5, 0),
+            [2] = 50
+        }
+        
+        local remote = toy:FindFirstChild("Remote") or (character:FindFirstChild("FakeBomb") and character.FakeBomb:FindFirstChild("Remote"))
+        if remote then
+            remote:FireServer(unpack(bombArgs))
+        end
+        
+        task.delay(1, function()
+            if hum then
+                hum.Jump = true
+            end
+        end)
+    end
+end
+
 --- PC KEYBIND LISTENER ---
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
@@ -228,13 +304,18 @@ local function applyPlayerESP(p)
     local function setup(char)
         if not char then return end
         local highlight = char:FindFirstChild("ExodusHighlight") or Instance.new("Highlight", char)
-        highlight.Name = "ExodusHighlight"; highlight.FillTransparency = 0.5
+        highlight.Name = "ExodusHighlight"
+        highlight.FillTransparency = 0.5
         local head = char:WaitForChild("Head", 10)
         local bill = head:FindFirstChild("ExodusBill") or Instance.new("BillboardGui", head)
-        bill.Name = "ExodusBill"; bill.Size = UDim2.new(0, 100, 0, 50); bill.AlwaysOnTop = true; bill.ExtentsOffset = Vector3.new(0, 3, 0)
+        bill.Name = "ExodusBill"
+        bill.Size = UDim2.new(0, 100, 0, 50); bill.AlwaysOnTop = true; bill.ExtentsOffset = Vector3.new(0, 3, 0)
         local label = bill:FindFirstChild("ExodusLabel") or Instance.new("TextLabel", bill)
-        label.Name = "ExodusLabel"; label.Size = UDim2.new(1, 0, 1, 0); label.BackgroundTransparency = 1; label.Font = "GothamBold"; label.TextSize = 14
-        label.TextStrokeTransparency = 0; label.TextStrokeColor3 = Color3.new(0, 0, 0)
+        label.Name = "ExodusLabel"
+        label.Size = UDim2.new(1, 0, 1, 0); label.BackgroundTransparency = 1; label.Font = "GothamBold"
+        label.TextSize = 14
+        label.TextStrokeTransparency = 0
+        label.TextStrokeColor3 = Color3.new(0, 0, 0)
 
         task.spawn(function()
             while char and char.Parent do
@@ -256,7 +337,8 @@ local function applyPlayerESP(p)
             end
         end)
     end
-    p.CharacterAdded:Connect(setup); if p.Character then setup(p.Character) end
+    p.CharacterAdded:Connect(setup)
+    if p.Character then setup(p.Character) end
 end
 for _, v in pairs(Players:GetPlayers()) do applyPlayerESP(v) end
 Players.PlayerAdded:Connect(applyPlayerESP)
@@ -310,9 +392,14 @@ task.spawn(function()
     while true do
         local drop = workspace:FindFirstChild("GunDrop", true)
         if drop and not drop:FindFirstChild("ExodusGunESP") then
-            local bill = Instance.new("BillboardGui", drop); bill.Name = "ExodusGunESP"; bill.Size = UDim2.new(0, 120, 0, 60); bill.AlwaysOnTop = true; bill.ExtentsOffset = Vector3.new(0, 2, 0)
-            local label = Instance.new("TextLabel", bill); label.Size = UDim2.new(1, 0, 1, 0); label.BackgroundTransparency = 1; label.Font = "GothamBold"; label.TextSize = 16
-            label.Text = "GUN HERE\n▼"; label.TextColor3 = Color3.fromRGB(0, 255, 0); label.TextStrokeTransparency = 0; label.TextStrokeColor3 = Color3.new(0, 0, 0)
+            local bill = Instance.new("BillboardGui", drop)
+            bill.Name = "ExodusGunESP"; bill.Size = UDim2.new(0, 120, 0, 60); bill.AlwaysOnTop = true
+            bill.ExtentsOffset = Vector3.new(0, 2, 0)
+            local label = Instance.new("TextLabel", bill)
+            label.Size = UDim2.new(1, 0, 1, 0); label.BackgroundTransparency = 1; label.Font = "GothamBold"
+            label.TextSize = 16
+            label.Text = "GUN HERE\n▼"
+            label.TextColor3 = Color3.fromRGB(0, 255, 0); label.TextStrokeTransparency = 0; label.TextStrokeColor3 = Color3.new(0, 0, 0)
         end
         if _G.AutoGrabGun and drop and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
             firetouchinterest(lp.Character.HumanoidRootPart, drop, 0)
@@ -325,6 +412,7 @@ end)
 -- FULLY COMBINED AUTO COIN HANDLER
 task.spawn(function()
     local currentTween = nil
+    
     while true do
         task.wait(0.1)
         if _G.AutoCoins and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
@@ -343,22 +431,27 @@ task.spawn(function()
                 for _, c in pairs(coins:GetChildren()) do
                     if c:IsA("BasePart") and c:FindFirstChild("TouchInterest") then
                         local d = (hrp.Position - c.Position).Magnitude
-                        if d < sDist then sDist = d; target = c end
+                    
+                        if d < sDist then sDist = d
+                            target = c end
                     end
                 end
                 
                 if target and target.Parent then
                     firetouchinterest(hrp, target, 0)
+   
                     local subPos = target.Position - Vector3.new(0, 4.3, 0)
                     if currentTween then currentTween:Cancel() end
                     currentTween = TweenService:Create(hrp, TweenInfo.new(sDist / 22, Enum.EasingStyle.Linear), {CFrame = CFrame.new(subPos)})
                     currentTween:Play()
+   
                     repeat task.wait() until not target or not target.Parent or not _G.AutoCoins or (hrp.Position - subPos).Magnitude < 1.5
                     if target and target.Parent then firetouchinterest(hrp, target, 1) end
                 end
             end
         else
-            if currentTween then currentTween:Cancel(); currentTween = nil end
+            if currentTween then currentTween:Cancel()
+                currentTween = nil end
             if layTrack then layTrack:Stop() end
         end
     end
@@ -382,6 +475,7 @@ MainTab:CreateToggle({Name = "Show/Hide Chance", CurrentValue = false, Flag = "C
 MainTab:CreateToggle({Name = "Lock/Unlock Floating UI", CurrentValue = false, Flag = "Lock_F", Callback = function(V) _G.LockAll = V end})
 MainTab:CreateToggle({Name = "Show Gun Button", CurrentValue = false, Flag = "SGB_F", Callback = function(V) GunBtn.Visible = V end})
 MainTab:CreateToggle({Name = "Show Shoot Button", CurrentValue = false, Flag = "SSB_F", Callback = function(V) ShootBtn.Visible = V end})
+MainTab:CreateToggle({Name = "Show Prank Button", CurrentValue = false, Callback = function(V) BombBtn.Visible = V end})
 MainTab:CreateToggle({Name = "Show Throw Button", CurrentValue = false, Flag = "STB_F", Callback = function(V) ThrowBtn.Visible = V end})
 MainTab:CreateButton({Name = "Reset UI Positions", Callback = function()
     ShootBtn.Position = DefaultShootPos
@@ -390,8 +484,8 @@ MainTab:CreateButton({Name = "Reset UI Positions", Callback = function()
 end})
 
 AutoTab:CreateToggle({Name = "Auto Collect Coins", CurrentValue = false, Flag = "AC_F", Callback = function(V) 
-    _G.AutoCoins = V 
-    if not V then ResetCharacterPhysics() end 
+    _G.AutoCoins = V
+    if not V then ResetCharacterPhysics() end
 end})
 AutoTab:CreateToggle({Name = "Auto Grab Gun", CurrentValue = false, Flag = "AGG_F", Callback = function(V) _G.AutoGrabGun = V end})
 AutoTab:CreateToggle({Name = "Murd Auto-Leap (Hold Knife)", CurrentValue = false, Flag = "AL_F", Callback = function(V) _G.AutoLeap = V end})
@@ -404,6 +498,9 @@ PlayerTab:CreateInput({Name = "JumpPower", PlaceholderText = "50", Flag = "JP_F"
     local s = tonumber(T)
     if s then _G.DesiredJump = s if lp.Character and lp.Character:FindFirstChild("Humanoid") then lp.Character.Humanoid.UseJumpPower = true lp.Character.Humanoid.JumpPower = s end end
 end})
+PlayerTab:CreateToggle({Name = "Speed Glitch (Air Only)", CurrentValue = false, Callback = function(V) _G.SpeedGlitchEnabled = V end})
+PlayerTab:CreateInput({Name = "Glitch Speed", PlaceholderText = "40", Callback = function(T) _G.SpeedGlitchValue = tonumber(T) or 50 end})
+
 
 -- KEYBINDS
 KeybindsTab:CreateInput({Name = "Shoot Keybind", PlaceholderText = "Q", Flag = "KB_Shoot", Callback = function(T)
@@ -418,6 +515,11 @@ KeybindsTab:CreateInput({Name = "Throw Keybind", PlaceholderText = "T", Flag = "
     local key = string.upper(T)
     pcall(function() _G.BindThrow = Enum.KeyCode[key] end)
 end})
+KeybindsTab:CreateInput({Name = "Bomb Keybind", PlaceholderText = "B", Flag = "KB_Bomb", Callback = function(T)
+    local key = string.upper(T)
+    pcall(function() _G.BindBomb = Enum.KeyCode[key] end)
+end})
+
 
 -- Draggable Logic
 local function makeDraggable(btn, action)
@@ -437,6 +539,7 @@ local function makeDraggable(btn, action)
     UserInputService.InputEnded:Connect(function() dragging = false end)
 end
 
-makeDraggable(ShootBtn, fireGun); makeDraggable(ThrowBtn, throwAction); makeDraggable(GunBtn, grabGunAction)
+makeDraggable(ShootBtn, fireGun)
+makeDraggable(ThrowBtn, throwAction); makeDraggable(GunBtn, grabGunAction); makeDraggable(BombBtn, deployBomb)
 
-Rayfield:LoadConfiguration()
+Rayfeild:LoadConfiguration()
