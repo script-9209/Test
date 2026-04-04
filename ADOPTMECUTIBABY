@@ -286,6 +286,108 @@ local function deployBomb()
     end
 end
 
+
+-- Anti-Fling Variables
+local antiFlingLastPos = Vector3.zero
+local flingNeutralizerCon
+local flingDetectionCon
+local detectedPlayers = {}
+
+local function toggleAntiFling(state)
+    if state then
+        Rayfield:Notify({Title = "Anti-Fling", Content = "Protection Activated", Duration = 2})
+        
+        -- Detection Loop: Neutralizes others
+        flingDetectionCon = RunService.Heartbeat:Connect(function()
+            for _, pl in ipairs(Players:GetPlayers()) do
+                if pl ~= lp and pl.Character and pl.Character.PrimaryPart then
+                    local primary = pl.Character.PrimaryPart
+                    if primary.AssemblyAngularVelocity.Magnitude > 50 or primary.AssemblyLinearVelocity.Magnitude > 100 then
+                        for _, p in ipairs(pl.Character:GetDescendants()) do
+                            if p:IsA("BasePart") then p.CanCollide = false end
+                        end
+                    end
+                end
+            end
+        end)
+
+        -- Neutralizer Loop: Saves you
+        flingNeutralizerCon = RunService.Heartbeat:Connect(function()
+            if lp.Character and lp.Character.PrimaryPart then
+                local hrp = lp.Character.PrimaryPart
+                if hrp.AssemblyLinearVelocity.Magnitude > 250 or hrp.AssemblyAngularVelocity.Magnitude > 250 then
+                    hrp.AssemblyLinearVelocity = Vector3.zero
+                    hrp.AssemblyAngularVelocity = Vector3.zero
+                    if antiFlingLastPos ~= Vector3.zero then hrp.CFrame = CFrame.new(antiFlingLastPos) end
+                else
+                    antiFlingLastPos = hrp.Position
+                end
+            end
+        end)
+    else
+        -- Clean up connections
+        if flingDetectionCon then flingDetectionCon:Disconnect() end
+        if flingNeutralizerCon then flingNeutralizerCon:Disconnect() end
+        detectedPlayers = {}
+        Rayfield:Notify({Title = "Anti-Fling", Content = "Protection Deactivated", Duration = 2})
+    end
+end
+
+-- Helper to find players by role
+local function getSheriff()
+    for _, v in pairs(Players:GetPlayers()) do
+        if v.Character and (v.Character:FindFirstChild("Gun") or v.Backpack:FindFirstChild("Gun")) then return v end
+    end
+    return nil
+end
+
+local function getMurderer()
+    for _, v in pairs(Players:GetPlayers()) do
+        -- Check if any other player has a knife in their hand or backpack
+        if v ~= lp and v.Character and (v.Character:FindFirstChild("Knife") or v.Backpack:FindFirstChild("Knife")) then 
+            return v 
+        end
+    end
+    return nil
+end
+
+-- Main Fling Logic (SkidFling)
+local function executeFling(target)
+    if not target or not target.Character then 
+        Rayfield:Notify({Title = "Exodus Error", Content = "Target not found.", Duration = 2})
+        return 
+    end
+    
+    local char = lp.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local tRoot = target.Character:FindFirstChild("HumanoidRootPart")
+
+    if hrp and tRoot then
+        local oldPos = hrp.CFrame
+        workspace.FallenPartsDestroyHeight = 0/0
+        
+        local bv = Instance.new("BodyVelocity", hrp)
+        bv.Velocity = Vector3.new(9e8, 9e8, 9e8)
+        bv.MaxForce = Vector3.new(1/0, 1/0, 1/0)
+        
+        lp.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+        workspace.CurrentCamera.CameraSubject = tRoot
+
+        local timeLimit = tick() + 1.5 -- Short burst for reliability
+        repeat
+            hrp.CFrame = tRoot.CFrame * CFrame.Angles(math.rad(math.random(1,360)), 0, 0)
+            hrp.Velocity = Vector3.new(9e7, 9e7, 9e7)
+            task.wait()
+        until not target.Character or tick() > timeLimit
+
+        bv:Destroy()
+        lp.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+        workspace.CurrentCamera.CameraSubject = lp.Character.Humanoid
+        hrp.CFrame = oldPos
+        hrp.Velocity = Vector3.zero
+    end
+end
+
 --- PC KEYBIND LISTENER ---
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
