@@ -425,46 +425,75 @@ end)
 
 --- FULL ESP SYSTEM ---
 local function applyPlayerESP(p)
-    if p == lp then return end
+    if p == lp then return end -- Don't ESP yourself
+
     local function setup(char)
-        if not char then return end
-        local highlight = char:FindFirstChild("ExodusHighlight") or Instance.new("Highlight", char)
-        highlight.Name = "ExodusHighlight"
-        highlight.FillTransparency = 0.5
-        local head = char:WaitForChild("Head", 10)
-        local bill = head:FindFirstChild("ExodusBill") or Instance.new("BillboardGui", head)
+        local root = char:WaitForChild("HumanoidRootPart", 5)
+        if not root then return end
+
+        -- Create/Get Billboard and Highlight
+        local bill = char:FindFirstChild("ExodusBill") or Instance.new("BillboardGui", char)
         bill.Name = "ExodusBill"
-        bill.Size = UDim2.new(0, 100, 0, 50); bill.AlwaysOnTop = true; bill.ExtentsOffset = Vector3.new(0, 3, 0)
-        local label = bill:FindFirstChild("ExodusLabel") or Instance.new("TextLabel", bill)
-        label.Name = "ExodusLabel"
-        label.Size = UDim2.new(1, 0, 1, 0); label.BackgroundTransparency = 1; label.Font = "GothamBold"
-        label.TextSize = 14
-        label.TextStrokeTransparency = 0
-        label.TextStrokeColor3 = Color3.new(0, 0, 0)
+        bill.AlwaysOnTop = true
+        bill.Size = UDim2.new(0, 100, 0, 50)
+        bill.StudsOffset = Vector3.new(0, 3, 0)
+        
+        local label = bill:FindFirstChild("Label") or Instance.new("TextLabel", bill)
+        label.Name = "Label"
+        label.BackgroundTransparency = 1
+        label.Size = UDim2.new(1, 0, 1, 0)
+        label.Font = Enum.Font.GothamBold
+        label.TextSize = 12
+
+        local highlight = char:FindFirstChild("ExodusHigh") or Instance.new("Highlight", char)
+        highlight.Name = "ExodusHigh"
+        highlight.OutlineTransparency = 0.5
 
         task.spawn(function()
             while char and char.Parent do
                 if _G.ESPEnabled then
-                    local isM = p.Backpack:FindFirstChild("Knife") or char:FindFirstChild("Knife")
-                    local isS = p.Backpack:FindFirstChild("Gun") or char:FindFirstChild("Gun")
-                    highlight.Enabled = true; bill.Enabled = true
+                    highlight.Enabled = true
+                    bill.Enabled = true
+
+                    -- COMBINED LOGIC: Tools + PlayerData
+                    local isM = char:FindFirstChild("Knife") or p.Backpack:FindFirstChild("Knife")
+                    local isS = char:FindFirstChild("Gun") or p.Backpack:FindFirstChild("Gun")
+
+                    -- Fallback to RoleData (for pre-10s detection)
+                    if not isM and not isS and playerData and playerData[p.Name] then
+                        local role = playerData[p.Name].Role
+                        if role == "Murderer" then isM = true 
+                        elseif role == "Sheriff" or role == "Hero" then isS = true end
+                    end
+
+                    -- STYLING
                     if isM then
-                        highlight.FillColor = Color3.new(1, 0, 0); label.Text = "MURDERER\n▼"; label.TextColor3 = Color3.new(1, 0, 0)
+                        highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                        label.Text = "MURDERER\n▼"
+                        label.TextColor3 = Color3.fromRGB(255, 0, 0)
                     elseif isS then
-                        highlight.FillColor = Color3.new(0, 0, 1); label.Text = "SHERIFF\n▼"; label.TextColor3 = Color3.new(0, 0, 1)
+                        highlight.FillColor = Color3.fromRGB(0, 150, 255)
+                        label.Text = "SHERIFF\n▼"
+                        label.TextColor3 = Color3.fromRGB(0, 150, 255)
                     else
-                        highlight.FillColor = Color3.new(0, 1, 0); label.Text = "▼"; label.TextColor3 = Color3.new(0, 1, 0)
+                        highlight.FillColor = Color3.fromRGB(0, 255, 0)
+                        label.Text = "▼"
+                        label.TextColor3 = Color3.fromRGB(0, 255, 0)
                     end
                 else
-                    highlight.Enabled = false; bill.Enabled = false
+                    highlight.Enabled = false
+                    bill.Enabled = false
                 end
-                task.wait(0.5)
+                task.wait(0.5) -- Professional balance of speed and FPS
             end
         end)
     end
+
     p.CharacterAdded:Connect(setup)
     if p.Character then setup(p.Character) end
 end
+
+-- Initialization
 for _, v in pairs(Players:GetPlayers()) do applyPlayerESP(v) end
 Players.PlayerAdded:Connect(applyPlayerESP)
 
