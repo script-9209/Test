@@ -625,7 +625,20 @@ local MiscTab = Window:CreateTab("Misc", 4483362458)
 local KeybindsTab = Window:CreateTab("Keybinds", 4483362458)
 
 MainTab:CreateSection("Role Esp")
-MainTab:CreateToggle({Name = "Enable Arrow ESP", CurrentValue = false, Flag = "ESP_F", Callback = function(V) _G.ESPEnabled = V end})
+MainTab:CreateToggle({
+    Name = "Player ESP",
+    CurrentValue = false,
+    Flag = "ESP_Master_Toggle", --
+    Callback = function(Value)
+        _G.ESPEnabled = Value -- This tells the background loop to start/stop
+        
+        -- Optional: Force a cleanup if turned off
+        if not Value then
+            Rayfield:Notify({Title = "Exodus Visuals", Content = "ESP Disabled", Duration = 2})
+        end
+    end,
+})
+
 MainTab:CreateSection("Timer/Murd Chance")
 MainTab:CreateToggle({Name = "Show/Hide Timer", CurrentValue = false, Flag = "Timer_F", Callback = function(V) TimerBox.Visible = V end})
 MainTab:CreateToggle({Name = "Show/Hide Chance", CurrentValue = false, Flag = "Chance_F", Callback = function(V) ChanceBox.Visible = V end})
