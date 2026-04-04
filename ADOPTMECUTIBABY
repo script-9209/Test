@@ -657,16 +657,6 @@ MiscTab:CreateButton({
     end,
 })
 
-MiscTab:CreateInput({
-    Name = "Fling [Username]",
-    PlaceholderText = "Enter Name",
-    Callback = function(Text)
-        local target = getPlayerByName(Text)
-        if target then executeFling(target) end
-    end,
-})
-
-
 -- Draggable Logic
 local function makeDraggable(btn, action)
     local dragging, dragStart, startPos
