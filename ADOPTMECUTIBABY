@@ -569,6 +569,7 @@ local Window = Rayfield:CreateWindow({
 local MainTab = Window:CreateTab("Main", 4483362458)
 local AutoTab = Window:CreateTab("Auto", 4483362458)
 local PlayerTab = Window:CreateTab("Player", 4483362458)
+local MiscTab = Window:CreateTab("Misc", 4483362458)
 local KeybindsTab = Window:CreateTab("Keybinds", 4483362458)
 
 MainTab:CreateSection("Role ESP")
@@ -625,6 +626,45 @@ KeybindsTab:CreateInput({Name = "Bomb Keybind", PlaceholderText = "B", Flag = "K
     local key = string.upper(T)
     pcall(function() _G.BindBomb = Enum.KeyCode[key] end)
 end})
+
+
+-- Anti-Fling Section
+MiscTab:CreateSection("Security")
+
+MiscTab:CreateToggle({
+    Name = "Anti-Fling",
+    CurrentValue = false,
+    Flag = "AntiFling_Toggle",
+    Callback = function(Value)
+        toggleAntiFling(Value) -- Calls your separated function
+    end,
+})
+
+-- Fling Section
+MiscTab:CreateSection("Fling Utilities")
+
+MiscTab:CreateButton({
+    Name = "Fling Murderer",
+    Callback = function()
+        executeFling(getMurderer()) -- Uses existing murderer helper
+    end,
+})
+
+MiscTab:CreateButton({
+    Name = "Fling Sheriff",
+    Callback = function()
+        executeFling(getSheriff()) -- Uses new sheriff helper
+    end,
+})
+
+MiscTab:CreateInput({
+    Name = "Fling [Username]",
+    PlaceholderText = "Enter Name",
+    Callback = function(Text)
+        local target = getPlayerByName(Text)
+        if target then executeFling(target) end
+    end,
+})
 
 
 -- Draggable Logic
