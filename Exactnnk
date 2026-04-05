@@ -332,125 +332,123 @@ local function toggleAntiFling(state)
     end
 end
 
--- Helper to find players by role
-local function getSheriff()
-    for _, v in pairs(Players:GetPlayers()) do
-        if v.Character and (v.Character:FindFirstChild("Gun") or v.Backpack:FindFirstChild("Gun")) then return v end
+-- Your Working Role Finders
+local function findMurderer()
+    for _, i in ipairs(game.Players:GetPlayers()) do
+        if i.Backpack:FindFirstChild("Knife") or (i.Character and i.Character:FindFirstChild("Knife")) then
+            return i
+        end
     end
-    return nil
-end
-
-local function getMurderer()
-    for _, v in pairs(Players:GetPlayers()) do
-        -- Check if any other player has a knife in their hand or backpack
-        if v ~= lp and v.Character and (v.Character:FindFirstChild("Knife") or v.Backpack:FindFirstChild("Knife")) then 
-            return v 
+    if playerData then
+        for player, data in pairs(playerData) do
+            if data.Role == "Murderer" then
+                return game.Players:FindFirstChild(player)
+            end
         end
     end
     return nil
 end
 
--- Main Fling Logic (SkidFling)
-local function executeFling(target)
-    if not target or not target.Character then 
-        Rayfield:Notify({Title = "Exodus Error", Content = "Target not found.", Duration = 2})
-        return 
+local function findSheriff()
+    for _, i in ipairs(game.Players:GetPlayers()) do
+        if i.Backpack:FindFirstChild("Gun") or (i.Character and i.Character:FindFirstChild("Gun")) then
+            return i
+        end
     end
-    
-    local char = lp.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    local tRoot = target.Character:FindFirstChild("HumanoidRootPart")
-
-    if hrp and tRoot then
-        local oldPos = hrp.CFrame
-        workspace.FallenPartsDestroyHeight = 0/0
-        
-        local bv = Instance.new("BodyVelocity", hrp)
-        bv.Velocity = Vector3.new(9e8, 9e8, 9e8)
-        bv.MaxForce = Vector3.new(1/0, 1/0, 1/0)
-        
-        lp.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
-        workspace.CurrentCamera.CameraSubject = tRoot
-
-        local timeLimit = tick() + 1.5 -- Short burst for reliability
-        repeat
-            hrp.CFrame = tRoot.CFrame * CFrame.Angles(math.rad(math.random(1,360)), 0, 0)
-            hrp.Velocity = Vector3.new(9e7, 9e7, 9e7)
-            task.wait()
-        until not target.Character or tick() > timeLimit
-
-        bv:Destroy()
-        lp.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
-        workspace.CurrentCamera.CameraSubject = lp.Character.Humanoid
-        hrp.CFrame = oldPos
-        hrp.Velocity = Vector3.zero
+    if playerData then
+        for player, data in pairs(playerData) do
+            if data.Role == "Sheriff" or data.Role == "Hero" then
+                return game.Players:FindFirstChild(player)
+            end
+        end
     end
+    return nil
 end
 
---- PC KEYBIND LISTENER ---
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == _G.BindShoot then
-        fireGun()
-    elseif input.KeyCode == _G.BindThrow then
-        throwAction()
-    elseif input.KeyCode == _G.BindGun then
-        grabGunAction()
-    end
-end)
+-- Your Exact Fling Method
+local function executeFling(target)
+    if not target or not target.Character then return end
+    if AntiFlingToggle then AntiFlingToggle:Set(false) end 
+    
+    local hrp = game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    local tRoot = target.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp or not tRoot then return end
 
---- FULL ESP SYSTEM ---
+    local oldPos = hrp.CFrame
+    local timeLimit = tick() + 1.5
+    
+    repeat
+        hrp.CFrame = tRoot.CFrame * CFrame.Angles(math.rad(math.random(1, 360)), 0, 0)
+        hrp.Velocity = Vector3.new(9e7, 9e7, 9e7) 
+        task.wait()
+    until tick() > timeLimit or not target.Character:FindFirstChild("HumanoidRootPart")
+    
+    hrp.Velocity = Vector3.zero
+    hrp.CFrame = oldPos
+    task.wait(3) 
+    if AntiFlingToggle then AntiFlingToggle:Set(true) end 
+end
+
 local function applyPlayerESP(p)
-    if p == lp then return end
+    if p == game.Players.LocalPlayer then return end
+
     local function setup(char)
-        if not char then return end
-        local highlight = char:FindFirstChild("ExodusHighlight") or Instance.new("Highlight", char)
-        highlight.Name = "ExodusHighlight"
-        highlight.FillTransparency = 0.5
-        local head = char:WaitForChild("Head", 10)
-        local bill = head:FindFirstChild("ExodusBill") or Instance.new("BillboardGui", head)
+        local bill = char:FindFirstChild("ExodusBill") or Instance.new("BillboardGui", char)
         bill.Name = "ExodusBill"
-        bill.Size = UDim2.new(0, 100, 0, 50); bill.AlwaysOnTop = true; bill.ExtentsOffset = Vector3.new(0, 3, 0)
-        local label = bill:FindFirstChild("ExodusLabel") or Instance.new("TextLabel", bill)
-        label.Name = "ExodusLabel"
-        label.Size = UDim2.new(1, 0, 1, 0); label.BackgroundTransparency = 1; label.Font = "GothamBold"
-        label.TextSize = 14
-        label.TextStrokeTransparency = 0
-        label.TextStrokeColor3 = Color3.new(0, 0, 0)
+        bill.AlwaysOnTop = true
+        bill.Size = UDim2.new(0, 100, 0, 50)
+        bill.StudsOffset = Vector3.new(0, 3, 0)
+        
+        local label = bill:FindFirstChild("Label") or Instance.new("TextLabel", bill)
+        label.Name = "Label"
+        label.BackgroundTransparency = 1
+        label.Size = UDim2.new(1, 0, 1, 0)
+        label.Font = Enum.Font.GothamBold
+        label.TextSize = 12
+
+        local highlight = char:FindFirstChild("ExodusHigh") or Instance.new("Highlight", char)
+        highlight.Name = "ExodusHigh"
 
         task.spawn(function()
             while char and char.Parent do
                 if _G.ESPEnabled then
-                    -- COMBINED LOGIC: Tools + PlayerData
-                    local isM = char:FindFirstChild("Knife") or p.Backpack:FindFirstChild("Knife")
-                    local isS = char:FindFirstChild("Gun") or p.Backpack:FindFirstChild("Gun")
+                    highlight.Enabled = true
+                    bill.Enabled = true
 
-                    -- Fallback to RoleData (for pre-10s detection)
-                    if not isM and not isS and playerData and playerData[p.Name] then
-                        local role = playerData[p.Name].Role
-                        if role == "Murderer" then isM = true 
-                        elseif role == "Sheriff" or role == "Hero" then isS = true end
-                    end
-                    highlight.Enabled = true; bill.Enabled = true
-                    if isM then
-                        highlight.FillColor = Color3.new(1, 0, 0); label.Text = "MURDERER\n▼"; label.TextColor3 = Color3.new(1, 0, 0)
-                    elseif isS then
-                        highlight.FillColor = Color3.new(0, 0, 1); label.Text = "SHERIFF\n▼"; label.TextColor3 = Color3.new(0, 0, 1)
+                    -- CALLING FUNCTIONS AT TOP OF LOOP
+                    local currentM = findMurderer()
+                    local currentS = findSheriff()
+
+                    if p == currentM then
+                        highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                        label.Text = "MURDERER\n▼"
+                        label.TextColor3 = Color3.fromRGB(255, 0, 0)
+                    elseif p == currentS then
+                        highlight.FillColor = Color3.fromRGB(0, 150, 255)
+                        label.Text = "SHERIFF\n▼"
+                        label.TextColor3 = Color3.fromRGB(0, 150, 255)
                     else
-                        highlight.FillColor = Color3.new(0, 1, 0); label.Text = "▼"; label.TextColor3 = Color3.new(0, 1, 0)
+                        highlight.FillColor = Color3.fromRGB(0, 255, 0)
+                        label.Text = "▼"
+                        label.TextColor3 = Color3.fromRGB(0, 255, 0)
                     end
                 else
-                    highlight.Enabled = false; bill.Enabled = false
+                    highlight.Enabled = false
+                    bill.Enabled = false
                 end
                 task.wait(0.5)
             end
         end)
     end
+
     p.CharacterAdded:Connect(setup)
     if p.Character then setup(p.Character) end
 end
-for _, v in pairs(Players:GetPlayers()) do applyPlayerESP(v) end
-Players.PlayerAdded:Connect(applyPlayerESP)
+
+-- Initialize ESP
+for _, v in pairs(game.Players:GetPlayers()) do applyPlayerESP(v) end
+game.Players.PlayerAdded:Connect(applyPlayerESP)
+
 
 --- AUTOMATION ---
 
