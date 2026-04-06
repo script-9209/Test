@@ -388,6 +388,29 @@ local function executeFling(target)
     end
 end
 
+local function holdHostage()
+    -- Check if you are the murderer using your existing helper
+    if getMurderer() ~= lp then 
+        Rayfield:Notify({Title = "Exodus", Content = "You aren't the Murderer!", Duration = 3}) 
+        return 
+    end
+
+    local myHRP = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+    if not myHRP then return end
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= lp and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local targetHRP = player.Character.HumanoidRootPart
+            
+            -- Anchor and TP 5 studs in front of your face
+            targetHRP.Anchored = true
+            targetHRP.CFrame = myHRP.CFrame + (myHRP.CFrame.LookVector * 4)
+        end	
+    end
+
+    Rayfield:Notify({Title = "Hostage", Content = "Everyone frozen at your position.", Duration = 3})
+end
+
 --- PC KEYBIND LISTENER ---
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
@@ -589,6 +612,8 @@ MainTab:CreateButton({Name = "Reset UI Positions", Callback = function()
     GunBtn.Position = DefaultGunPos
     ThrowBtn.Position = DefaultThrowPos
 end})
+MainTab:CreateSection("Instant Win")
+
 
 AutoTab:CreateToggle({Name = "Auto Collect Coins", CurrentValue = false, Flag = "AC_F", Callback = function(V) 
     _G.AutoCoins = V
