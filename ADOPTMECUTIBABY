@@ -613,6 +613,29 @@ MainTab:CreateButton({Name = "Reset UI Positions", Callback = function()
     ThrowBtn.Position = DefaultThrowPos
 end})
 MainTab:CreateSection("Instant Win")
+MiscTab:CreateToggle({
+    Name = "Hold Everyone Hostage",
+    CurrentValue = false,
+    Flag = "HostageToggle",
+    Callback = function(Value)
+        _G.Holding = Value
+        if Value then
+            task.spawn(function()
+                while _G.Holding do
+                    holdHostage() -- Calls your existing function
+                    task.wait(0.1)
+                end
+                -- Release everyone when toggled OFF
+                for _, p in ipairs(game.Players:GetPlayers()) do
+                    if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                        p.Character.HumanoidRootPart.Anchored = false
+                    end
+                end
+            end)
+        end
+    end,
+})
+
 
 
 AutoTab:CreateToggle({Name = "Auto Collect Coins", CurrentValue = false, Flag = "AC_F", Callback = function(V) 
