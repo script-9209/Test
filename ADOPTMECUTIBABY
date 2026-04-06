@@ -7,8 +7,8 @@ local lp = Players.LocalPlayer
 
 
 -- Global State
-_G.LockAll = false
-_G.ESPEnabled = false
+_G.LockAll = true
+_G.ESPEnabled = true
 _G.AutoCoins = false
 _G.AutoGrabGun = false
 _G.AutoLeap = false
