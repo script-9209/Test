@@ -226,7 +226,8 @@ local function throwAction()
     if knife and near and near.Character:FindFirstChild("HumanoidRootPart") then
         if knife.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(knife) end
         local targetHRP = near.Character.HumanoidRootPart
-        local origin = targetHRP.Position + Vector3.new(0, 0.30, 0.45) 
+        local myHRP = game.Players.LocalPlayer.Character.HumanoidRootPart
+        local origin = myHRP.Position
         local targetPos = targetHRP.Position
         local args = {
             [1] = CFrame.new(origin, targetPos) * CFrame.Angles(1.4531978368759155, 0.04432811588048935, 1.6501713991165161), 
