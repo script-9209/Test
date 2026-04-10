@@ -606,7 +606,7 @@ MainTab:CreateToggle({Name = "Lock/Unlock Floating UI", CurrentValue = false, Fl
 MainTab:CreateSection("Ui Settings")
 MainTab:CreateToggle({Name = "Show Gun Button", CurrentValue = false, Flag = "SGB_F", Callback = function(V) GunBtn.Visible = V end})
 MainTab:CreateToggle({Name = "Show Shoot Button", CurrentValue = false, Flag = "SSB_F", Callback = function(V) ShootBtn.Visible = V end})
-MainTab:CreateToggle({Name = "Show Prank Button", CurrentValue = false, Callback = function(V) BombBtn.Visible = V end})
+MainTab:CreateToggle({Name = "Show Prank Button", CurrentValue = false, Flag = "SPB_F", Callback = function(V) BombBtn.Visible = V end})
 MainTab:CreateToggle({Name = "Show Throw Button", CurrentValue = false, Flag = "STB_F", Callback = function(V) ThrowBtn.Visible = V end})
 MainTab:CreateButton({Name = "Reset UI Positions", Callback = function()
     ShootBtn.Position = DefaultShootPos
@@ -704,4 +704,4 @@ end
 makeDraggable(ShootBtn, fireGun)
 makeDraggable(ThrowBtn, throwAction); makeDraggable(GunBtn, grabGunAction); makeDraggable(BombBtn, deployBomb)
 
-Rayfeild:LoadConfiguration()
+Rayfield:LoadConfiguration()
