@@ -201,18 +201,44 @@ end
 local function fireGun()
     local gun = lp.Character:FindFirstChild("Gun") or lp.Backpack:FindFirstChild("Gun")
     local m = getMurderer()
+    
     if gun and m and m.Character:FindFirstChild("HumanoidRootPart") then
-        if gun.Parent == lp.Backpack then lp.Character.Humanoid:EquipTool(gun) task.wait(0.1) end
         local mHRP = m.Character.HumanoidRootPart
+        
+        -- 1. Equip Logic
+        if gun.Parent == lp.Backpack then 
+            lp.Character.Humanoid:EquipTool(gun) 
+            task.wait(0.1) 
+        end
+
+        -- 2. Steady Target Logic (Anchor)
+        -- We anchor them immediately before calculating the position
+        mHRP.Anchored = true 
+        
+        -- 3. Positioning & Prediction
+        -- Using your specified offsets
         local origin = mHRP.Position + Vector3.new(0, 0.30, 0.45)
         local targetPos = mHRP.Position + (mHRP.Velocity * 0.10)
+
         local args = {
             [1] = CFrame.new(origin, targetPos) * CFrame.Angles(1.4531978368759155, 0.04432811588048935, 1.6501713991165161), 
-            [2] = CFrame.new(targetPos) * CFrame.Angles(-0, 0, -0)
+            [2] = CFrame.new(targetPos)
         }
-        if gun:FindFirstChild("Shoot") then gun.Shoot:FireServer(unpack(args)) end
+
+        -- 4. Fire Remote
+        if gun:FindFirstChild("Shoot") then 
+            gun.Shoot:FireServer(unpack(args)) 
+        end
+
+        -- 5. The 0.25s Hold
+        task.delay(0.25, function()
+            if mHRP then
+                mHRP.Anchored = false
+            end
+        end)
     end
 end
+
 
 local function throwAction()
     local knife = lp.Character:FindFirstChild("Knife") or lp.Backpack:FindFirstChild("Knife")
