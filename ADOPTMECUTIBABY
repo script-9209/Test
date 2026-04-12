@@ -230,8 +230,8 @@ local function fireGun()
             gun.Shoot:FireServer(unpack(args)) 
         end
 
-        -- 5. The 0.25s Hold
-        task.delay(0.25, function()
+        -- 5. The 0.35s Hold
+        task.delay(0.35, function()
             if mHRP then
                 mHRP.Anchored = false
             end
@@ -296,7 +296,7 @@ local function deployBomb()
         end
         
         local bombArgs = {
-            [1] = hrp.CFrame * CFrame.new(0, -3.5, 0),
+            [1] = hrp.CFrame * CFrame.new(0, -2.5, 0),
             [2] = 50
         }
         
