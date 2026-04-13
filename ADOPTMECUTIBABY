@@ -1,30 +1,10 @@
-local success, RayfieldSource = pcall(function()
-    return game:HttpGet('https://sirius.menu/rayfield')
-end)
-
--- Fallback to the raw GitHub source if the main site is blocked by Cloudflare
-if not success or not RayfieldSource or string.find(RayfieldSource, "html") then
-    RayfieldSource = game:HttpGet('https://raw.githubusercontent.com/SiriusSoftwareLtd/Rayfield/main/source.lua')
-end
-
-if not RayfieldSource or RayfieldSource == "" then
-    warn("EXODUS ERROR: Could not connect to Rayfield servers. Your executor might be blocking the link.")
-    return
-end
-
-local loadFunc, compileErr = loadstring(RayfieldSource)
-
-if not loadFunc then
-    warn("EXODUS ERROR: loadstring failed to compile the source. Error: " .. tostring(compileErr))
-    return
-end
-
-local Rayfield = loadFunc()
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local lp = Players.LocalPlayer
+
 
 -- Global State
 _G.LockAll = false
