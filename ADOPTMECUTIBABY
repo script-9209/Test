@@ -4,7 +4,7 @@ end)
 
 -- Fallback to the raw GitHub source if the main site is blocked by Cloudflare
 if not success or not RayfieldSource or string.find(RayfieldSource, "html") then
-    RayfieldSource = game:HttpGet('https://raw.githubusercontent.com/shlexsoftware/Rayfield/main/source')
+    RayfieldSource = game:HttpGet('https://raw.githubusercontent.com/SiriusSoftwareLtd/Rayfield/main/source.lua')
 end
 
 if not RayfieldSource or RayfieldSource == "" then
