@@ -1,4 +1,10 @@
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local RayfieldSource = game:HttpGet('https://sirius.menu/rayfield')
+if not RayfieldSource or RayfieldSource == "" then
+    warn("EXODUS ERROR: Could not connect to Rayfield servers. Your executor might be blocking the link.")
+    return
+end
+
+local Rayfield = loadstring(RayfieldSource)()
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
