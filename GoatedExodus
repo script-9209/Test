@@ -501,28 +501,43 @@ local function applyPlayerESP(p)
         task.spawn(function()
             while char and char.Parent do
                 if _G.ESPEnabled then
-                    local isM = p.Backpack:FindFirstChild("Knife") or char:FindFirstChild("Knife")
-                    local isS = p.Backpack:FindFirstChild("Gun") or char:FindFirstChild("Gun")
-                    highlight.Enabled = true; bill.Enabled = true
-                    if isM then
-                        highlight.FillColor = Color3.new(1, 0, 0); label.Text = "MURDERER\n▼"; label.TextColor3 = Color3.new(1, 0, 0)
-                    elseif isS then
-                        highlight.FillColor = Color3.new(0, 0, 1); label.Text = "SHERIFF\n▼"; label.TextColor3 = Color3.new(0, 0, 1)
+                    highlight.Enabled = true
+                    bill.Enabled = true
+                    
+                    -- 🔥 FASTER IDENTIFIER: Use the server data logic
+                    local success, data = pcall(function()
+                        return game:GetService("ReplicatedStorage"):FindFirstChild("GetPlayerData", true):InvokeServer()
+                    end)
+
+                    local role = "Innocent"
+                    if success and data and data[p.Name] then
+                        role = data[p.Name].Role
+                    end
+
+                    if role == "Murderer" then
+                        highlight.FillColor = Color3.new(1, 0, 0)
+                        label.Text = "MURDERER\n▼"
+                        label.TextColor3 = Color3.new(1, 0, 0)
+                    elseif role == "Sheriff" or role == "Hero" then
+                        highlight.FillColor = Color3.new(0, 0, 1)
+                        label.Text = "SHERIFF\n▼"
+                        label.TextColor3 = Color3.new(0, 0, 1)
                     else
-                        highlight.FillColor = Color3.new(0, 1, 0); label.Text = "▼"; label.TextColor3 = Color3.new(0, 1, 0)
+                        highlight.FillColor = Color3.new(0, 1, 0)
+                        label.Text = "▼"
+                        label.TextColor3 = Color3.new(0, 1, 0)
                     end
                 else
-                    highlight.Enabled = false; bill.Enabled = false
+                    highlight.Enabled = false
+                    bill.Enabled = false
                 end
-                task.wait(0.5)
+                task.wait(1) -- Increased to 1s to prevent server lag/spam
             end
         end)
     end
     p.CharacterAdded:Connect(setup)
     if p.Character then setup(p.Character) end
 end
-for _, v in pairs(Players:GetPlayers()) do applyPlayerESP(v) end
-Players.PlayerAdded:Connect(applyPlayerESP)
 
 --- AUTOMATION ---
 
