@@ -479,42 +479,40 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 -- ==========================================
--- 1. GLOBAL ROLE CACHE (Dynamic)
+-- 1. GLOBAL ROLE CACHE (SERVER DATA)
 -- ==========================================
 local roleCache = {}
 
 task.spawn(function()
     while task.wait(1.5) do
         local success, data = pcall(function()
-            -[span_5](start_span)- Always find the latest data from ReplicatedStorage[span_5](end_span)
             return game:GetService("ReplicatedStorage"):FindFirstChild("GetPlayerData", true):InvokeServer()
         end)
-
         if success and data then
-            roleCache = data -- Store raw data to index by Name for better stability
+            roleCache = data
         end
     end
 end)
 
 -- ==========================================
--- 2. ESP FUNCTION (Per-Round Persistence)
+-- 2. ESP SYSTEM (WORKS EVERY ROUND)
 -- ==========================================
 local function applyPlayerESP(p)
     if p == lp then return end
 
     local function setup(char)
-        -- MM2 Head loading can be slow; [span_6](start_span)Wait for it so the Billboard doesn't error[span_6](end_span)
+        -- MM2 can be slow to load parts; wait for the Head for Billboard stability
         local head = char:WaitForChild("Head", 10)
         if not head then return end
 
-        -[span_7](start_span)- Setup Highlight (The Glow)[span_7](end_span)
+        -- Create/Get Highlight
         local highlight = char:FindFirstChild("ExodusESP") or Instance.new("Highlight")
         highlight.Name = "ExodusESP"
         highlight.Parent = char
         highlight.FillTransparency = 0.5
         highlight.OutlineTransparency = 0
 
-        -[span_8](start_span)- Setup Billboard (The Text)[span_8](end_span)
+        -- Create/Get Billboard
         local bill = head:FindFirstChild("ExodusBill") or Instance.new("BillboardGui")
         bill.Name = "ExodusBill"
         bill.Parent = head
@@ -529,35 +527,32 @@ local function applyPlayerESP(p)
         label.BackgroundTransparency = 1
         label.Font = Enum.Font.GothamBold
         label.TextSize = 12
-        [span_9](start_span)[span_10](start_span)label.TextStrokeTransparency = 0 -- Ensures text is readable[span_9](end_span)[span_10](end_span)
+        label.TextStrokeTransparency = 0 -- Fixes the "Black Box" look
 
-        -- Main Update Loop
+        -- The Update Loop (Individually threaded for every player)
         task.spawn(function()
-            -[span_11](start_span)- Loop strictly follows the specific character instance[span_11](end_span)
             while char and char.Parent and p.Character == char do
                 if _G.ESPEnabled then
                     highlight.Enabled = true
                     bill.Enabled = true
 
-                    -[span_12](start_span)- 1. PRIORITY: Backpack Check[span_12](end_span)
+                    -- PRIORITY 1: Physical Weapons (Backpack/Character)
                     local backpack = p:FindFirstChild("Backpack")
                     local hasKnife = (backpack and backpack:FindFirstChild("Knife")) or char:FindFirstChild("Knife")
                     local hasGun = (backpack and backpack:FindFirstChild("Gun")) or char:FindFirstChild("Gun")
 
                     if hasKnife then
-                        [span_13](start_span)local murdColor = Color3.fromRGB(255, 0, 0) -- RED[span_13](end_span)
+                        local murdColor = Color3.fromRGB(255, 0, 0) -- RED
                         highlight.FillColor = murdColor
                         label.Text = "MURDERER\n▼"
                         label.TextColor3 = murdColor
-
                     elseif hasGun then
-                        [span_14](start_span)[span_15](start_span)local sherColor = Color3.fromRGB(0, 162, 255) -- BLUE[span_14](end_span)[span_15](end_span)
+                        local sherColor = Color3.fromRGB(0, 162, 255) -- BLUE
                         highlight.FillColor = sherColor
                         label.Text = "SHERIFF/HERO\n▼"
                         label.TextColor3 = sherColor
-
                     else
-                        -[span_16](start_span)- 2. FALLBACK: Server Data[span_16](end_span)
+                        -- PRIORITY 2: Server Data Fallback
                         local pData = roleCache[p.Name]
                         local role = pData and pData.Role or "Innocent"
 
@@ -566,22 +561,19 @@ local function applyPlayerESP(p)
                             highlight.FillColor = murdColor
                             label.Text = "MURDERER\n▼"
                             label.TextColor3 = murdColor
-
                         elseif role == "Sheriff" or role == "Hero" then
                             local sherColor = Color3.fromRGB(0, 162, 255)
                             highlight.FillColor = sherColor
                             label.Text = "SHERIFF\n▼"
                             label.TextColor3 = sherColor
-
                         else
-                            [span_17](start_span)[span_18](start_span)local innoColor = Color3.fromRGB(0, 255, 0) -- GREEN[span_17](end_span)[span_18](end_span)
+                            local innoColor = Color3.fromRGB(0, 255, 0) -- GREEN
                             highlight.FillColor = innoColor
                             label.Text = "▼"
                             label.TextColor3 = innoColor
                         end
                     end
                 else
-                    -[span_19](start_span)- Hide everything when toggled off[span_19](end_span)
                     highlight.Enabled = false
                     bill.Enabled = false
                 end
@@ -590,10 +582,18 @@ local function applyPlayerESP(p)
         end)
     end
 
-    -[span_20](start_span)[span_21](start_span)- Core: Handle character spawning every round[span_20](end_span)[span_21](end_span)
+    -- Core: This ensures it triggers every round on respawn
     p.CharacterAdded:Connect(setup)
     if p.Character then setup(p.Character) end
 end
+
+-- ==========================================
+-- 3. INITIALIZE CONNECTIONS
+-- ==========================================
+for _, v in pairs(Players:GetPlayers()) do
+    applyPlayerESP(v)
+end
+Players.PlayerAdded:Connect(applyPlayerESP)
 
 --- AUTOMATION ---
 
