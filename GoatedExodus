@@ -557,7 +557,7 @@ local function applyPlayerESP(p)
                         -- They physically have the gun (Sheriff or Hero) -> Mark Blue
                         local sColor = Color3.fromRGB(0, 162, 255)
                         highlight.FillColor = sColor
-                        label.Text = "SHERIFF/HERO\n▼"; label.TextColor3 = sColor
+                        label.Text = "SHERIFF\n▼"; label.TextColor3 = sColor
 
                     elseif role == "Sheriff" or role == "Hero" then
                         -- Server says they are Sheriff, BUT they don't have the gun in their inventory.
