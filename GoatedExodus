@@ -501,79 +501,71 @@ local function applyPlayerESP(p)
     if p == lp then return end
 
     local function setup(char)
-        -- MM2 can be slow to load parts; wait for the Head for Billboard stability
         local head = char:WaitForChild("Head", 10)
         if not head then return end
 
-        -- Create/Get Highlight
         local highlight = char:FindFirstChild("ExodusESP") or Instance.new("Highlight")
-        highlight.Name = "ExodusESP"
-        highlight.Parent = char
-        highlight.FillTransparency = 0.5
-        highlight.OutlineTransparency = 0
+        highlight.Name = "ExodusESP"; highlight.Parent = char
+        highlight.FillTransparency = 0.5; highlight.OutlineTransparency = 0
 
-        -- Create/Get Billboard
         local bill = head:FindFirstChild("ExodusBill") or Instance.new("BillboardGui")
-        bill.Name = "ExodusBill"
-        bill.Parent = head
-        bill.Adornee = head
-        bill.Size = UDim2.new(0, 150, 0, 50)
-        bill.AlwaysOnTop = true
-        bill.ExtentsOffset = Vector3.new(0, 3, 0)
+        bill.Name = "ExodusBill"; bill.Parent = head
+        bill.Adornee = head; bill.Size = UDim2.new(0, 150, 0, 50)
+        bill.AlwaysOnTop = true; bill.ExtentsOffset = Vector3.new(0, 3, 0)
 
         local label = bill:FindFirstChild("TextLabel") or Instance.new("TextLabel")
-        label.Parent = bill
-        label.Size = UDim2.new(1, 0, 1, 0)
-        label.BackgroundTransparency = 1
-        label.Font = Enum.Font.GothamBold
-        label.TextSize = 12
-        label.TextStrokeTransparency = 0 -- Fixes the "Black Box" look
+        label.Parent = bill; label.Size = UDim2.new(1, 0, 1, 0)
+        label.BackgroundTransparency = 1; label.Font = Enum.Font.GothamBold
+        label.TextSize = 12; label.TextStrokeTransparency = 0
 
-        -- The Update Loop (Individually threaded for every player)
         task.spawn(function()
             while char and char.Parent and p.Character == char do
-                if _G.ESPEnabled then
+                -- CHECK: Is the player in the round or just the lobby?
+                -- Most MM2 versions use a folder named "Normal" for the active map
+                local gameFolder = workspace:FindFirstChild("Normal")
+                local isInRound = char:IsDescendantOf(gameFolder)
+                
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                local isAlive = hum and hum.Health > 0
+
+                if _G.ESPEnabled and isAlive and isInRound then
                     highlight.Enabled = true
                     bill.Enabled = true
 
-                    -- PRIORITY 1: Physical Weapons (Backpack/Character)
                     local backpack = p:FindFirstChild("Backpack")
                     local hasKnife = (backpack and backpack:FindFirstChild("Knife")) or char:FindFirstChild("Knife")
                     local hasGun = (backpack and backpack:FindFirstChild("Gun")) or char:FindFirstChild("Gun")
 
+                    -- COLOR LOGIC (RED/BLUE/GREEN)
                     if hasKnife then
-                        local murdColor = Color3.fromRGB(255, 0, 0) -- RED
-                        highlight.FillColor = murdColor
-                        label.Text = "MURDERER\n▼"
-                        label.TextColor3 = murdColor
+                        local mColor = Color3.fromRGB(255, 0, 0) -- RED
+                        highlight.FillColor = mColor
+                        label.Text = "MURDERER\n▼"; label.TextColor3 = mColor
                     elseif hasGun then
-                        local sherColor = Color3.fromRGB(0, 162, 255) -- BLUE
-                        highlight.FillColor = sherColor
-                        label.Text = "SHERIFF/HERO\n▼"
-                        label.TextColor3 = sherColor
+                        local sColor = Color3.fromRGB(0, 162, 255) -- BLUE
+                        highlight.FillColor = sColor
+                        label.Text = "SHERIFF/HERO\n▼"; label.TextColor3 = sColor
                     else
-                        -- PRIORITY 2: Server Data Fallback
+                        -- FALLBACK TO DATA CACHE
                         local pData = roleCache[p.Name]
                         local role = pData and pData.Role or "Innocent"
 
                         if role == "Murderer" then
-                            local murdColor = Color3.fromRGB(255, 0, 0)
-                            highlight.FillColor = murdColor
-                            label.Text = "MURDERER\n▼"
-                            label.TextColor3 = murdColor
+                            local mColor = Color3.fromRGB(255, 0, 0)
+                            highlight.FillColor = mColor
+                            label.Text = "MURDERER\n▼"; label.TextColor3 = mColor
                         elseif role == "Sheriff" or role == "Hero" then
-                            local sherColor = Color3.fromRGB(0, 162, 255)
-                            highlight.FillColor = sherColor
-                            label.Text = "SHERIFF\n▼"
-                            label.TextColor3 = sherColor
+                            local sColor = Color3.fromRGB(0, 162, 255)
+                            highlight.FillColor = sColor
+                            label.Text = "SHERIFF\n▼"; label.TextColor3 = sColor
                         else
-                            local innoColor = Color3.fromRGB(0, 255, 0) -- GREEN
-                            highlight.FillColor = innoColor
-                            label.Text = "▼"
-                            label.TextColor3 = innoColor
+                            local iColor = Color3.fromRGB(0, 255, 0) -- GREEN
+                            highlight.FillColor = iColor
+                            label.Text = "▼"; label.TextColor3 = iColor
                         end
                     end
                 else
+                    -- FORCE INNOCENT LOOK/HIDDEN IF IN LOBBY OR DEAD
                     highlight.Enabled = false
                     bill.Enabled = false
                 end
@@ -582,7 +574,6 @@ local function applyPlayerESP(p)
         end)
     end
 
-    -- Core: This ensures it triggers every round on respawn
     p.CharacterAdded:Connect(setup)
     if p.Character then setup(p.Character) end
 end
