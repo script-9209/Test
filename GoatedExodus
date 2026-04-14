@@ -520,15 +520,7 @@ local function applyPlayerESP(p)
 
         task.spawn(function()
             while char and char.Parent and p.Character == char do
-                -- CHECK: Is the player in the round or just the lobby?
-                -- Most MM2 versions use a folder named "Normal" for the active map
-                local gameFolder = workspace:FindFirstChild("Normal")
-                local isInRound = char:IsDescendantOf(gameFolder)
-                
-                local hum = char:FindFirstChildOfClass("Humanoid")
-                local isAlive = hum and hum.Health > 0
-
-                if _G.ESPEnabled and isAlive and isInRound then
+                if _G.ESPEnabled then
                     highlight.Enabled = true
                     bill.Enabled = true
 
@@ -536,36 +528,46 @@ local function applyPlayerESP(p)
                     local hasKnife = (backpack and backpack:FindFirstChild("Knife")) or char:FindFirstChild("Knife")
                     local hasGun = (backpack and backpack:FindFirstChild("Gun")) or char:FindFirstChild("Gun")
 
-                    -- COLOR LOGIC (RED/BLUE/GREEN)
-                    if hasKnife then
+                    -- 1. MURDERER PRIORITY (Usually hidden, so we check both)
+                    local pData = roleCache[p.Name]
+                    local role = pData and pData.Role or "Innocent"
+
+                    if hasKnife or role == "Murderer" then
                         local mColor = Color3.fromRGB(255, 0, 0) -- RED
                         highlight.FillColor = mColor
                         label.Text = "MURDERER\n▼"; label.TextColor3 = mColor
+
+                    -- 2. SHERIFF/HERO LOGIC (Your specific request)
                     elseif hasGun then
+                        -- If gun is in backpack, prioritize this (Hero or Sheriff holding it)
                         local sColor = Color3.fromRGB(0, 162, 255) -- BLUE
                         highlight.FillColor = sColor
-                        label.Text = "SHERIFF/HERO\n▼"; label.TextColor3 = sColor
-                    else
-                        -- FALLBACK TO DATA CACHE
-                        local pData = roleCache[p.Name]
-                        local role = pData and pData.Role or "Innocent"
+                        label.Text = "SHERIFF\n▼"; label.TextColor3 = sColor
 
-                        if role == "Murderer" then
-                            local mColor = Color3.fromRGB(255, 0, 0)
-                            highlight.FillColor = mColor
-                            label.Text = "MURDERER\n▼"; label.TextColor3 = mColor
-                        elseif role == "Sheriff" or role == "Hero" then
+                    elseif role == "Sheriff" or role == "Hero" then
+                        -- If they ARE the sheriff in data but don't have the gun...
+                        -- We check if they are still alive/active in the map
+                        local isAlive = char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0
+                        local isOnMap = char:IsDescendantOf(workspace:FindFirstChild("Normal") or workspace)
+
+                        if isAlive and isOnMap and not hasGun then
+                            -- Only show Sheriff if they haven't lost the gun yet
                             local sColor = Color3.fromRGB(0, 162, 255)
                             highlight.FillColor = sColor
                             label.Text = "SHERIFF\n▼"; label.TextColor3 = sColor
                         else
-                            local iColor = Color3.fromRGB(0, 255, 0) -- GREEN
+                            -- Force Innocent if they died/respawned in lobby
+                            local iColor = Color3.fromRGB(0, 255, 0)
                             highlight.FillColor = iColor
                             label.Text = "▼"; label.TextColor3 = iColor
                         end
+                    else
+                        -- TRULY INNOCENT
+                        local iColor = Color3.fromRGB(0, 255, 0) -- GREEN
+                        highlight.FillColor = iColor
+                        label.Text = "▼"; label.TextColor3 = iColor
                     end
                 else
-                    -- FORCE INNOCENT LOOK/HIDDEN IF IN LOBBY OR DEAD
                     highlight.Enabled = false
                     bill.Enabled = false
                 end
