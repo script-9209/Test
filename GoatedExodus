@@ -528,34 +528,33 @@ local function applyPlayerESP(p)
         task.spawn(function()
     while char and char.Parent do
         if _G.ESPEnabled then
-            -- 1. PHYSICAL CHECK (Backpack & Character)
-            -- This handles dropped gun pickups and active weapons instantly
-            local hasKnife = p.Backpack:FindFirstChild("Knife") or char:FindFirstChild("Knife")
-            local hasGun = p.Backpack:FindFirstChild("Gun") or char:FindFirstChild("Gun")
+            local backpack = p:FindFirstChild("Backpack")
+
+            local hasKnife = (backpack and backpack:FindFirstChild("Knife")) or char:FindFirstChild("Knife")
+            local hasGun = (backpack and backpack:FindFirstChild("Gun")) or char:FindFirstChild("Gun")
 
             if hasKnife then
-                highlight.FillColor = Color3.new(1, 0, 0) -- Red
+                highlight.FillColor = Color3.new(1, 0, 0)
                 label.Text = "MURDERER\n▼"
+
             elseif hasGun then
-                highlight.FillColor = Color3.new(0, 0.5, 1) -- Blue
+                highlight.FillColor = Color3.new(0, 0.5, 1)
                 label.Text = "SHERIFF/HERO\n▼"
+
             else
-                -- 2. SERVER DATA CHECK (The Fallback)
-                -- This catches the Murderer/Sheriff even if weapons are hidden
-                local pData = roleCache[p.Name]
+                local pData = roleCache[p] or roleCache[p.Name]
                 local role = pData and pData.Role or "Innocent"
 
                 if role == "Murderer" then
                     highlight.FillColor = Color3.new(1, 0, 0)
                     label.Text = "MURDERER\n▼"
+
                 elseif role == "Sheriff" or role == "Hero" then
-                    -- Note: If they dropped the gun, 'hasGun' is false, 
-                    -- so this only shows if they ARE the Sheriff but aren't holding it.
                     highlight.FillColor = Color3.new(0, 0.5, 1)
                     label.Text = "SHERIFF\n▼"
+
                 else
-                    -- TRULY INNOCENT
-                    highlight.FillColor = Color3.new(0, 1, 0) -- Green
+                    highlight.FillColor = Color3.new(0, 1, 0)
                     label.Text = "▼"
                 end
             end
@@ -563,9 +562,6 @@ local function applyPlayerESP(p)
         task.wait(0.5)
     end
 end)
-
-                
-
 
 -- ==========================================
 -- 3. INITIALIZE (Run for current & new players)
