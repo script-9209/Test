@@ -251,41 +251,40 @@ local function getSheriff()
     return nil, false
 end
 
-
 local function fireGun()
     local char = lp.Character
     if not char then return end
 
     local gun = char:FindFirstChild("Gun") or lp.Backpack:FindFirstChild("Gun")
-    local target = getMurderer()
+    
+    -- targetPos is a Vector3, isMe is a Boolean
+    local targetPos, isMe = getMurderer() 
 
-    if not gun or not target or not target.Character then return end
+    if not gun or not targetPos or isMe then return end
 
-    local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
-    if not targetHRP then return end
+    local myHRP = char:FindFirstChild("HumanoidRootPart")
+    if not myHRP then return end
 
-    -- Equip safely
     if gun.Parent == lp.Backpack then
         char.Humanoid:EquipTool(gun)
         task.wait(0.1)
     end
 
-    -- 🔥 Dynamic prediction (better aim)
-    local velocity = targetHRP.Velocity
-    local predictedPos = targetHRP.Position + (velocity * 0.12)
-
-    local origin = targetHRP.Position
-    local cf = CFrame.new(origin, predictedPos)
+    -- Prediction (0.12 velocity is already handled by targetPos logic if you choose)
+    -- For now, we point straight at the position returned
+    local cf = CFrame.new(myHRP.Position, targetPos)
 
     local args = {
         [1] = cf,
-        [2] = CFrame.new(predictedPos)
+        [2] = CFrame.new(targetPos)
     }
 
     if gun:FindFirstChild("Shoot") then
         gun.Shoot:FireServer(unpack(args))
     end
 end
+
+
 
 local function throwAction()
     local knife = lp.Character:FindFirstChild("Knife") or lp.Backpack:FindFirstChild("Knife")
