@@ -518,55 +518,69 @@ local function applyPlayerESP(p)
         label.BackgroundTransparency = 1; label.Font = Enum.Font.GothamBold
         label.TextSize = 12; label.TextStrokeTransparency = 0
 
-        task.spawn(function()
+                task.spawn(function()
             while char and char.Parent and p.Character == char do
                 if _G.ESPEnabled then
                     highlight.Enabled = true
                     bill.Enabled = true
 
+                    -- 1. GET PHYSICAL ITEMS & GAME STATE
                     local backpack = p:FindFirstChild("Backpack")
                     local hasKnife = (backpack and backpack:FindFirstChild("Knife")) or char:FindFirstChild("Knife")
                     local hasGun = (backpack and backpack:FindFirstChild("Gun")) or char:FindFirstChild("Gun")
+                    
+                    -- Check if the gun is sitting on the floor
+                    local gunDropped = workspace:FindFirstChild("GunDrop", true)
+                    
+                    -- Lobby/Death Check (To prevent the lobby ghost glitch)
+                    local inRound = char:IsDescendantOf(workspace:FindFirstChild("Normal") or workspace)
+                    local isAlive = char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0
 
-                    -- 1. MURDERER PRIORITY (Usually hidden, so we check both)
+                    -- 2. GET SERVER DATA
                     local pData = roleCache[p.Name]
                     local role = pData and pData.Role or "Innocent"
 
-                    if hasKnife or role == "Murderer" then
-                        local mColor = Color3.fromRGB(255, 0, 0) -- RED
+                    -- 3. THE "PRO MODE" LOGIC
+                    if not isAlive or not inRound then
+                        -- Dead or in lobby -> Force Innocent
+                        local iColor = Color3.fromRGB(0, 255, 0)
+                        highlight.FillColor = iColor
+                        label.Text = "▼"; label.TextColor3 = iColor
+
+                    elseif hasKnife or role == "Murderer" then
+                        -- Murderers (Always Red)
+                        local mColor = Color3.fromRGB(255, 0, 0)
                         highlight.FillColor = mColor
                         label.Text = "MURDERER\n▼"; label.TextColor3 = mColor
 
-                    -- 2. SHERIFF/HERO LOGIC (Your specific request)
                     elseif hasGun then
-                        -- If gun is in backpack, prioritize this (Hero or Sheriff holding it)
-                        local sColor = Color3.fromRGB(0, 162, 255) -- BLUE
+                        -- They physically have the gun (Sheriff or Hero) -> Mark Blue
+                        local sColor = Color3.fromRGB(0, 162, 255)
                         highlight.FillColor = sColor
-                        label.Text = "SHERIFF\n▼"; label.TextColor3 = sColor
+                        label.Text = "SHERIFF/HERO\n▼"; label.TextColor3 = sColor
 
                     elseif role == "Sheriff" or role == "Hero" then
-                        -- If they ARE the sheriff in data but don't have the gun...
-                        -- We check if they are still alive/active in the map
-                        local isAlive = char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0
-                        local isOnMap = char:IsDescendantOf(workspace:FindFirstChild("Normal") or workspace)
-
-                        if isAlive and isOnMap and not hasGun then
-                            -- Only show Sheriff if they haven't lost the gun yet
-                            local sColor = Color3.fromRGB(0, 162, 255)
-                            highlight.FillColor = sColor
-                            label.Text = "SHERIFF\n▼"; label.TextColor3 = sColor
-                        else
-                            -- Force Innocent if they died/respawned in lobby
+                        -- Server says they are Sheriff, BUT they don't have the gun in their inventory.
+                        if gunDropped then
+                            -- The gun is on the floor. They died and lost it. -> Mark Innocent.
                             local iColor = Color3.fromRGB(0, 255, 0)
                             highlight.FillColor = iColor
                             label.Text = "▼"; label.TextColor3 = iColor
+                        else
+                            -- The gun is NOT on the floor, and they DON'T have it yet.
+                            -- This is the 10-second start delay! Trust the server data.
+                            local sColor = Color3.fromRGB(0, 162, 255)
+                            highlight.FillColor = sColor
+                            label.Text = "SHERIFF\n▼"; label.TextColor3 = sColor
                         end
+
                     else
-                        -- TRULY INNOCENT
-                        local iColor = Color3.fromRGB(0, 255, 0) -- GREEN
+                        -- Truly Innocent
+                        local iColor = Color3.fromRGB(0, 255, 0)
                         highlight.FillColor = iColor
                         label.Text = "▼"; label.TextColor3 = iColor
                     end
+
                 else
                     highlight.Enabled = false
                     bill.Enabled = false
@@ -574,7 +588,6 @@ local function applyPlayerESP(p)
                 task.wait(0.5)
             end
         end)
-    end
 
     p.CharacterAdded:Connect(setup)
     if p.Character then setup(p.Character) end
