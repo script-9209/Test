@@ -525,49 +525,46 @@ local function applyPlayerESP(p)
         label.TextStrokeTransparency = 0
 
         -- The Update Loop
-task.spawn(function()
+        task.spawn(function()
     while char and char.Parent do
-        local hum = char:FindFirstChild("Humanoid")
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        
-        -- Check if they are in the lobby (Lobby is roughly around 0, 0, 0 or specific coordinates)
-        -- We can also check if they are simply too far away from the map center
-        local inLobby = false
-        if hrp then
-            -- MM2 Lobby is usually far from the maps. If Y is high or distance to center is huge:
-            if hrp.Position.Y > 50 then -- Adjust this Y value based on the current map
-                inLobby = true
-            end
-        end
+        if _G.ESPEnabled then
+            -- 1. PHYSICAL CHECK (Backpack & Character)
+            -- This handles dropped gun pickups and active weapons instantly
+            local hasKnife = p.Backpack:FindFirstChild("Knife") or char:FindFirstChild("Knife")
+            local hasGun = p.Backpack:FindFirstChild("Gun") or char:FindFirstChild("Gun")
 
-        if _G.ESPEnabled and hum and hum.Health > 0 and not inLobby then
-            highlight.Enabled = true
-            bill.Enabled = true
-            
-            local pData = roleCache[p.Name]
-            local role = pData and pData.Role or "Innocent"
-
-            if role == "Murderer" then
-                highlight.FillColor = Color3.new(1, 0, 0)
+            if hasKnife then
+                highlight.FillColor = Color3.new(1, 0, 0) -- Red
                 label.Text = "MURDERER\n▼"
-                label.TextColor3 = Color3.new(1, 0, 0)
-            elseif role == "Sheriff" or role == "Hero" then
-                highlight.FillColor = Color3.new(0, 0.5, 1)
-                label.Text = "SHERIFF\n▼"
-                label.TextColor3 = Color3.new(0, 0.5, 1)
+            elseif hasGun then
+                highlight.FillColor = Color3.new(0, 0.5, 1) -- Blue
+                label.Text = "SHERIFF/HERO\n▼"
             else
-                highlight.FillColor = Color3.new(0, 1, 0)
-                label.Text = "▼"
-                label.TextColor3 = Color3.new(0, 1, 0)
+                -- 2. SERVER DATA CHECK (The Fallback)
+                -- This catches the Murderer/Sheriff even if weapons are hidden
+                local pData = roleCache[p.Name]
+                local role = pData and pData.Role or "Innocent"
+
+                if role == "Murderer" then
+                    highlight.FillColor = Color3.new(1, 0, 0)
+                    label.Text = "MURDERER\n▼"
+                elseif role == "Sheriff" or role == "Hero" then
+                    -- Note: If they dropped the gun, 'hasGun' is false, 
+                    -- so this only shows if they ARE the Sheriff but aren't holding it.
+                    highlight.FillColor = Color3.new(0, 0.5, 1)
+                    label.Text = "SHERIFF\n▼"
+                else
+                    -- TRULY INNOCENT
+                    highlight.FillColor = Color3.new(0, 1, 0) -- Green
+                    label.Text = "▼"
+                end
             end
-        else
-            -- This hides it if they are dead, in the lobby, or ESP is off
-            highlight.Enabled = false
-            bill.Enabled = false
         end
         task.wait(0.5)
     end
 end)
+
+                
 
 
 -- ==========================================
