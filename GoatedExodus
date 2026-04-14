@@ -522,7 +522,7 @@ local function applyPlayerESP(p)
         label.Size = UDim2.new(1, 0, 1, 0)
         label.Font = Enum.Font.GothamBold
         label.TextSize = 12
-        label.TextStrokeTransparency = 1
+        label.TextStrokeTransparency = 0
 
         -- The Update Loop
 task.spawn(function()
