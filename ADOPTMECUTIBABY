@@ -533,31 +533,41 @@ local function applyPlayerESP(p)
         label.TextStrokeTransparency = 0
         label.TextStrokeColor3 = Color3.new(0, 0, 0)
 
-        task.spawn(function()
-            while char and char.Parent do
-                if _G.ESPEnabled then
-                    local isM = getMurderer()
-                    local isS = getSheriff()
-                    highlight.Enabled = true; bill.Enabled = true
-                    if isM then
-                        highlight.FillColor = Color3.new(1, 0, 0); label.Text = "MURDERER\n▼"; label.TextColor3 = Color3.new(1, 0, 0)
-                    elseif isS then
-                        highlight.FillColor = Color3.new(0, 0, 1); label.Text = "SHERIFF\n▼"; label.TextColor3 = Color3.new(0, 0, 1)
-                    else
-                        highlight.FillColor = Color3.new(0, 1, 0); label.Text = "▼"; label.TextColor3 = Color3.new(0, 1, 0)
-                    end
-                else
-                    highlight.Enabled = false; bill.Enabled = false
-                end
-                task.wait(0.5)
-            end
-        end)
-    end
-    p.CharacterAdded:Connect(setup)
-    if p.Character then setup(p.Character) end
-end
-for _, v in pairs(Players:GetPlayers()) do applyPlayerESP(v) end
-Players.PlayerAdded:Connect(applyPlayerESP)
+task.spawn(function()
+	while char and char.Parent do
+		if _G.ESPEnabled then
+			local murderer = getMurderer()
+			local sheriff = getSheriff()
+
+			local isM = (p == murderer)
+			local isS = (p == sheriff)
+
+			highlight.Enabled = true
+			bill.Enabled = true
+
+			if isM then
+				highlight.FillColor = Color3.new(1, 0, 0)
+				label.Text = "MURDERER\n▼"
+				label.TextColor3 = Color3.new(1, 0, 0)
+
+			elseif isS then
+				highlight.FillColor = Color3.new(0, 0, 1)
+				label.Text = "SHERIFF\n▼"
+				label.TextColor3 = Color3.new(0, 0, 1)
+
+			else
+				highlight.FillColor = Color3.new(0, 1, 0)
+				label.Text = "▼"
+				label.TextColor3 = Color3.new(0, 1, 0)
+			end
+		else
+			highlight.Enabled = false
+			bill.Enabled = false
+		end
+		task.wait(0.5)
+	end
+end)
+        
 
 --- AUTOMATION ---
 
