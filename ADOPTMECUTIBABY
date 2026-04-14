@@ -191,33 +191,24 @@ task.spawn(function()
 end)
 
 --- COMBAT UTILITY ---
+‎-- Helper to find players by role
+‎local function getSheriff()
+‎    for _, v in pairs(Players:GetPlayers()) do
+‎        if v.Character and (v.Character:FindFirstChild("Gun") or v.Backpack:FindFirstChild("Gun")) then return v end
+‎    end
+‎    return nil
+‎end
+‎
+‎local function getMurderer()
+‎    for _, v in pairs(Players:GetPlayers()) do
+‎        -- Check if any other player has a knife in their hand or backpack
+‎        if v ~= lp and v.Character and (v.Character:FindFirstChild("Knife") or v.Backpack:FindFirstChild("Knife")) then 
+‎            return v 
+‎        end
+‎    end
+‎    return nil
+‎end
 
-local function getRoles()
-	local murderer, sheriff, hero = nil, nil, nil
-
-	for _, p in ipairs(Players:GetPlayers()) do
-		local char = p.Character
-		if char then
-			if char:FindFirstChild("Knife") then
-				murderer = p
-			elseif char:FindFirstChild("Gun") then
-				sheriff = p
-			end
-		end
-	end
-
-	-- Hero = player who picks up gun after sheriff dies
-	if not sheriff then
-		for _, p in ipairs(Players:GetPlayers()) do
-			local char = p.Character
-			if char and char:FindFirstChild("Gun") then
-				hero = p
-			end
-		end
-	end
-
-	return murderer, sheriff, hero
-end
 ‎
 local function fireGun()
     local char = lp.Character
@@ -465,46 +456,32 @@ local function applyPlayerESP(p)
         label.TextStrokeTransparency = 0
         label.TextStrokeColor3 = Color3.new(0, 0, 0)
 
-task.spawn(function()
-	while char and char.Parent do
-		if _G.ESPEnabled then
-			local murderer, sheriff, hero = getRoles()
+task.spawn(function()  
+        while char and char.Parent do  
+            if _G.ESPEnabled then  
+                local isM = getMurderer()  
+                local isS = getSheriff()  
+                highlight.Enabled = true; bill.Enabled = true  
+                if isM then  
+                    highlight.FillColor = Color3.new(1, 0, 0); label.Text = "MURDERER\n▼"; label.TextColor3 = Color3.new(1, 0, 0)  
+                elseif isS then  
+                    highlight.FillColor = Color3.new(0, 0, 1); label.Text = "SHERIFF\n▼"; label.TextColor3 = Color3.new(0, 0, 1)  
+                else  
+                    highlight.FillColor = Color3.new(0, 1, 0); label.Text = "▼"; label.TextColor3 = Color3.new(0, 1, 0)  
+                end  
+            else  
+                highlight.Enabled = false; bill.Enabled = false  
+            end  
+            task.wait(0.5)  
+        end  
+    end)  
+end  
+p.CharacterAdded:Connect(setup)  
+if p.Character then setup(p.Character) end
 
-			local isM = (p == murderer)
-			local isS = (p == sheriff)
-			local isH = (p == hero)
-
-			highlight.Enabled = true
-			bill.Enabled = true
-
-			if isM then
-				highlight.FillColor = Color3.new(1, 0, 0)
-				label.Text = "MURDERER\n▼"
-				label.TextColor3 = Color3.new(1, 0, 0)
-
-			elseif isS then
-				highlight.FillColor = Color3.new(0, 0, 1)
-				label.Text = "SHERIFF\n▼"
-				label.TextColor3 = Color3.new(0, 0, 1)
-
-			elseif isH then
-				highlight.FillColor = Color3.new(1, 1, 0)
-				label.Text = "HERO\n▼"
-				label.TextColor3 = Color3.new(1, 1, 0)
-
-			else
-				highlight.FillColor = Color3.new(0, 1, 0)
-				label.Text = "▼"
-				label.TextColor3 = Color3.new(0, 1, 0)
-			end
-		else
-			highlight.Enabled = false
-			bill.Enabled = false
-		end
-		task.wait(0.3)
-	end
-end)
-
+end
+for _, v in pairs(Players:GetPlayers()) do applyPlayerESP(v) end
+Players.PlayerAdded:Connect(applyPlayerESP)
 
 --- AUTOMATION ---
 
