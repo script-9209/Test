@@ -536,11 +536,11 @@ local function applyPlayerESP(p)
 task.spawn(function()
 	while char and char.Parent do
 		if _G.ESPEnabled then
-			local murderer = getMurderer()
-			local sheriff = getSheriff()
+			local murderer, sheriff, hero = getRoles()
 
 			local isM = (p == murderer)
 			local isS = (p == sheriff)
+			local isH = (p == hero)
 
 			highlight.Enabled = true
 			bill.Enabled = true
@@ -555,6 +555,11 @@ task.spawn(function()
 				label.Text = "SHERIFF\n▼"
 				label.TextColor3 = Color3.new(0, 0, 1)
 
+			elseif isH then
+				highlight.FillColor = Color3.new(1, 1, 0)
+				label.Text = "HERO\n▼"
+				label.TextColor3 = Color3.new(1, 1, 0)
+
 			else
 				highlight.FillColor = Color3.new(0, 1, 0)
 				label.Text = "▼"
@@ -564,10 +569,10 @@ task.spawn(function()
 			highlight.Enabled = false
 			bill.Enabled = false
 		end
-		task.wait(0.5)
+		task.wait(0.3)
 	end
 end)
-        
+
 
 --- AUTOMATION ---
 
