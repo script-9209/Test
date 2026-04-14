@@ -477,98 +477,124 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         grabGunAction()
     end
 end)
+
 -- ==========================================
--- 1. GLOBAL ROLE CACHE (Add to top of script)
+-- GLOBAL ROLE CACHE (CLEAN)
 -- ==========================================
 local roleCache = {}
 
 task.spawn(function()
-    while task.wait(1.5) do -- Fetch roles every 1.5s for everyone
+    while task.wait(1.5) do
         local success, data = pcall(function()
             return game:GetService("ReplicatedStorage"):FindFirstChild("GetPlayerData", true):InvokeServer()
         end)
+
         if success and data then
-            roleCache = data
+            roleCache = {}
+
+            for plrName, plrData in pairs(data) do
+                local plr = Players:FindFirstChild(plrName)
+                if plr then
+                    roleCache[plr] = plrData
+                end
+            end
         end
     end
 end)
 
 -- ==========================================
--- 2. ESP SPAWN & APPLY FUNCTION
+-- ESP FUNCTION (CLEAN & SAFE)
 -- ==========================================
 local function applyPlayerESP(p)
+    if p == lp then return end
+
     local function setup(char)
-        if p == lp then return end -- Don't ESP yourself
-        
-        -- Create Highlight (The Glow)
+        if not char then return end
+
+        local head = char:FindFirstChild("Head")
+        if not head then return end
+
+        -- Highlight
         local highlight = char:FindFirstChild("ExodusESP") or Instance.new("Highlight")
         highlight.Name = "ExodusESP"
         highlight.Parent = char
-        highlight.OutlineTransparency = 0
         highlight.FillTransparency = 0.5
+        highlight.OutlineTransparency = 0
 
-        -- Create Billboard (The Label)
-        local bill = char:FindFirstChild("ExodusBill") or Instance.new("BillboardGui")
+        -- Billboard
+        local bill = head:FindFirstChild("ExodusBill") or Instance.new("BillboardGui")
         bill.Name = "ExodusBill"
-        bill.Parent = char:WaitForChild("Head")
+        bill.Parent = head
+        bill.Adornee = head
         bill.Size = UDim2.new(0, 150, 0, 50)
-        bill.Adornee = char:WaitForChild("Head")
         bill.AlwaysOnTop = true
         bill.ExtentsOffset = Vector3.new(0, 3, 0)
 
         local label = bill:FindFirstChild("TextLabel") or Instance.new("TextLabel")
         label.Parent = bill
-        label.BackgroundTransparency = 1
         label.Size = UDim2.new(1, 0, 1, 0)
+        label.BackgroundTransparency = 1
         label.Font = Enum.Font.GothamBold
         label.TextSize = 12
         label.TextStrokeTransparency = 0
 
-        -- The Update Loop
+        -- Update Loop (SAFE)
         task.spawn(function()
-    while char and char.Parent do
-        if _G.ESPEnabled then
-            local backpack = p:FindFirstChild("Backpack")
+            while char and char.Parent do
+                if _G.ESPEnabled then
+                    local backpack = p:FindFirstChild("Backpack")
 
-            local hasKnife = (backpack and backpack:FindFirstChild("Knife")) or char:FindFirstChild("Knife")
-            local hasGun = (backpack and backpack:FindFirstChild("Gun")) or char:FindFirstChild("Gun")
+                    local hasKnife = (backpack and backpack:FindFirstChild("Knife")) or char:FindFirstChild("Knife")
+                    local hasGun = (backpack and backpack:FindFirstChild("Gun")) or char:FindFirstChild("Gun")
 
-            if hasKnife then
-                highlight.FillColor = Color3.new(1, 0, 0)
-                label.Text = "MURDERER\n▼"
+                    if hasKnife then
+                        highlight.FillColor = Color3.new(1, 0, 0)
+                        label.Text = "MURDERER\n▼"
 
-            elseif hasGun then
-                highlight.FillColor = Color3.new(0, 0.5, 1)
-                label.Text = "SHERIFF/HERO\n▼"
+                    elseif hasGun then
+                        highlight.FillColor = Color3.new(0, 0.5, 1)
+                        label.Text = "SHERIFF/HERO\n▼"
 
-            else
-                local pData = roleCache[p] or roleCache[p.Name]
-                local role = pData and pData.Role or "Innocent"
+                    else
+                        local pData = roleCache[p]
+                        local role = pData and pData.Role or "Innocent"
 
-                if role == "Murderer" then
-                    highlight.FillColor = Color3.new(1, 0, 0)
-                    label.Text = "MURDERER\n▼"
+                        if role == "Murderer" then
+                            highlight.FillColor = Color3.new(1, 0, 0)
+                            label.Text = "MURDERER\n▼"
 
-                elseif role == "Sheriff" or role == "Hero" then
-                    highlight.FillColor = Color3.new(0, 0.5, 1)
-                    label.Text = "SHERIFF\n▼"
+                        elseif role == "Sheriff" or role == "Hero" then
+                            highlight.FillColor = Color3.new(0, 0.5, 1)
+                            label.Text = "SHERIFF\n▼"
 
-                else
-                    highlight.FillColor = Color3.new(0, 1, 0)
-                    label.Text = "▼"
+                        else
+                            highlight.FillColor = Color3.new(0, 1, 0)
+                            label.Text = "▼"
+                        end
+                    end
                 end
+
+                task.wait(0.5)
             end
-        end
-        task.wait(0.5)
+        end)
     end
-end)
+
+    -- Apply to current character
+    if p.Character then
+        setup(p.Character)
+    end
+
+    -- Apply on respawn
+    p.CharacterAdded:Connect(setup)
+end
 
 -- ==========================================
--- 3. INITIALIZE (Run for current & new players)
+-- INITIALIZE
 -- ==========================================
 for _, v in pairs(Players:GetPlayers()) do
     applyPlayerESP(v)
 end
+
 Players.PlayerAdded:Connect(applyPlayerESP)
 
 --- AUTOMATION ---
