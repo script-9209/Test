@@ -522,44 +522,53 @@ local function applyPlayerESP(p)
         label.Size = UDim2.new(1, 0, 1, 0)
         label.Font = Enum.Font.GothamBold
         label.TextSize = 12
-        label.TextStrokeTransparency = 0
+        label.TextStrokeTransparency = 1
 
         -- The Update Loop
-        task.spawn(function()
-            while char and char.Parent do
-                if _G.ESPEnabled then
-                    highlight.Enabled = true
-                    bill.Enabled = true
-                    
-                    -- Pull from our fast cache
-                    local pData = roleCache[p.Name]
-                    local role = pData and pData.Role or "Innocent"
-
-                    if role == "Murderer" then
-                        highlight.FillColor = Color3.new(1, 0, 0)
-                        label.Text = "MURDERER\n▼"
-                        label.TextColor3 = Color3.new(1, 0, 0)
-                    elseif role == "Sheriff" or role == "Hero" then
-                        highlight.FillColor = Color3.new(0, 0.5, 1)
-                        label.Text = "SHERIFF\n▼"
-                        label.TextColor3 = Color3.new(0, 0.5, 1)
-                    else
-                        highlight.FillColor = Color3.new(0, 1, 0)
-                        label.Text = "▼"
-                        label.TextColor3 = Color3.new(0, 1, 0)
-                    end
-                else
-                    highlight.Enabled = false
-                    bill.Enabled = false
-                end
-                task.wait(0.5) -- UI update rate
+task.spawn(function()
+    while char and char.Parent do
+        local hum = char:FindFirstChild("Humanoid")
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        
+        -- Check if they are in the lobby (Lobby is roughly around 0, 0, 0 or specific coordinates)
+        -- We can also check if they are simply too far away from the map center
+        local inLobby = false
+        if hrp then
+            -- MM2 Lobby is usually far from the maps. If Y is high or distance to center is huge:
+            if hrp.Position.Y > 50 then -- Adjust this Y value based on the current map
+                inLobby = true
             end
-        end)
-    end
+        end
 
-    p.CharacterAdded:Connect(setup)
-    if p.Character then setup(p.Character) end
-end
+        if _G.ESPEnabled and hum and hum.Health > 0 and not inLobby then
+            highlight.Enabled = true
+            bill.Enabled = true
+            
+            local pData = roleCache[p.Name]
+            local role = pData and pData.Role or "Innocent"
+
+            if role == "Murderer" then
+                highlight.FillColor = Color3.new(1, 0, 0)
+                label.Text = "MURDERER\n▼"
+                label.TextColor3 = Color3.new(1, 0, 0)
+            elseif role == "Sheriff" or role == "Hero" then
+                highlight.FillColor = Color3.new(0, 0.5, 1)
+                label.Text = "SHERIFF\n▼"
+                label.TextColor3 = Color3.new(0, 0.5, 1)
+            else
+                highlight.FillColor = Color3.new(0, 1, 0)
+                label.Text = "▼"
+                label.TextColor3 = Color3.new(0, 1, 0)
+            end
+        else
+            -- This hides it if they are dead, in the lobby, or ESP is off
+            highlight.Enabled = false
+            bill.Enabled = false
+        end
+        task.wait(0.5)
+    end
+end)
+
 
 -- ==========================================
 -- 3. INITIALIZE (Run for current & new players)
