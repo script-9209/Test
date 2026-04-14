@@ -523,51 +523,65 @@ local function applyPlayerESP(p)
         label.BackgroundTransparency = 1; label.Font = Enum.Font.GothamBold
         label.TextSize = 12; label.TextStrokeTransparency = 0
 
-        task.spawn(function()
-            -- Safety check: ensure 'char' and 'p' still exist
-            while char and char.Parent and p and p.Parent and p.Character == char do
+                task.spawn(function()
+            while char and char.Parent and p.Character == char do
                 if _G.ESPEnabled then
                     highlight.Enabled = true
                     bill.Enabled = true
 
+                    -- 1. PHYSICAL CHECKS
                     local backpack = p:FindFirstChild("Backpack")
                     local hasKnife = (backpack and backpack:FindFirstChild("Knife")) or char:FindFirstChild("Knife")
                     local hasGun = (backpack and backpack:FindFirstChild("Gun")) or char:FindFirstChild("Gun")
                     
-                    -- Check for dropped gun
+                    -- Check if anyone in the server is currently holding the gun
+                    local activeHero = nil
+                    for _, player in ipairs(game.Players:GetPlayers()) do
+                        if player.Character and (player.Character:FindFirstChild("Gun") or (player:FindFirstChild("Backpack") and player.Backpack:FindFirstChild("Gun"))) then
+                            activeHero = player
+                            break
+                        end
+                    end
+
+                    -- Check if gun is on the floor
                     local gunDropped = workspace:FindFirstChild("GunDrop", true)
                     
-                    -- Check Role Data (Safe Indexing)
-                    local pName = p.Name
-                    local pData = roleCache[pName]
-                    local role = (pData and type(pData) == "table" and pData.Role) or "Innocent"
+                    -- 2. SERVER DATA
+                    local pData = roleCache[p.Name]
+                    local role = pData and pData.Role or "Innocent"
 
-                    -- PRO LOGIC
+                    -- 3. THE "GHOST-PROOF" LOGIC
                     if hasKnife or role == "Murderer" then
+                        -- MURDERER (Always Red)
                         local mColor = Color3.fromRGB(255, 0, 0)
                         highlight.FillColor = mColor
                         label.Text = "MURDERER\n▼"; label.TextColor3 = mColor
 
                     elseif hasGun then
+                        -- YOU HAVE THE GUN (You are the true Sheriff/Hero)
                         local sColor = Color3.fromRGB(0, 162, 255)
                         highlight.FillColor = sColor
                         label.Text = "SHERIFF\n▼"; label.TextColor3 = sColor
 
-                    elseif role == "Sheriff" or role == "Hero" then
-                        -- Handle 10s Delay vs Death
-                        if gunDropped then
-                            -- Gun is on floor, they died. Force Inno.
+                    elseif (role == "Sheriff" or role == "Hero") then
+                        -- Data says you are Sheriff, but you DON'T have the gun in your backpack.
+                        
+                        -- THE KILL SWITCH:
+                        -- If the gun is on the floor OR someone else has picked it up...
+                        -- You are no longer the active Sheriff.
+                        if gunDropped or (activeHero and activeHero ~= p) then
                             local iColor = Color3.fromRGB(0, 255, 0)
                             highlight.FillColor = iColor
                             label.Text = "▼"; label.TextColor3 = iColor
                         else
-                            -- Gun not on floor, trust data (start of round)
+                            -- Round just started, gun isn't dropped and no one has it yet.
+                            -- Trust the early ESP.
                             local sColor = Color3.fromRGB(0, 162, 255)
                             highlight.FillColor = sColor
                             label.Text = "SHERIFF\n▼"; label.TextColor3 = sColor
                         end
                     else
-                        -- Standard Innocent
+                        -- INNOCENT
                         local iColor = Color3.fromRGB(0, 255, 0)
                         highlight.FillColor = iColor
                         label.Text = "▼"; label.TextColor3 = iColor
@@ -579,7 +593,7 @@ local function applyPlayerESP(p)
                 task.wait(0.5)
             end
         end)
-    end
+
 
     p.CharacterAdded:Connect(setup)
     if p.Character then setup(p.Character) end
