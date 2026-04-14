@@ -191,11 +191,100 @@ task.spawn(function()
 end)
 
 --- COMBAT UTILITY ---
+local function getPlayer(playerName)
+	return Players:FindFirstChild(playerName)
+end
+
 local function getMurderer()
-    for _, v in pairs(Players:GetPlayers()) do
-        if v ~= lp and v.Character and (v.Character:FindFirstChild("Knife") or v.Backpack:FindFirstChild("Knife")) then return v end
-    end
-    return nil
+	-- ✅ 1. Use playerData FIRST (most accurate)
+	if playerData then
+		for player, data in pairs(playerData) do
+			if data.Role == "Murderer" then
+				local plr = getPlayer(player)
+				if plr then
+					return plr
+				end
+			end
+		end
+	end
+
+	-- 🔄 2. Fallback: Backpack
+	for _, i in ipairs(Players:GetPlayers()) do
+		if i.Backpack and i.Backpack:FindFirstChild("Knife") then
+			return i
+		end
+	end
+
+	-- 🔄 3. Fallback: Character
+	for _, i in ipairs(Players:GetPlayers()) do
+		if i.Character and i.Character:FindFirstChild("Knife") then
+			return i
+		end
+	end
+
+	return nil
+end
+
+
+local function getSheriff()
+	-- ✅ 1. Use playerData FIRST
+	if playerData then
+		for player, data in pairs(playerData) do
+			if data.Role == "Sheriff" then
+				local plr = getPlayer(player)
+				if plr then
+					return plr
+				end
+			end
+		end
+	end
+
+	-- 🔄 2. Fallback: Backpack
+	for _, i in ipairs(Players:GetPlayers()) do
+		if i.Backpack and i.Backpack:FindFirstChild("Gun") then
+			return i
+		end
+	end
+
+	-- 🔄 3. Fallback: Character
+	for _, i in ipairs(Players:GetPlayers()) do
+		if i.Character and i.Character:FindFirstChild("Gun") then
+			return i
+		end
+	end
+
+	return nil
+end
+
+
+local function findSheriffThatsNotMe()
+	-- ✅ 1. Use playerData FIRST
+	if playerData then
+		for player, data in pairs(playerData) do
+			if data.Role == "Sheriff" then
+				local plr = getPlayer(player)
+				if plr and plr ~= localplayer then
+					return plr
+				end
+			end
+		end
+	end
+
+	-- 🔄 2. Fallback: Backpack
+	for _, i in ipairs(Players:GetPlayers()) do
+		if i ~= localplayer and i.Backpack and i.Backpack:FindFirstChild("Gun") then
+			return i
+		end
+	end
+
+	-- 🔄 3. Fallback: Character
+	for _, i in ipairs(Players:GetPlayers()) do
+		if i ~= localplayer and i.Character and i.Character:FindFirstChild("Gun") then
+			return i
+		end
+	end
+
+	return nil
 end
 
 local function fireGun()
@@ -351,24 +440,6 @@ local function toggleAntiFling(state)
         detectedPlayers = {}
         Rayfield:Notify({Title = "Anti-Fling", Content = "Protection Deactivated", Duration = 2})
     end
-end
-
--- Helper to find players by role
-local function getSheriff()
-    for _, v in pairs(Players:GetPlayers()) do
-        if v.Character and (v.Character:FindFirstChild("Gun") or v.Backpack:FindFirstChild("Gun")) then return v end
-    end
-    return nil
-end
-
-local function getMurderer()
-    for _, v in pairs(Players:GetPlayers()) do
-        -- Check if any other player has a knife in their hand or backpack
-        if v ~= lp and v.Character and (v.Character:FindFirstChild("Knife") or v.Backpack:FindFirstChild("Knife")) then 
-            return v 
-        end
-    end
-    return nil
 end
 
 -- Main Fling Logic (SkidFling)
