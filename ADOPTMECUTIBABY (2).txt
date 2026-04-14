@@ -198,7 +198,7 @@ local function getMurderer()
     return nil
 end
 
-Local function fireGun()
+local function fireGun()
     local gun = lp.Character:FindFirstChild("Gun") or lp.Backpack:FindFirstChild("Gun")
     local m = getMurderer()
     if gun and m and m.Character:FindFirstChild("HumanoidRootPart") then
