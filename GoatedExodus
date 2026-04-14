@@ -479,112 +479,128 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 -- ==========================================
--- 1. FIXED ROLE CACHE (Stops the Nil Crash)
+-- 1. ROLE CACHE (SAFE FETCHING)
 -- ==========================================
 local roleCache = {}
 
 task.spawn(function()
     while task.wait(1.5) do
         local success, data = pcall(function()
-            -- Get the RemoteFunction from ReplicatedStorage
             local remote = game:GetService("ReplicatedStorage"):FindFirstChild("GetPlayerData", true)
             if remote then
                 return remote:InvokeServer()
             end
         end)
-
+        
         if success and type(data) == "table" then
-            roleCache = data -- Store the table [Name] = {Role = "..."}
+            roleCache = data
         end
     end
 end)
 
 -- ==========================================
--- 2. FIXED ESP FUNCTION (Pro Mode Logic)
+-- 2. ESP SYSTEM (STABLE & PRO)
 -- ==========================================
 local function applyPlayerESP(p)
-    if p == lp then return end
+    -- Ensure player exists and isn't us
+    if not p or p == lp then return end
 
     local function setup(char)
+        if not char then return end
         local head = char:WaitForChild("Head", 10)
         if not head then return end
 
+        -- Create/Get Highlight
         local highlight = char:FindFirstChild("ExodusESP") or Instance.new("Highlight")
-        highlight.Name = "ExodusESP"; highlight.Parent = char
-        highlight.FillTransparency = 0.5; highlight.OutlineTransparency = 0
+        highlight.Name = "ExodusESP"
+        highlight.Parent = char
+        highlight.FillTransparency = 0.5
+        highlight.OutlineTransparency = 0
 
+        -- Create/Get Billboard
         local bill = head:FindFirstChild("ExodusBill") or Instance.new("BillboardGui")
-        bill.Name = "ExodusBill"; bill.Parent = head; bill.Adornee = head
-        bill.Size = UDim2.new(0, 150, 0, 50); bill.AlwaysOnTop = true
+        bill.Name = "ExodusBill"
+        bill.Parent = head
+        bill.Adornee = head
+        bill.Size = UDim2.new(0, 150, 0, 50)
+        bill.AlwaysOnTop = true
         bill.ExtentsOffset = Vector3.new(0, 3, 0)
 
         local label = bill:FindFirstChild("TextLabel") or Instance.new("TextLabel")
-        label.Parent = bill; label.Size = UDim2.new(1, 0, 1, 0)
-        label.BackgroundTransparency = 1; label.Font = Enum.Font.GothamBold
-        label.TextSize = 12; label.TextStrokeTransparency = 0
+        label.Parent = bill
+        label.Size = UDim2.new(1, 0, 1, 0)
+        label.BackgroundTransparency = 1
+        label.Font = Enum.Font.GothamBold
+        label.TextSize = 12
+        label.TextStrokeTransparency = 0 -- Keeps text visible
 
-                task.spawn(function()
-            while char and char.Parent and p.Character == char do
+        -- Core Logic Loop
+        task.spawn(function()
+            -- Check if p and char are still valid every loop
+            while char and char.Parent and p and p.Parent and p.Character == char do
                 if _G.ESPEnabled then
                     highlight.Enabled = true
                     bill.Enabled = true
 
-                    -- 1. PHYSICAL CHECKS
-                    local backpack = p:FindFirstChild("Backpack")
-                    local hasKnife = (backpack and backpack:FindFirstChild("Knife")) or char:FindFirstChild("Knife")
-                    local hasGun = (backpack and backpack:FindFirstChild("Gun")) or char:FindFirstChild("Gun")
-                    
-                    -- Check if anyone in the server is currently holding the gun
+                    -- A. SCAN FOR ACTIVE GUN (Single Source check)
                     local activeHero = nil
                     for _, player in ipairs(game.Players:GetPlayers()) do
-                        if player.Character and (player.Character:FindFirstChild("Gun") or (player:FindFirstChild("Backpack") and player.Backpack:FindFirstChild("Gun"))) then
-                            activeHero = player
-                            break
+                        if player and player.Character then
+                            local bp = player:FindFirstChild("Backpack")
+                            local charGun = player.Character:FindFirstChild("Gun")
+                            local backGun = bp and bp:FindFirstChild("Gun")
+                            
+                            if charGun or backGun then
+                                activeHero = player
+                                break
+                            end
                         end
                     end
 
-                    -- Check if gun is on the floor
+                    -- B. PHYSICAL CHECKS
+                    local backpack = p:FindFirstChild("Backpack")
+                    local hasKnife = (backpack and backpack:FindFirstChild("Knife")) or char:FindFirstChild("Knife")
+                    local hasGun = (backpack and backpack:FindFirstChild("Gun")) or char:FindFirstChild("Gun")
                     local gunDropped = workspace:FindFirstChild("GunDrop", true)
                     
-                    -- 2. SERVER DATA
+                    -- C. DATA FETCH
                     local pData = roleCache[p.Name]
-                    local role = pData and pData.Role or "Innocent"
+                    local role = (pData and type(pData) == "table" and pData.Role) or "Innocent"
 
-                    -- 3. THE "GHOST-PROOF" LOGIC
+                    -- D. COLOR LOGIC (RED/BLUE/GREEN)
                     if hasKnife or role == "Murderer" then
-                        -- MURDERER (Always Red)
                         local mColor = Color3.fromRGB(255, 0, 0)
                         highlight.FillColor = mColor
-                        label.Text = "MURDERER\n▼"; label.TextColor3 = mColor
+                        label.Text = "MURDERER\n▼"
+                        label.TextColor3 = mColor
 
                     elseif hasGun then
-                        -- YOU HAVE THE GUN (You are the true Sheriff/Hero)
+                        -- High Priority: Physically holding the gun
                         local sColor = Color3.fromRGB(0, 162, 255)
                         highlight.FillColor = sColor
-                        label.Text = "SHERIFF\n▼"; label.TextColor3 = sColor
+                        label.Text = "SHERIFF\n▼"
+                        label.TextColor3 = sColor
 
-                    elseif (role == "Sheriff" or role == "Hero") then
-                        -- Data says you are Sheriff, but you DON'T have the gun in your backpack.
-                        
-                        -- THE KILL SWITCH:
-                        -- If the gun is on the floor OR someone else has picked it up...
-                        -- You are no longer the active Sheriff.
+                    elseif role == "Sheriff" or role == "Hero" then
+                        -- If gun is dropped or someone else picked it up, turn green
                         if gunDropped or (activeHero and activeHero ~= p) then
                             local iColor = Color3.fromRGB(0, 255, 0)
                             highlight.FillColor = iColor
-                            label.Text = "▼"; label.TextColor3 = iColor
+                            label.Text = "▼"
+                            label.TextColor3 = iColor
                         else
-                            -- Round just started, gun isn't dropped and no one has it yet.
-                            -- Trust the early ESP.
+                            -- Early ESP (start of round)
                             local sColor = Color3.fromRGB(0, 162, 255)
                             highlight.FillColor = sColor
-                            label.Text = "SHERIFF\n▼"; label.TextColor3 = sColor
+                            label.Text = "SHERIFF\n▼"
+                            label.TextColor3 = sColor
                         end
                     else
-                        -- INNOCENT
+                        -- Innocent
                         local iColor = Color3.fromRGB(0, 255, 0)
                         highlight.FillColor = iColor
-                        label.Text = "▼"; label.TextColor3 = iColor
+                        label.Text = "▼"
+                        label.TextColor3 = iColor
                     end
                 else
                     highlight.Enabled = false
@@ -593,20 +609,22 @@ local function applyPlayerESP(p)
                 task.wait(0.5)
             end
         end)
-
+    end
 
     p.CharacterAdded:Connect(setup)
     if p.Character then setup(p.Character) end
-end                         
-
--- ==========================================
--- 3. INITIALIZE CONNECTIONS
--- ==========================================
-for _, v in pairs(Players:GetPlayers()) do
-    applyPlayerESP(v)
 end
-Players.PlayerAdded:Connect(applyPlayerESP)
 
+-- ==========================================
+-- 3. INITIALIZATION
+-- ==========================================
+for _, player in pairs(game.Players:GetPlayers()) do
+    applyPlayerESP(player)
+end
+
+game.Players.PlayerAdded:Connect(applyPlayerESP)
+
+                    
 --- AUTOMATION ---
 
 local function ResetCharacterPhysics()
