@@ -407,24 +407,6 @@ local function toggleAntiFling(state)
     end
 end
 
--- Helper to find players by role
-local function getSheriff()
-    for _, v in pairs(Players:GetPlayers()) do
-        if v.Character and (v.Character:FindFirstChild("Gun") or v.Backpack:FindFirstChild("Gun")) then return v end
-    end
-    return nil
-end
-
-local function getMurderer()
-    for _, v in pairs(Players:GetPlayers()) do
-        -- Check if any other player has a knife in their hand or backpack
-        if v ~= lp and v.Character and (v.Character:FindFirstChild("Knife") or v.Backpack:FindFirstChild("Knife")) then 
-            return v 
-        end
-    end
-    return nil
-end
-
 -- Main Fling Logic (SkidFling)
 local function executeFling(target)
     if not target or not target.Character then 
