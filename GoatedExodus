@@ -222,6 +222,36 @@ local function getMurderer()
 end
 
 
+local function getSheriff()
+    local success, data = pcall(function()
+        return game:GetService("ReplicatedStorage"):FindFirstChild("GetPlayerData", true):InvokeServer()
+    end)
+
+    if success and data then
+        for plr, plrData in pairs(data) do
+            -- Looks for the Sheriff or the Hero (if the original Sheriff died)
+            if plrData.Role == "Sheriff" or plrData.Role == "Hero" then
+                local player = game:GetService("Players"):FindFirstChild(plr)
+                if player then
+                    -- Don't target yourself if you are the Sheriff
+                    if player == game:GetService("Players").LocalPlayer then return nil, true end
+                    
+                    local char = player.Character
+                    if char then
+                        local hrp = char:FindFirstChild("HumanoidRootPart")
+                        if hrp then return hrp.Position, false end
+                        
+                        local head = char:FindFirstChild("Head")
+                        if head then return head.Position, false end
+                    end
+                end
+            end
+        end
+    end
+    return nil, false
+end
+
+
 local function fireGun()
     local char = lp.Character
     if not char then return end
