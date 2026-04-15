@@ -215,47 +215,40 @@ local function fireGun()
     if not char then return end
 
     local gun = char:FindFirstChild("Gun") or lp.Backpack:FindFirstChild("Gun")
-    -- Using the RoleCache helper for instant targeting
-    local targetName = getMurdererName() 
-    local target = targetName and Players:FindFirstChild(targetName)
+    local target = getMurdererName()
 
     if not gun or not target or not target.Character then return end
 
     local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
-    local myHRP = char:FindFirstChild("HumanoidRootPart")
-    if not targetHRP or not myHRP then return end
+    if not targetHRP then return end
 
-    -- Auto-Equip for Mobile efficiency
     if gun.Parent == lp.Backpack then
         char.Humanoid:EquipTool(gun)
-        task.wait(0.05) -- Faster wait for V6
+        task.wait(0.1)
     end
 
-    -- 🎯 1. HIGH-PRECISION PREDICTION
+    -- 🧠 PERFECTED PREDICTION FOR SPAWN AIM
     local pos = targetHRP.Position
     local vel = targetHRP.AssemblyLinearVelocity
-    local distance = (myHRP.Position - pos).Magnitude
 
-    -- Dynamic prediction: Leads more at distance, less up close.
-    -- Dividing by 85 is the "Sweet Spot" for MM2 physics.
-    local prediction = math.clamp(distance / 85, 0.12, 0.32)
+    local myHRP = char:FindFirstChild("HumanoidRootPart")
+    local distance = myHRP and (myHRP.Position - pos).Magnitude or 0
+
+    -- Stronger adaptive prediction (since origin is already ON target)
+    local prediction = math.clamp(distance / 90, 0.12, 0.28)
+
     local predictedPos = pos + (vel * prediction)
 
-    -- 🎯 2. VERTICAL HITBOX BIAS
-    -- 0.22 Studs up hits the torso consistently even if they jump
-    predictedPos = predictedPos + Vector3.new(0, 0.22, 0)
+    -- Slight upward bias (better hit reg)
+    predictedPos += Vector3.new(0, 0.2, 0)
 
-    -- 🎯 3. THE "ORIGIN" OFFSET (Behind the Target)
-    -- This uses the logic you liked: Position slightly behind/above the target
-    local lookCf = CFrame.new(pos, predictedPos)
-    local origin = (lookCf * CFrame.new(0, 0.25, 0.35)).Position
+    -- 🎯 KEEP origin ON target (this is your advantage)
+    local origin = pos
 
-    -- 🎯 4. FINAL CFRAME
-    local finalCf = CFrame.new(origin, predictedPos)
+    local cf = CFrame.new(origin, predictedPos)
 
-    -- 🎯 5. EXECUTION
     local args = {
-        [1] = finalCf,
+        [1] = cf,
         [2] = CFrame.new(predictedPos)
     }
 
@@ -263,7 +256,6 @@ local function fireGun()
         gun.Shoot:FireServer(unpack(args))
     end
 end
-
 
 local function throwAction()
     local knife = lp.Character:FindFirstChild("Knife") or lp.Backpack:FindFirstChild("Knife")
