@@ -192,69 +192,20 @@ task.spawn(function()
 end)
 
 --- COMBAT UTILITY ---
-local function getMurderer()
-    -- Wrap the server call in a pcall to prevent crashes from lag or errors
-    local success, data = pcall(function()
-        return game:GetService("ReplicatedStorage"):FindFirstChild("GetPlayerData", true):InvokeServer()
-    end)
-
-    if success and data then
-        for plr, plrData in pairs(data) do
-            if plrData.Role == "Murderer" then
-                local player = game:GetService("Players"):FindFirstChild(plr)
-                if player then
-                    -- Safety: Don't target yourself
-                    if player == game:GetService("Players").LocalPlayer then return nil, true end
-                    
-                    local char = player.Character
-                    if char then
-                        local hrp = char:FindFirstChild("HumanoidRootPart")
-                        if hrp then return hrp.Position, false end
-                        
-                        local head = char:FindFirstChild("Head")
-                        if head then return head.Position, false end
-                    end
-                end
-            end
+local function getMurdererName()
+    for name, data in pairs(roleCache) do
+        if type(data) == "table" and data.Role == "Murderer" then
+            return name
         end
     end
-    -- Returns nil if Murderer isn't found or server call failed
-    return nil, false
+    return nil
 end
 
-
-local function getSheriff()
-    local success, data = pcall(function()
-        return game:GetService("ReplicatedStorage"):FindFirstChild("GetPlayerData", true):InvokeServer()
-    end)
-
-    if success and data then
-        for plr, plrData in pairs(data) do
-            -- Looks for the Sheriff or the Hero (if the original Sheriff died)
-            if plrData.Role == "Sheriff" or plrData.Role == "Hero" then
-                local player = game:GetService("Players"):FindFirstChild(plr)
-                if player then
-                    -- Don't target yourself if you are the Sheriff
-                    if player == game:GetService("Players").LocalPlayer then return nil, true end
-                    
-                    local char = player.Character
-                    if char then
-                        local hrp = char:FindFirstChild("HumanoidRootPart")
-                        if hrp then return hrp.Position, false end
-                        
-                        local head = char:FindFirstChild("Head")
-                        if head then return head.Position, false end
-                    end
-                end
-            end
+local function getSheriffName()
+    for name, data in pairs(roleCache) do
+        if type(data) == "table" and (data.Role == "Sheriff" or data.Role == "Hero") then
+            return name
         end
-    end
-    return nil, false
-end
-
-local function getMurderer2()
-    for _, v in pairs(Players:GetPlayers()) do
-        if v ~= lp and v.Character and (v.Character:FindFirstChild("Knife") or v.Backpack:FindFirstChild("Knife")) then return v end
     end
     return nil
 end
@@ -264,7 +215,7 @@ local function fireGun()
     if not char then return end
 
     local gun = char:FindFirstChild("Gun") or lp.Backpack:FindFirstChild("Gun")
-    local target = getMurderer2()
+    local target = getMurdererName()
 
     if not gun or not target or not target.Character then return end
 
@@ -415,39 +366,40 @@ local function toggleAntiFling(state)
 end
 
 -- Main Fling Logic (SkidFling)
-local function executeFling(target)
-    if not target or not target.Character then 
-        Rayfield:Notify({Title = "Exodus Error", Content = "Target not found.", Duration = 2})
+local function executeFling(targetName)
+    if not targetName then 
+        Rayfield:Notify({Title = "Exodus", Content = "Target not found in data!", Duration = 3})
         return 
     end
-    
-    local char = lp.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    local tRoot = target.Character:FindFirstChild("HumanoidRootPart")
 
-    if hrp and tRoot then
-        local oldPos = hrp.CFrame
-        workspace.FallenPartsDestroyHeight = 0/0
-        
-        local bv = Instance.new("BodyVelocity", hrp)
-        bv.Velocity = Vector3.new(9e8, 9e8, 9e8)
-        bv.MaxForce = Vector3.new(1/0, 1/0, 1/0)
-        
-        lp.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
-        workspace.CurrentCamera.CameraSubject = tRoot
+    local targetPlayer = Players:FindFirstChild(targetName)
+    if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local targetHRP = targetPlayer.Character.HumanoidRootPart
+        local myChar = lp.Character
+        local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
+        local myHum = myChar and myChar:FindFirstChildOfClass("Humanoid")
 
-        local timeLimit = tick() + 1.5 -- Short burst for reliability
-        repeat
-            hrp.CFrame = tRoot.CFrame * CFrame.Angles(math.rad(math.random(1,360)), 0, 0)
-            hrp.Velocity = Vector3.new(9e7, 9e7, 9e7)
-            task.wait()
-        until not target.Character or tick() > timeLimit
-
-        bv:Destroy()
-        lp.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
-        workspace.CurrentCamera.CameraSubject = lp.Character.Humanoid
-        hrp.CFrame = oldPos
-        hrp.Velocity = Vector3.zero
+        if myHRP and myHum then
+            Rayfield:Notify({Title = "Exodus", Content = "Flinging: " .. targetName, Duration = 2})
+            
+            -- Store old position to return after fling
+            local oldPos = myHRP.CFrame
+            
+            -- Fling Physics (The "V6" Method)
+            local vel = Vector3.new(999999, 999999, 999999)
+            local t = tick()
+            while tick() - t < 0.5 do -- Fling for 0.5 seconds
+                RunService.Heartbeat:Wait()
+                myHRP.Velocity = vel
+                myHRP.CFrame = targetHRP.CFrame
+            end
+            
+            -- Return and Clean up
+            myHRP.Velocity = Vector3.new(0,0,0)
+            myHRP.CFrame = oldPos
+        end
+    else
+        Rayfield:Notify({Title = "Exodus", Content = "Target character not loaded!", Duration = 3})
     end
 end
 
@@ -901,14 +853,14 @@ MiscTab:CreateSection("Fling Utilities")
 MiscTab:CreateButton({
     Name = "Fling Murderer",
     Callback = function()
-        executeFling(getMurderer()) -- Uses existing murderer helper
+        executeFling(getMurdererName()) 
     end,
 })
 
 MiscTab:CreateButton({
     Name = "Fling Sheriff",
     Callback = function()
-        executeFling(getSheriff()) -- Uses new sheriff helper
+        executeFling(getSheriffName())
     end,
 })
 
