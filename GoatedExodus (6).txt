@@ -210,41 +210,36 @@ local function getSheriffName()
     return nil
 end
 
+local function getMurderer()
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= lp and v.Character and (v.Character:FindFirstChild("Knife") or v.Backpack:FindFirstChild("Knife")) then return v end
+    end
+    return nil
+end
+
 local function fireGun()
     local char = lp.Character
     if not char then return end
 
     local gun = char:FindFirstChild("Gun") or lp.Backpack:FindFirstChild("Gun")
-    local target = getMurdererName()
+    local target = getMurderer()
 
     if not gun or not target or not target.Character then return end
 
     local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
     if not targetHRP then return end
 
+    -- Equip safely
     if gun.Parent == lp.Backpack then
         char.Humanoid:EquipTool(gun)
         task.wait(0.1)
     end
 
-    -- 🧠 PERFECTED PREDICTION FOR SPAWN AIM
-    local pos = targetHRP.Position
-    local vel = targetHRP.AssemblyLinearVelocity
+    -- 🔥 Dynamic prediction (better aim)
+    local velocity = targetHRP.Velocity
+    local predictedPos = targetHRP.Position + (velocity * 0.12)
 
-    local myHRP = char:FindFirstChild("HumanoidRootPart")
-    local distance = myHRP and (myHRP.Position - pos).Magnitude or 0
-
-    -- Stronger adaptive prediction (since origin is already ON target)
-    local prediction = math.clamp(distance / 90, 0.12, 0.28)
-
-    local predictedPos = pos + (vel * prediction)
-
-    -- Slight upward bias (better hit reg)
-    predictedPos += Vector3.new(0, 0.2, 0)
-
-    -- 🎯 KEEP origin ON target (this is your advantage)
-    local origin = pos
-
+    local origin = targetHRP.Position
     local cf = CFrame.new(origin, predictedPos)
 
     local args = {
@@ -256,6 +251,7 @@ local function fireGun()
         gun.Shoot:FireServer(unpack(args))
     end
 end
+
 
 local function throwAction()
     local knife = lp.Character:FindFirstChild("Knife") or lp.Backpack:FindFirstChild("Knife")
