@@ -1,0 +1,65 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "Universal Script Hub",
+   LoadingTitle = "Initializing Loader...",
+   LoadingSubtitle = "Preparing Script List",
+   ConfigurationSaving = {
+      Enabled = false
+   },
+   Discord = {
+      Enabled = false
+   },
+   KeySystem = false
+})
+
+-- [[ SCRIPTS TAB ]]
+local ScriptTab = Window:CreateTab("Scripts", 4483362458) -- Home icon
+local ScriptSection = ScriptTab:CreateSection("Available Scripts")
+
+-- Button 1
+ScriptTab:CreateButton({
+   Name = "KAKASHI HUB",
+   Callback = function()
+       loadstring(game:HttpGet("https://pastefy.app/6tEGyf3D/raw"))()
+       
+       Rayfield:Notify({
+          Title = "Success",
+          Content = "KAKASHI HUB WAS BEEN EXECUTED",
+          Duration = 3,
+          Image = 4483362458,
+       })
+   end,
+})
+
+-- Button 2
+ScriptTab:CreateButton({
+   Name = "Load Script #2",
+   Callback = function()
+       -- Replace the URL below with your actual script link
+       loadstring(game:HttpGet("https://raw.githubusercontent.com/Owner/Repo/main/Script2.lua"))()
+       
+       Rayfield:Notify({
+          Title = "Success",
+          Content = "Script 2 has been executed!",
+          Duration = 3,
+          Image = 4483362458,
+       })
+   end,
+})
+
+-- Button 3
+ScriptTab:CreateButton({
+   Name = "Load Script #3",
+   Callback = function()
+       -- Replace the URL below with your actual script link
+       loadstring(game:HttpGet("https://raw.githubusercontent.com/Owner/Repo/main/Script3.lua"))()
+   end,
+})
+
+-- [[ INFO TAB ]]
+local InfoTab = Window:CreateTab("Credits", 4483362458)
+InfoTab:CreateSection("Developer Info")
+InfoTab:CreateLabel("List Creator: Exo2s")
+InfoTab:CreateLabel("Last Updated: 2026-04-16")
+
