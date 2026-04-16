@@ -850,7 +850,7 @@ PlayerTab:CreateInput({Name = "JumpPower", PlaceholderText = "50", Flag = "JP_F"
     if s then _G.DesiredJump = s if lp.Character and lp.Character:FindFirstChild("Humanoid") then lp.Character.Humanoid.UseJumpPower = true lp.Character.Humanoid.JumpPower = s end end
 end})
 PlayerTab:CreateToggle({Name = "Speed Glitch (Air Only)", CurrentValue = false, Callback = function(V) _G.SpeedGlitchEnabled = V end})
-PlayerTab:CreateInput({Name = "Glitch Speed", PlaceholderText = "40", Callback = function(T) _G.SpeedGlitchValue = tonumber(T) or 50 end})
+PlayerTab:CreateInput({Name = "Glitch Speed", PlaceholderText = "40", Flag = "SP_F", Callback = function(T) _G.SpeedGlitchValue = tonumber(T) or 50 end})
 
 --[[ KEYBINDS TAB ]]
 
