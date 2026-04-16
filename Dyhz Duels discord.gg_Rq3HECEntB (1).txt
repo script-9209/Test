@@ -224,25 +224,6 @@ SpinBotBtn.MouseButton1Click:Connect(function()
     -- Spinbot is already active from start
 end)
 
--- Copy Discord button
-local DiscordBtn = Instance.new("TextButton")
-DiscordBtn.Parent = MainFrame
-DiscordBtn.Size = UDim2.new(1, -20, 0, 35)
-DiscordBtn.Position = UDim2.new(0, 10, 0, 185)
-DiscordBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242) -- Discord blue
-DiscordBtn.Text = "COPY DISCORD"
-DiscordBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-DiscordBtn.Font = Enum.Font.GothamBold
-DiscordBtn.TextSize = 9
-Instance.new("UICorner").Parent = DiscordBtn
-
-DiscordBtn.MouseButton1Click:Connect(function()
-    setclipboard("https://discord.gg/Rq3HECEntB")
-    DiscordBtn.Text = "COPIED!"
-    task.wait(1)
-    DiscordBtn.Text = "COPY DISCORD"
-end)
-
 -- Toggle menu button
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Parent = ScreenGui
