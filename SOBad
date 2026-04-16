@@ -25,7 +25,7 @@ ScriptTab:CreateButton({
        
        Rayfield:Notify({
           Title = "Success",
-          Content = "KAKASHI HUB WAS BEEN EXECUTED",
+          Content = "KAKASHI HUB HAS BEEN EXECUTED",
           Duration = 3,
           Image = 4483362458,
        })
@@ -34,26 +34,16 @@ ScriptTab:CreateButton({
 
 -- Button 2
 ScriptTab:CreateButton({
-   Name = "Load Script #2",
+   Name = "KAWATAN HUB",
    Callback = function()
-       -- Replace the URL below with your actual script link
-       loadstring(game:HttpGet("https://raw.githubusercontent.com/Owner/Repo/main/Script2.lua"))()
+       loadstring(game:HttpGet("https://raw.githubusercontent.com/script-9209/Test/refs/heads/main/Loader"))()
        
        Rayfield:Notify({
           Title = "Success",
-          Content = "Script 2 has been executed!",
+          Content = "KAWATAN HUB HAS BEEN EXECUTED",
           Duration = 3,
           Image = 4483362458,
        })
-   end,
-})
-
--- Button 3
-ScriptTab:CreateButton({
-   Name = "Load Script #3",
-   Callback = function()
-       -- Replace the URL below with your actual script link
-       loadstring(game:HttpGet("https://raw.githubusercontent.com/Owner/Repo/main/Script3.lua"))()
    end,
 })
 
