@@ -65,6 +65,21 @@ ScriptTab:CreateButton({
    end,
 })
 
+-- Button 
+ScriptTab:CreateButton({
+   Name = "",
+   Callback = function()
+       loadstring(game:HttpGet(""))()
+       
+       Rayfield:Notify({
+          Title = "Success",
+          Content = " HAS BEEN EXECUTED",
+          Duration = 3,
+          Image = 4483362458,
+       })
+   end,
+})
+
 -- [[ INFO TAB ]]
 local InfoTab = Window:CreateTab("Credits", 4483362458)
 InfoTab:CreateSection("Developer Info")
