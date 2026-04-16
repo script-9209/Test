@@ -874,15 +874,6 @@ end})
 
 --[[ MISC TAB ]]
 
-MiscTab:CreateToggle({
-    Name = "Role Notifier",
-    CurrentValue = false,
-    Flag = "RoleNotify", 
-    Callback = function(Value)
-        _G.RoleNotify = Value
-    end,
-})
-
 -- Anti-Fling Section
 MiscTab:CreateSection("Security")
 
