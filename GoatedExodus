@@ -193,69 +193,69 @@ end)
 
 --- COMBAT UTILITY ---
 local function getMurderer()
-    -- Wrap the server call in a pcall to prevent crashes from lag or errors
-    local success, data = pcall(function()
-        return game:GetService("ReplicatedStorage"):FindFirstChild("GetPlayerData", true):InvokeServer()
-    end)
+    -- 1. Use the locked target if we already found them
+    if CurrentMurderer and CurrentMurderer.Parent == Players then 
+        return CurrentMurderer 
+    end
 
-    if success and data then
-        for plr, plrData in pairs(data) do
-            if plrData.Role == "Murderer" then
-                local player = game:GetService("Players"):FindFirstChild(plr)
-                if player then
-                    -- Safety: Don't target yourself
-                    if player == game:GetService("Players").LocalPlayer then return nil, true end
-                    
-                    local char = player.Character
-                    if char then
-                        local hrp = char:FindFirstChild("HumanoidRootPart")
-                        if hrp then return hrp.Position, false end
-                        
-                        local head = char:FindFirstChild("Head")
-                        if head then return head.Position, false end
-                    end
-                end
+    -- 2. Physical Check (Fastest & Most Accurate)
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= lp and p.Character then
+            if p.Character:FindFirstChild("Knife") or p.Backpack:FindFirstChild("Knife") then
+                CurrentMurderer = p
+                return p
             end
         end
     end
-    -- Returns nil if Murderer isn't found or server call failed
-    return nil, false
-end
 
+    -- 3. RoleCache Fallback (Finds them before they pull the knife)
+    for name, data in pairs(roleCache) do
+        if data.Role == "Murderer" then
+            local p = Players:FindFirstChild(name)
+            if p then
+                CurrentMurderer = p
+                return p
+            end
+        end
+    end
+
+    return nil
+end
 
 local function getSheriff()
-    local success, data = pcall(function()
-        return game:GetService("ReplicatedStorage"):FindFirstChild("GetPlayerData", true):InvokeServer()
-    end)
+    -- 1. HIGHEST PRIORITY: The Gun Drop
+    -- If the gun is on the floor, no one is currently the Sheriff
+    if workspace:FindFirstChild("GunDrop", true) then
+        return nil
+    end
 
-    if success and data then
-        for plr, plrData in pairs(data) do
-            -- Looks for the Sheriff or the Hero (if the original Sheriff died)
-            if plrData.Role == "Sheriff" or plrData.Role == "Hero" then
-                local player = game:GetService("Players"):FindFirstChild(plr)
-                if player then
-                    -- Don't target yourself if you are the Sheriff
-                    if player == game:GetService("Players").LocalPlayer then return nil, true end
-                    
-                    local char = player.Character
-                    if char then
-                        local hrp = char:FindFirstChild("HumanoidRootPart")
-                        if hrp then return hrp.Position, false end
-                        
-                        local head = char:FindFirstChild("Head")
-                        if head then return head.Position, false end
-                    end
-                end
+    -- 2. PHYSICAL CHECK: Find the current gun holder (Sheriff or Hero)
+    for _, p in pairs(game:GetService("Players"):GetPlayers()) do
+        if p ~= lp and p.Character then
+            local backpack = p:FindFirstChild("Backpack")
+            local char = p.Character
+            
+            -- Checks if they are holding it or if it's in their inventory
+            local hasGun = char:FindFirstChild("Gun") or (backpack and backpack:FindFirstChild("Gun"))
+            
+            if hasGun then
+                return p -- This is your Sheriff or Hero
             end
         end
     end
-    return nil, false
-end
 
-local function getMurderer2()
-    for _, v in pairs(Players:GetPlayers()) do
-        if v ~= lp and v.Character and (v.Character:FindFirstChild("Knife") or v.Backpack:FindFirstChild("Knife")) then return v end
+    -- 3. FALLBACK: Use RoleCache (Psychic Data)
+    -- If no gun is on the floor and no one is physically holding it,
+    -- find the original Sheriff who has it holstered.
+    for name, data in pairs(roleCache) do
+        if data.Role == "Sheriff" or data.Role == "Hero" then
+            local p = game:GetService("Players"):FindFirstChild(name)
+            if p then
+                return p
+            end
+        end
     end
+
     return nil
 end
 
@@ -264,7 +264,7 @@ local function fireGun()
     if not char then return end
 
     local gun = char:FindFirstChild("Gun") or lp.Backpack:FindFirstChild("Gun")
-    local target = getMurderer2()
+    local target = getMurderer()
 
     if not gun or not target or not target.Character then return end
 
