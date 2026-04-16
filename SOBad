@@ -52,24 +52,24 @@ ScriptTab:CreateButton({
 
 -- Button 3
 ScriptTab:CreateButton({
-   Name = "MAKKI DUEL",
+   Name = "MAKKI DUELS",
    Callback = function()
        loadstring(game:HttpGet("https://raw.githubusercontent.com/script-9209/Test/refs/heads/main/Makiii%20to%20mine_.txt"))()
        
        Rayfield:Notify({
           Title = "Success",
-          Content = "MAKII DUEL HAS BEEN EXECUTED",
+          Content = "MAKII DUELS HAS BEEN EXECUTED",
           Duration = 3,
           Image = 4483362458,
        })
    end,
 })
 
--- Button 
+-- Button 4
 ScriptTab:CreateButton({
-   Name = "",
+   Name = "DYHZ DUELS",
    Callback = function()
-       loadstring(game:HttpGet(""))()
+       loadstring(game:HttpGet("https://raw.githubusercontent.com/script-9209/Test/refs/heads/main/Dyhz%20Duels%20discord.gg_Rq3HECEntB%20(1).txt"))()
        
        Rayfield:Notify({
           Title = "Success",
