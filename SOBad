@@ -47,6 +47,21 @@ ScriptTab:CreateButton({
    end,
 })
 
+-- Button 3
+ScriptTab:CreateButton({
+   Name = "MAKKI DUEL",
+   Callback = function()
+       loadstring(game:HttpGet("https://raw.githubusercontent.com/script-9209/Test/refs/heads/main/Makiii%20to%20mine_.txt"))()
+       
+       Rayfield:Notify({
+          Title = "Success",
+          Content = "MAKII DUEL HAS BEEN EXECUTED",
+          Duration = 3,
+          Image = 4483362458,
+       })
+   end,
+})
+
 -- [[ INFO TAB ]]
 local InfoTab = Window:CreateTab("Credits", 4483362458)
 InfoTab:CreateSection("Developer Info")
