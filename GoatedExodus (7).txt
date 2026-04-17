@@ -799,48 +799,42 @@ task.spawn(function()
     end
 end)
 
+-- [[ EXODUS V6 COMBAT ENGINE ]] --
 task.spawn(function()
-    while task.wait(0.1) do
-        local char = lp.Character
-        local myRoot = char and char:FindFirstChild("HumanoidRootPart")
-        if not myRoot then continue end
-
-        local backpack = lp:FindFirstChild("Backpack")
-        local knife = char:FindFirstChild("Knife") or (backpack and backpack:FindFirstChild("Knife"))
-        if not knife then continue end
-
-        local events = knife:FindFirstChild("Events")
-        local remote = events and events:FindFirstChild("KnifeStabbed")
-
-        if not remote then
-            warn("❌ KnifeStabbed remote missing")
-            continue
-        end
-
-        -- 🔥 KILL ALL
-        if _G.KillAllEnabled then
-            for _, plr in ipairs(game.Players:GetPlayers()) do
-                if plr ~= lp and plr.Character then
-                    local hum = plr.Character:FindFirstChild("Humanoid")
-                    if hum and hum.Health > 0 then
-                        remote:FireServer(plr.Character)
-                        task.wait(0.01)
-                    end
-                end
-            end
-
-        -- ⚡ KILL AURA
-        elseif _G.KillAuraEnabled then
-            for _, plr in ipairs(game.Players:GetPlayers()) do
-                if plr ~= lp and plr.Character then
-                    local targetRoot = plr.Character:FindFirstChild("HumanoidRootPart")
-                    local hum = plr.Character:FindFirstChild("Humanoid")
-
-                    if targetRoot and hum and hum.Health > 0 then
-                        local dist = (myRoot.Position - targetRoot.Position).Magnitude
-
-                        if dist <= (_G.AuraRange or 15) then
-                            remote:FireServer(plr.Character)
+    while true do
+        task.wait(0.1) -- Performance delay
+        
+        -- Check if we are alive and the menu variables are on
+        if lp.Character and (_G.KillAuraEnabled or _G.KillAllEnabled) then
+            local myRoot = lp.Character:FindFirstChild("HumanoidRootPart")
+            local knife = lp.Character:FindFirstChild("Knife") or (lp:FindFirstChild("Backpack") and lp.Backpack:FindFirstChild("Knife"))
+            
+            if myRoot and knife then
+                local remote = game:GetService("ReplicatedStorage"):FindFirstChild("KnifeServer") 
+                               and game:GetService("ReplicatedStorage").KnifeServer:FindFirstChild("Stab")
+                
+                if remote then
+                    for _, p in ipairs(game.Players:GetPlayers()) do
+                        if p ~= lp and p.Character and p.Character:FindFirstChild("Humanoid") then
+                            local targetHum = p.Character.Humanoid
+                            
+                            if targetHum.Health > 0 then
+                                -- 1. KILL ALL LOGIC
+                                if _G.KillAllEnabled then
+                                    remote:FireServer("Stab", p.Character)
+                                    task.wait(0.02)
+                                
+                                -- 2. KILL AURA LOGIC
+                                elseif _G.KillAuraEnabled then
+                                    local tRoot = p.Character:FindFirstChild("HumanoidRootPart")
+                                    if tRoot then
+                                        local dist = (myRoot.Position - tRoot.Position).Magnitude
+                                        if dist <= (_G.AuraRange or 15) then
+                                            remote:FireServer("Stab", p.Character)
+                                        end
+                                    end
+                                end
+                            end
                         end
                     end
                 end
@@ -848,6 +842,7 @@ task.spawn(function()
         end
     end
 end)
+
 
 --- MENU ---
 local Window = Rayfield:CreateWindow({
@@ -867,29 +862,9 @@ local KeybindsTab = Window:CreateTab("Keybinds", 4483362458)
 MainTab:CreateSection("Role ESP")
 MainTab:CreateToggle({Name = "Enable Arrow ESP", CurrentValue = false, Flag = "ESP_F", Callback = function(V) _G.ESPEnabled = V end})
 MainTab:CreateSection("Combat Utilities")
-MainTab:CreateToggle({
-    Name = "Kill Aura", 
-    CurrentValue = false, 
-    Flag = "AuraToggle", 
-    Callback = function(V) _G.KillAuraEnabled = V end -- Re-type this line completely
-})
-
-MainTab:CreateToggle({
-    Name = "Kill All", 
-    CurrentValue = false, 
-    Flag = "KillAllToggle", 
-    Callback = function(V) _G.KillAllEnabled = V end
-})
-
-MainTab:CreateInput({
-    Name = "Range", 
-    PlaceholderText = "15", 
-    RemoveTextAfterFocusLost = false, 
-    Callback = function(Text) 
-        _G.AuraRange = tonumber(Text) or 15 -- Added "or 15" as a nil-check
-    end
-})
-
+MainTab:CreateToggle({Name = "Kill Aura", CurrentValue = false, Flag = "AuraT", Callback = function(v) _G.KillAuraEnabled = v end})
+MainTab:CreateInput({Name = "Range", PlaceholderText = "15", RemoveTextAfterFocusLost = false, Callback = function(t) _G.AuraRange = tonumber(t) or 15 end})
+MainTab:CreateToggle({Name = "Kill All", CurrentValue = false, Flag = "KillAllT", Callback = function(v) _G.KillAllEnabled = v end})
 MainTab:CreateSection("Ui Settings")
 MainTab:CreateToggle({Name = "Lock Floating UI", CurrentValue = false, Flag = "Lock_F", Callback = function(V) _G.LockAll = V end})
 MainTab:CreateToggle({Name = "Show Gun Button", CurrentValue = false, Flag = "SGB_F", Callback = function(V) GunBtn.Visible = V end})
