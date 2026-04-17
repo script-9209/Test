@@ -4,7 +4,8 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local lp = Players.LocalPlayer
-
+local CurrentMurderer = nil 
+local roleCache = {}
 
 -- Global State
 _G.LockAll = false
@@ -17,10 +18,10 @@ _G.DesiredJump = 50
 _G.SpeedGlitchEnabled = false
 _G.SpeedGlitchValue = 40
 _G.RoleNotify = false
-local leapDebounce = false
 _G.KillAuraEnabled = false
-‎_G.KillAllEnabled = false
-‎_G.AuraRange = 15 
+_G.KillAllEnabled = false
+_G.AuraRange = 15 
+
 
 -- MLBB Style Default Positions (Relative to bottom right)
 local DefaultShootPos = UDim2.new(1, -190, 1, -180) -- Top Left of Jump
@@ -541,8 +542,6 @@ end)
 -- ==========================================
 -- 1. ROLE CACHE (SAFE FETCHING)
 -- ==========================================
-local roleCache = {}
-
 task.spawn(function()
     while task.wait(1.5) do
         local success, data = pcall(function()
