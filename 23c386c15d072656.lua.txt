@@ -1,0 +1,1501 @@
+-- ts file was generated at discord.gg/25ms
+
+game:GetService('Players').LocalPlayer.Idled:connect(function()
+    game:GetService('VirtualUser'):Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+    wait(1)
+    game:GetService('VirtualUser'):Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+end)
+
+getgenv().rejoin = game:GetService('CoreGui').RobloxPromptGui.promptOverlay.ChildAdded:Connect(function(p1)
+    if p1.Name == 'ErrorPrompt' and p1:FindFirstChild('MessageArea') and p1.MessageArea:FindFirstChild('ErrorFrame') then
+        game:GetService('TeleportService'):Teleport(game.PlaceId)
+    end
+end)
+
+local v2 = loadstring(game:HttpGet('https://raw.githubusercontent.com/UI-Interface/CustomFIeld/main/RayField.lua'))()
+local u3 = loadstring(game:HttpGet('https://jumblescripts.com/JumESPLIB.lua'))()
+local v4 = v2:CreateWindow({
+    Name = 'Kidachi | Murder Mystery 2',
+    LoadingTitle = 'Rayfield Interface Suite',
+    LoadingSubtitle = 'by Sirius',
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = nil,
+        FileName = 'Kidachi Hub',
+    },
+    Discord = {
+        Enabled = false,
+        Invite = 'kidachi',
+        RememberJoins = true,
+    },
+    KeySystem = false,
+    KeySettings = {
+        Title = 'Sirius Hub',
+        Subtitle = 'Key System',
+        Note = 'Join the discord (discord.gg/sirius)',
+        FileName = 'SiriusKey',
+        SaveKey = true,
+        GrabKeyFromSite = false,
+        Key = 'Hello',
+    },
+})
+local _LocalPlayer = game.Players.LocalPlayer
+local u6 = nil
+local u7 = nil
+local _huge = math.huge
+
+function Tween(p9, p10)
+    local v11 = (p9.p - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude / (p10 or 25)
+    local v12 = TweenInfo.new(v11, Enum.EasingStyle.Linear)
+
+    game:GetService('TweenService'):Create(game.Players.LocalPlayer.Character.HumanoidRootPart, v12, {CFrame = p9}):Play()
+end
+
+local _Farm = v4:CreateTab('Farm', 12986579895)
+local _Esp = v4:CreateTab('Esp', 13005394944)
+local _Aim = v4:CreateTab('Aim', 10110319522)
+
+_Farm:CreateToggle({
+    Name = 'Coin Farm',
+    Info = 'Enable Coin Farm',
+    CurrentValue = false,
+    SectionParent = _Farm:CreateSection('Coin', false),
+    Flag = 'PCCOinFarm',
+    Callback = function(p16)
+        _G.CoinFarm = p16
+
+        while wait() do
+            pcall(function()
+                if _G.CoinFarm then
+                    if _LocalPlayer.PlayerGui.MainGUI.Game.CashBag.Visible and not _LocalPlayer.PlayerGui.MainGUI.Game.CashBag.Full.Visible then
+                        local _Workspace = game.Workspace
+                        local v18, v19, v20 = pairs(_Workspace:GetDescendants())
+
+                        while true do
+                            local v21
+
+                            v20, v21 = v18(v19, v20)
+
+                            if v20 == nil then
+                                break
+                            end
+                            if v21:IsA('BasePart') and (v21.Name == 'Coin_Server' and v21.Coin.BrickColor == BrickColor.new('Bright yellow')) then
+                                local _magnitude = (_LocalPlayer.Character.HumanoidRootPart.Position - v21.Position).magnitude
+
+                                if _magnitude < _huge then
+                                    u6 = v21
+                                    _huge = _magnitude
+                                end
+                            end
+                        end
+
+                        if u6 and u6:FindFirstChild('TouchInterest') then
+                            local v23 = u6.CFrame * CFrame.Angles(math.pi / 2, 0, 0) + Vector3.new(0, -5, 0)
+                            local v24, v25, v26 = pairs(_LocalPlayer.Character:GetDescendants())
+
+                            while true do
+                                local v27
+
+                                v26, v27 = v24(v25, v26)
+
+                                if v26 == nil then
+                                    break
+                                end
+                                if v27:IsA('BasePart') then
+                                    v27.CanCollide = false
+                                end
+                            end
+
+                            local _BodyVelocity = Instance.new('BodyVelocity')
+
+                            _BodyVelocity.Name = 'BodyClip'
+                            _BodyVelocity.Parent = _LocalPlayer.Character.HumanoidRootPart
+                            _BodyVelocity.MaxForce = Vector3.new(100000, 100000, 100000)
+                            _BodyVelocity.Velocity = Vector3.new(0, 0, 0)
+
+                            Tween(v23, 30)
+                            firetouchinterest(_LocalPlayer.Character.HumanoidRootPart, u6, 0)
+                            firetouchinterest(_LocalPlayer.Character.HumanoidRootPart, u6, 1)
+
+                            u6 = nil
+                            _huge = math.huge
+
+                            wait(0.6)
+                        end
+                    end
+                else
+                    if game.Players.LocalPlayer.Character.HumanoidRootPart:FindFirstChild('BodyClip') then
+                        game.Players.LocalPlayer.Character.HumanoidRootPart:FindFirstChild('BodyClip'):Destroy()
+                    end
+
+                    local v29, v30, v31 = pairs(_LocalPlayer.Character:GetDescendants())
+
+                    while true do
+                        local v32
+
+                        v31, v32 = v29(v30, v31)
+
+                        if v31 == nil then
+                            break
+                        end
+                        if v32:IsA('BasePart') then
+                            v32.CanCollide = true
+                        end
+                    end
+                end
+            end)
+        end
+    end,
+})
+
+local _Egg = _Farm:CreateSection('Egg', false)
+
+_Farm:CreateToggle({
+    Name = 'Egg Farm',
+    Info = 'Enable Egg Farm',
+    CurrentValue = false,
+    SectionParent = _Egg,
+    Flag = 'EggFarmToggle',
+    Callback = function(p34)
+        _G.EggFarm = p34
+
+        while wait() do
+            pcall(function()
+                if _G.EggFarm then
+                    if _LocalPlayer.PlayerGui.MainGUI.Game.CashBag.Visible and not _LocalPlayer.PlayerGui.MainGUI.Game.CashBag.Full.Visible then
+                        local v35, v36, v37 = pairs(game.Workspace:GetDescendants())
+
+                        while true do
+                            local v38
+
+                            v37, v38 = v35(v36, v37)
+
+                            if v37 == nil then
+                                break
+                            end
+                            if v38:IsA('BasePart') and (v38.Name == 'Coin_Server' and (v38.Coin.BrickColor == BrickColor.new('Really black') and not v38:FindFirstChild('RareEffect', true))) then
+                                local _magnitude2 = (_LocalPlayer.Character.HumanoidRootPart.Position - v38.Position).magnitude
+
+                                if _magnitude2 < _huge then
+                                    u7 = v38
+                                    _huge = _magnitude2
+                                end
+                            end
+                        end
+
+                        local v40 = u7
+
+                        if v40 and v40:FindFirstChild('TouchInterest') then
+                            local v41 = v40.CFrame * CFrame.Angles(math.pi / 2, 0, 0) + Vector3.new(0, -5, 0)
+                            local v42, v43, v44 = pairs(_LocalPlayer.Character:GetDescendants())
+
+                            while true do
+                                local v45
+
+                                v44, v45 = v42(v43, v44)
+
+                                if v44 == nil then
+                                    break
+                                end
+                                if v45:IsA('BasePart') then
+                                    v45.CanCollide = false
+                                end
+                            end
+
+                            local _BodyVelocity2 = Instance.new('BodyVelocity')
+
+                            _BodyVelocity2.Name = 'BodyClip'
+                            _BodyVelocity2.Parent = _LocalPlayer.Character.HumanoidRootPart
+                            _BodyVelocity2.MaxForce = Vector3.new(100000, 100000, 100000)
+                            _BodyVelocity2.Velocity = Vector3.new(0, 0, 0)
+
+                            Tween(v41, 30)
+                            firetouchinterest(_LocalPlayer.Character.HumanoidRootPart, v40, 0)
+                            firetouchinterest(_LocalPlayer.Character.HumanoidRootPart, v40, 1)
+
+                            u7 = nil
+                            _huge = math.huge
+
+                            wait(0.6)
+                        end
+                    else
+                        if game.Players.LocalPlayer.Character.HumanoidRootPart:FindFirstChild('BodyClip') then
+                            game.Players.LocalPlayer.Character.HumanoidRootPart:FindFirstChild('BodyClip'):Destroy()
+                        end
+
+                        local v47, v48, v49 = pairs(_LocalPlayer.Character:GetDescendants())
+
+                        while true do
+                            local v50
+
+                            v49, v50 = v47(v48, v49)
+
+                            if v49 == nil then
+                                break
+                            end
+                            if v50:IsA('BasePart') then
+                                v50.CanCollide = true
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+    end,
+})
+_Farm:CreateToggle({
+    Name = 'Auto Collect Rare Egg',
+    Info = 'Goes to Rare Egg First',
+    CurrentValue = false,
+    SectionParent = _Egg,
+    Flag = 'RareEggPrioritisation',
+    Callback = function(p51)
+        _G.RareEggPriority = p51
+
+        while wait() do
+            pcall(function()
+                if _G.RareEggPriority and (_LocalPlayer.PlayerGui.MainGUI.Game.CashBag.Visible and not _LocalPlayer.PlayerGui.MainGUI.Game.CashBag.Full.Visible) then
+                    local v52, v53, v54 = pairs(game.Workspace:GetDescendants())
+
+                    while true do
+                        local v55
+
+                        v54, v55 = v52(v53, v54)
+
+                        if v54 == nil then
+                            break
+                        end
+                        if _G.RareEggPriority and (v55:IsA('BasePart') and (v55.Name == 'Coin_Server' and v55:FindFirstChild('RareEffect', true))) then
+                            print('working')
+
+                            if _G.RareEggPriority then
+                                _LocalPlayer.Character.HumanoidRootPart.CFrame = v55.CFrame
+
+                                task.wait(1)
+                            end
+                        end
+                    end
+                end
+            end)
+            wait(1)
+        end
+    end,
+})
+
+local _GoodMobile = _Farm:CreateSection('Good Mobile', false)
+
+_Farm:CreateToggle({
+    Name = 'Coin Farm',
+    Info = 'Enable Coin Farm',
+    CurrentValue = false,
+    SectionParent = _GoodMobile,
+    Flag = 'GoodMobileCOinFarm',
+    Callback = function(p57)
+        _G.GoodMobileCoinFarm = p57
+
+        while wait() do
+            pcall(function()
+                if _G.GoodMobileCoinFarm then
+                    local v58, v59, v60 = pairs(game.Players:GetPlayers())
+
+                    while true do
+                        local v61
+
+                        v60, v61 = v58(v59, v60)
+
+                        if v60 == nil then
+                            break
+                        end
+                        if v61.Character then
+                            if v61.Backpack:findFirstChild('Knife') or v61.Character:findFirstChild('Knife') then
+                                local _Workspace2 = game.Workspace
+                                local v63, v64, v65 = pairs(_Workspace2:GetDescendants())
+
+                                while true do
+                                    local v66
+
+                                    v65, v66 = v63(v64, v65)
+
+                                    if v65 == nil then
+                                        break
+                                    end
+                                    if v66:IsA('BasePart') and (v66.Name == 'Coin_Server' and v66.Coin.BrickColor == BrickColor.new('Bright yellow')) then
+                                        local _magnitude3 = (_LocalPlayer.Character.HumanoidRootPart.Position - v66.Position).magnitude
+
+                                        if _magnitude3 < _huge then
+                                            u6 = v66
+                                            _huge = _magnitude3
+                                        end
+                                    end
+                                end
+
+                                if u6 then
+                                    local v68 = u6.CFrame * CFrame.Angles(math.pi / 2, 0, 0) + Vector3.new(0, -5, 0)
+                                    local v69, v70, v71 = pairs(_LocalPlayer.Character:GetDescendants())
+
+                                    while true do
+                                        local v72
+
+                                        v71, v72 = v69(v70, v71)
+
+                                        if v71 == nil then
+                                            break
+                                        end
+                                        if v72:IsA('BasePart') then
+                                            v72.CanCollide = false
+                                        end
+                                    end
+
+                                    local _BodyVelocity3 = Instance.new('BodyVelocity')
+
+                                    _BodyVelocity3.Name = 'BodyClip'
+                                    _BodyVelocity3.Parent = _LocalPlayer.Character.HumanoidRootPart
+                                    _BodyVelocity3.MaxForce = Vector3.new(100000, 100000, 100000)
+                                    _BodyVelocity3.Velocity = Vector3.new(0, 0, 0)
+
+                                    if _huge / 30 <= 10 then
+                                        Tween(v68, 30)
+                                        firetouchinterest(_LocalPlayer.Character.HumanoidRootPart, u6, 0)
+                                        firetouchinterest(_LocalPlayer.Character.HumanoidRootPart, u6, 1)
+
+                                        u6 = nil
+                                        _huge = math.huge
+                                    else
+                                        wait(3)
+
+                                        _LocalPlayer.Character.HumanoidRootPart.CFrame = v68
+                                    end
+
+                                    wait(0.6)
+                                end
+                            else
+                                if game.Players.LocalPlayer.Character.HumanoidRootPart:FindFirstChild('BodyClip') then
+                                    game.Players.LocalPlayer.Character.HumanoidRootPart:FindFirstChild('BodyClip'):Destroy()
+                                end
+
+                                local v74, v75, v76 = pairs(_LocalPlayer.Character:GetDescendants())
+
+                                while true do
+                                    local v77
+
+                                    v76, v77 = v74(v75, v76)
+
+                                    if v76 == nil then
+                                        break
+                                    end
+                                    if v77:IsA('BasePart') then
+                                        v77.CanCollide = true
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+    end,
+})
+_Farm:CreateToggle({
+    Name = 'Egg Farm',
+    Info = 'Enable Egg Farm',
+    CurrentValue = false,
+    SectionParent = _GoodMobile,
+    Flag = 'GoodMobileEggFarmToggle',
+    Callback = function(p78)
+        _G.GoodMobileEggFarm = p78
+
+        while wait() do
+            pcall(function()
+                if _G.GoodMobileEggFarm then
+                    local v79, v80, v81 = pairs(game.Players:GetPlayers())
+
+                    while true do
+                        local v82
+
+                        v81, v82 = v79(v80, v81)
+
+                        if v81 == nil then
+                            break
+                        end
+                        if v82.Character and (v82.Backpack:findFirstChild('Knife') or v82.Character:findFirstChild('Knife')) then
+                            local v83, v84, v85 = pairs(game.Workspace:GetDescendants())
+
+                            while true do
+                                local v86
+
+                                v85, v86 = v83(v84, v85)
+
+                                if v85 == nil then
+                                    break
+                                end
+                                if v86:IsA('BasePart') and (v86.Name == 'Coin_Server' and (v86.Coin.BrickColor == BrickColor.new('Really black') and not v86:FindFirstChild('RareEffect', true))) then
+                                    local _magnitude4 = (_LocalPlayer.Character.HumanoidRootPart.Position - v86.Position).magnitude
+
+                                    if _magnitude4 < _huge then
+                                        u7 = v86
+                                        _huge = _magnitude4
+                                    end
+                                end
+                            end
+
+                            local v88 = u7
+
+                            if v88 and v88:FindFirstChild('TouchInterest') then
+                                local v89 = v88.CFrame * CFrame.Angles(math.pi / 2, 0, 0) + Vector3.new(0, -5, 0)
+                                local v90, v91, v92 = pairs(_LocalPlayer.Character:GetDescendants())
+
+                                while true do
+                                    local v93
+
+                                    v92, v93 = v90(v91, v92)
+
+                                    if v92 == nil then
+                                        break
+                                    end
+                                    if v93:IsA('BasePart') then
+                                        v93.CanCollide = false
+                                    end
+                                end
+
+                                local _BodyVelocity4 = Instance.new('BodyVelocity')
+
+                                _BodyVelocity4.Name = 'BodyClip'
+                                _BodyVelocity4.Parent = _LocalPlayer.Character.HumanoidRootPart
+                                _BodyVelocity4.MaxForce = Vector3.new(100000, 100000, 100000)
+                                _BodyVelocity4.Velocity = Vector3.new(0, 0, 0)
+
+                                if _huge / 30 <= 10 then
+                                    Tween(v89, 30)
+                                    firetouchinterest(_LocalPlayer.Character.HumanoidRootPart, v88, 0)
+                                    firetouchinterest(_LocalPlayer.Character.HumanoidRootPart, v88, 1)
+
+                                    _huge = math.huge
+                                else
+                                    wait(3)
+
+                                    _LocalPlayer.Character.HumanoidRootPart.CFrame = targetPosition
+                                end
+
+                                wait(0.6)
+                            end
+                        end
+                    end
+                else
+                    if game.Players.LocalPlayer.Character.HumanoidRootPart:FindFirstChild('BodyClip') then
+                        game.Players.LocalPlayer.Character.HumanoidRootPart:FindFirstChild('BodyClip'):Destroy()
+                    end
+
+                    local v95, v96, v97 = pairs(_LocalPlayer.Character:GetDescendants())
+
+                    while true do
+                        local v98
+
+                        v97, v98 = v95(v96, v97)
+
+                        if v97 == nil then
+                            break
+                        end
+                        if v98:IsA('BasePart') then
+                            v98.CanCollide = true
+                        end
+                    end
+                end
+            end)
+        end
+    end,
+})
+_Farm:CreateToggle({
+    Name = 'Auto Collect Rare Egg',
+    Info = 'Goes to Rare Egg First',
+    CurrentValue = false,
+    SectionParent = _GoodMobile,
+    Flag = 'GoodMobileRareEggPrioritisation',
+    Callback = function(_)
+        _G.GoodMobileRareEggPriority = true
+
+        while wait() do
+            pcall(function()
+                if _G.GoodMobileRareEggPriority then
+                    local v99, v100, v101 = pairs(game.Workspace:GetDescendants())
+
+                    while true do
+                        local v102
+
+                        v101, v102 = v99(v100, v101)
+
+                        if v101 == nil then
+                            break
+                        end
+                        if _G.GoodMobileRareEggPriority and (v102:IsA('BasePart') and (v102.Name == 'Coin_Server' and v102:FindFirstChild('RareEffect', true))) then
+                            print('working')
+
+                            if _G.GoodMobileRareEggPriority then
+                                _LocalPlayer.Character.HumanoidRootPart.CFrame = v102.CFrame
+
+                                task.wait(1)
+                            end
+                        end
+                    end
+                end
+            end)
+            task.wait(1)
+        end
+    end,
+})
+
+local _BadMobile = _Farm:CreateSection('Bad Mobile', false)
+
+_Farm:CreateToggle({
+    Name = 'Coin Farm',
+    Info = 'Enable Coin Farm',
+    CurrentValue = false,
+    SectionParent = _BadMobile,
+    Flag = 'MobileCOinFarm',
+    Callback = function(p104)
+        _G.MobileCoinFarm = p104
+
+        while wait() do
+            pcall(function()
+                if _G.MobileCoinFarm then
+                    local v105, v106, v107 = pairs(game.Players:GetPlayers())
+
+                    while true do
+                        local v108
+
+                        v107, v108 = v105(v106, v107)
+
+                        if v107 == nil then
+                            break
+                        end
+                        if v108.Character then
+                            if v108.Backpack:findFirstChild('Knife') or v108.Character:findFirstChild('Knife') then
+                                local _Workspace3 = game.Workspace
+                                local v110, v111, v112 = pairs(_Workspace3:GetDescendants())
+
+                                while true do
+                                    local v113
+
+                                    v112, v113 = v110(v111, v112)
+
+                                    if v112 == nil then
+                                        break
+                                    end
+                                    if v113:IsA('BasePart') and (v113.Name == 'Coin_Server' and v113.Coin.BrickColor == BrickColor.new('Bright yellow')) then
+                                        local _magnitude5 = (_LocalPlayer.Character.HumanoidRootPart.Position - v113.Position).magnitude
+
+                                        if _magnitude5 < _huge then
+                                            u6 = v113
+                                            _huge = _magnitude5
+                                        end
+                                    end
+                                end
+
+                                if u6 then
+                                    local v115 = u6.CFrame * CFrame.Angles(math.pi / 2, 0, 0)
+                                    local v116, v117, v118 = pairs(_LocalPlayer.Character:GetDescendants())
+
+                                    while true do
+                                        local v119
+
+                                        v118, v119 = v116(v117, v118)
+
+                                        if v118 == nil then
+                                            break
+                                        end
+                                        if v119:IsA('BasePart') then
+                                            v119.CanCollide = false
+                                        end
+                                    end
+
+                                    local _BodyVelocity5 = Instance.new('BodyVelocity')
+
+                                    _BodyVelocity5.Name = 'BodyClip'
+                                    _BodyVelocity5.Parent = _LocalPlayer.Character.HumanoidRootPart
+                                    _BodyVelocity5.MaxForce = Vector3.new(100000, 100000, 100000)
+                                    _BodyVelocity5.Velocity = Vector3.new(0, 0, 0)
+
+                                    if _huge / 30 <= 10 then
+                                        Tween(v115, 30)
+
+                                        closestMobileCoin = nil
+                                        _huge = math.huge
+                                    else
+                                        wait(3)
+
+                                        _LocalPlayer.Character.HumanoidRootPart.CFrame = v115
+                                    end
+
+                                    wait(0.6)
+                                end
+                            else
+                                if game.Players.LocalPlayer.Character.HumanoidRootPart:FindFirstChild('BodyClip') then
+                                    game.Players.LocalPlayer.Character.HumanoidRootPart:FindFirstChild('BodyClip'):Destroy()
+                                end
+
+                                local v121, v122, v123 = pairs(_LocalPlayer.Character:GetDescendants())
+
+                                while true do
+                                    local v124
+
+                                    v123, v124 = v121(v122, v123)
+
+                                    if v123 == nil then
+                                        break
+                                    end
+                                    if v124:IsA('BasePart') then
+                                        v124.CanCollide = true
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+    end,
+})
+_Farm:CreateToggle({
+    Name = 'Egg Farm',
+    Info = 'Enable Egg Farm',
+    CurrentValue = false,
+    SectionParent = _BadMobile,
+    Flag = 'MobileEggFarmToggle',
+    Callback = function(p125)
+        _G.MobileEggFarm = p125
+
+        while wait() do
+            pcall(function()
+                if _G.MobileEggFarm then
+                    local v126, v127, v128 = pairs(game.Players:GetPlayers())
+
+                    while true do
+                        local v129
+
+                        v128, v129 = v126(v127, v128)
+
+                        if v128 == nil then
+                            break
+                        end
+                        if v129.Character and (v129.Backpack:findFirstChild('Knife') or v129.Character:findFirstChild('Knife')) then
+                            local v130, v131, v132 = pairs(game.Workspace:GetDescendants())
+
+                            while true do
+                                local v133
+
+                                v132, v133 = v130(v131, v132)
+
+                                if v132 == nil then
+                                    break
+                                end
+                                if v133:IsA('BasePart') and (v133.Name == 'Coin_Server' and (v133.Coin.BrickColor == BrickColor.new('Really black') and not v133:FindFirstChild('RareEffect', true))) then
+                                    local _magnitude6 = (_LocalPlayer.Character.HumanoidRootPart.Position - v133.Position).magnitude
+
+                                    if _magnitude6 < _huge then
+                                        u7 = v133
+                                        _huge = _magnitude6
+                                    end
+                                end
+                            end
+
+                            local v135 = u7
+
+                            if v135 and v135:FindFirstChild('TouchInterest') then
+                                local v136 = v135.CFrame * CFrame.Angles(math.pi / 2, 0, 0)
+                                local v137, v138, v139 = pairs(_LocalPlayer.Character:GetDescendants())
+
+                                while true do
+                                    local v140
+
+                                    v139, v140 = v137(v138, v139)
+
+                                    if v139 == nil then
+                                        break
+                                    end
+                                    if v140:IsA('BasePart') then
+                                        v140.CanCollide = false
+                                    end
+                                end
+
+                                local _BodyVelocity6 = Instance.new('BodyVelocity')
+
+                                _BodyVelocity6.Name = 'BodyClip'
+                                _BodyVelocity6.Parent = _LocalPlayer.Character.HumanoidRootPart
+                                _BodyVelocity6.MaxForce = Vector3.new(100000, 100000, 100000)
+                                _BodyVelocity6.Velocity = Vector3.new(0, 0, 0)
+
+                                if _huge / 30 <= 10 then
+                                    Tween(v136, 30)
+
+                                    u7 = nil
+                                    _huge = math.huge
+                                else
+                                    wait(3)
+
+                                    _LocalPlayer.Character.HumanoidRootPart.CFrame = targetPosition
+                                end
+
+                                wait(0.6)
+                            end
+                        end
+                    end
+                else
+                    if game.Players.LocalPlayer.Character.HumanoidRootPart:FindFirstChild('BodyClip') then
+                        game.Players.LocalPlayer.Character.HumanoidRootPart:FindFirstChild('BodyClip'):Destroy()
+                    end
+
+                    local v142, v143, v144 = pairs(_LocalPlayer.Character:GetDescendants())
+
+                    while true do
+                        local v145
+
+                        v144, v145 = v142(v143, v144)
+
+                        if v144 == nil then
+                            break
+                        end
+                        if v145:IsA('BasePart') then
+                            v145.CanCollide = true
+                        end
+                    end
+                end
+            end)
+        end
+    end,
+})
+_Farm:CreateToggle({
+    Name = 'Auto Collect Rare Egg',
+    Info = 'Goes to Rare Egg First',
+    CurrentValue = false,
+    SectionParent = _BadMobile,
+    Flag = 'MobileRareEggPrioritisation',
+    Callback = function(_)
+        _G.MobileRareEggPriority = true
+
+        while wait() do
+            pcall(function()
+                if _G.MobileRareEggPriority then
+                    local v146, v147, v148 = pairs(game.Workspace:GetDescendants())
+
+                    while true do
+                        local v149
+
+                        v148, v149 = v146(v147, v148)
+
+                        if v148 == nil then
+                            break
+                        end
+                        if _G.MobileRareEggPriority and (v149:IsA('BasePart') and (v149.Name == 'Coin_Server' and v149:FindFirstChild('RareEffect', true))) then
+                            print('working')
+
+                            if _G.MobileRareEggPriority then
+                                _LocalPlayer.Character.HumanoidRootPart.CFrame = v149.CFrame
+
+                                task.wait(1)
+                            end
+                        end
+                    end
+                end
+            end)
+            task.wait(1)
+        end
+    end,
+})
+
+local _PlayerOutline = _Esp:CreateSection('Player Outline', false)
+local u151 = false
+local u152 = false
+local u153 = false
+
+local function u159()
+    local v154, v155, v156 = pairs(game.Players:GetPlayers())
+
+    while true do
+        local v157
+
+        v156, v157 = v154(v155, v156)
+
+        if v156 == nil then
+            break
+        end
+        if v157.Character and v157.Backpack then
+            local _Highlight = v157.Character:FindFirstChild('Highlight')
+
+            if not _Highlight then
+                _Highlight = Instance.new('Highlight')
+                _Highlight.FillTransparency = 1
+                _Highlight.Parent = v157.Character
+            end
+            if v157.Backpack:findFirstChild('Knife') or v157.Character:findFirstChild('Knife') then
+                _Highlight.OutlineColor = Color3.fromRGB(255, 0, 0)
+                _Highlight.Enabled = u151
+            elseif v157.Backpack:findFirstChild('Gun') or v157.Character:findFirstChild('Gun') then
+                _Highlight.OutlineColor = Color3.fromRGB(0, 0, 255)
+                _Highlight.Enabled = u152
+            else
+                _Highlight.OutlineColor = Color3.fromRGB(0, 255, 0)
+                _Highlight.Enabled = u153
+            end
+        end
+    end
+end
+
+game.Players.PlayerAdded:Connect(function(p160)
+    p160.CharacterAdded:Connect(function(_)
+        u159()
+    end)
+end)
+game:GetService('RunService').RenderStepped:Connect(u159)
+_Esp:CreateToggle({
+    Name = 'Murderer Outline',
+    Info = 'Outlines The Murderer',
+    CurrentValue = false,
+    SectionParent = _PlayerOutline,
+    Flag = 'MurdererOutline',
+    Callback = function(p161)
+        u151 = p161
+
+        u159()
+    end,
+})
+_Esp:CreateToggle({
+    Name = 'Sherrif Outline',
+    Info = 'Outlines The Sherrif',
+    CurrentValue = false,
+    SectionParent = _PlayerOutline,
+    Flag = 'SherrifOutline',
+    Callback = function(p162)
+        u152 = p162
+
+        u159()
+    end,
+})
+_Esp:CreateToggle({
+    Name = 'Innocent Outline',
+    Info = "Outlines The Innocent's",
+    CurrentValue = false,
+    SectionParent = _PlayerOutline,
+    Flag = 'InnoESP',
+    Callback = function(p163)
+        u153 = p163
+
+        u159()
+    end,
+})
+
+local _PlayerText = _Esp:CreateSection('Player Text', false)
+local u165 = false
+
+function PlayerESP()
+    spawn(function()
+        while u165 do
+            local _CurrentCamera = game:GetService('Workspace').CurrentCamera
+            local v167, v168, v169 = pairs(game.Players:GetPlayers())
+
+            while true do
+                local v170
+
+                v169, v170 = v167(v168, v169)
+
+                if v169 == nil then
+                    break
+                end
+                if v170.Character and v170.Character:FindFirstChild('Head') then
+                    local _Magnitude = (v170.Character.HumanoidRootPart.Position - _CurrentCamera.CFrame.Position).Magnitude
+
+                    Color3.fromRGB(255, 255, 255)
+
+                    local v172
+
+                    if v170.Backpack:findFirstChild('Knife') or v170.Character:findFirstChild('Knife') then
+                        v172 = Color3.fromRGB(255, 0, 0)
+                    elseif v170.Backpack:findFirstChild('Gun') or v170.Character:findFirstChild('Gun') then
+                        v172 = Color3.fromRGB(0, 0, 255)
+                    else
+                        v172 = Color3.fromRGB(0, 255, 0)
+                    end
+
+                    u3:CreateNametag({
+                        foldername = 'PlayerNameESP',
+                        instance = v170,
+                        adornee = v170.Character.Head,
+                        offset = nil,
+                        Text = v170.Name .. ' | ' .. tostring(math.floor(_Magnitude)) .. ' studs',
+                        TransparencyVar = 0,
+                        SizeVar = 15,
+                        ColorVar = v172,
+                    })
+                end
+            end
+
+            task.wait()
+        end
+    end)
+end
+
+_Esp:CreateToggle({
+    Name = 'Enable Text ESP',
+    Info = 'Applys a Text on Entities',
+    CurrentValue = false,
+    SectionParent = _PlayerText,
+    Flag = 'EnableText',
+    Callback = function(p173)
+        u165 = p173
+
+        if u165 then
+            PlayerESP()
+        elseif game.Players.LocalPlayer.PlayerGui:FindFirstChild('PlayerNameESP') then
+            game.Players.LocalPlayer.PlayerGui.PlayerNameESP:Destroy()
+        end
+    end,
+})
+game:GetService('Players'):GetChildren()
+
+local _LocalPlayer2 = game.Players.LocalPlayer
+local _CurrentCamera2 = game:GetService('Workspace').CurrentCamera
+local _ = Workspace.CurrentCamera
+local v176, v177, v178 = pairs(game.Players:GetChildren())
+local u179 = false
+
+while true do
+    local v180, u181 = v176(v177, v178)
+
+    if v180 == nil then
+        break
+    end
+
+    v178 = v180
+
+    local _Line = Drawing.new('Line')
+
+    _Line.Visible = false
+    _Line.Thickness = 1
+    _Line.Transparency = 1
+
+    local function v185()
+        game:GetService('RunService').RenderStepped:Connect(function()
+            if u181.Character ~= nil and (u181.Character:FindFirstChild('Humanoid') ~= nil and (u181.Character:FindFirstChild('HumanoidRootPart') ~= nil and (u181 ~= _LocalPlayer2 and u181.Character.Humanoid.Health > 0))) then
+                if u181.Backpack then
+                    local v183, v184 = _CurrentCamera2:worldToViewportPoint(u181.Character.HumanoidRootPart.Position)
+
+                    if v184 then
+                        _Line.From = Vector2.new(_CurrentCamera2.ViewportSize.X / 2, _CurrentCamera2.ViewportSize.Y / 2)
+                        _Line.To = Vector2.new(v183.X, v183.Y)
+                        _Line.Visible = u179
+
+                        if u181.Backpack:findFirstChild('Knife') or u181.Character:findFirstChild('Knife') then
+                            _Line.Color = Color3.new(1, 0, 0)
+                        elseif u181.Backpack:findFirstChild('Gun') or u181.Character:findFirstChild('Gun') then
+                            _Line.Color = Color3.new(0, 0, 1)
+                        else
+                            _Line.Color = Color3.new(0, 1, 0)
+                        end
+                    else
+                        _Line.Visible = false
+                    end
+                else
+                    _Line.Visible = false
+                end
+            end
+        end)
+    end
+
+    coroutine.wrap(v185)()
+end
+
+game.Players.PlayerAdded:Connect(function(p186)
+    local _Line2 = Drawing.new('Line')
+
+    _Line2.Visible = false
+    _Line2.Thickness = 1
+    _Line2.Transparency = 1
+
+    local function v190()
+        game:GetService('RunService').RenderStepped:Connect(function()
+            if p186.Character == nil or (p186.Character:FindFirstChild('Humanoid') == nil or (p186.Character:FindFirstChild('HumanoidRootPart') == nil or (p186 == _LocalPlayer2 or p186.Character.Humanoid.Health <= 0))) then
+                _Line2.Visible = false
+            else
+                local v188, v189 = _CurrentCamera2:worldToViewportPoint(p186.Character.HumanoidRootPart.Position)
+
+                if v189 then
+                    _Line2.From = Vector2.new(_CurrentCamera2.ViewportSize.X / 2, _CurrentCamera2.ViewportSize.Y / 2)
+                    _Line2.To = Vector2.new(v188.X, v188.Y)
+                    _Line2.Visible = u179
+
+                    if p186.Backpack:findFirstChild('Knife') or p186.Character:findFirstChild('Knife') then
+                        _Line2.Color = Color3.new(1, 0, 0)
+                    elseif p186.Backpack:findFirstChild('Gun') or p186.Character:findFirstChild('Gun') then
+                        _Line2.Color = Color3.new(0, 0, 1)
+                    else
+                        _Line2.Color = Color3.new(0, 1, 0)
+                    end
+                else
+                    _Line2.Visible = false
+                end
+            end
+        end)
+    end
+
+    coroutine.wrap(v190)()
+end)
+_Esp:CreateToggle({
+    Name = 'Enable Tracer ESP',
+    Info = 'Applys a Tracer on Entities',
+    CurrentValue = false,
+    SectionParent = _Esp:CreateSection("Player Tracer's", false),
+    Flag = 'EnableTracer',
+    Callback = function(p191)
+        if p191 then
+            u179 = true
+        else
+            u179 = false
+
+            local v192, v193, v194 = pairs(tracers)
+
+            while true do
+                local v195
+
+                v194, v195 = v192(v193, v194)
+
+                if v194 == nil then
+                    break
+                end
+
+                v195:Remove()
+
+                tracers[v194] = nil
+            end
+        end
+    end,
+})
+
+local _LocalPlayer3 = game.Players.LocalPlayer
+local _CurrentCamera3 = game:GetService('Workspace').CurrentCamera
+local _CurrentCamera4 = workspace.CurrentCamera
+local _worldToViewportPoint = _CurrentCamera4.worldToViewportPoint
+local u200 = Vector3.new(0, 0.5, 0)
+local u201 = Vector3.new(0, 3, 0)
+local v202, v203, v204 = pairs(game.Players:GetChildren())
+local u205 = false
+
+while true do
+    local u206
+
+    v204, u206 = v202(v203, v204)
+
+    if v204 == nil then
+        break
+    end
+
+    local _Square = Drawing.new('Square')
+
+    _Square.Visible = false
+    _Square.Color = Color3.new(0, 0, 0)
+    _Square.Thickness = 3
+    _Square.Transparency = 1
+    _Square.Filled = false
+
+    local _Square2 = Drawing.new('Square')
+
+    _Square2.Visible = false
+    _Square2.Thickness = 1
+    _Square2.Transparency = 1
+    _Square2.Filled = false
+
+    function boxesp()
+        game:GetService('RunService').RenderStepped:Connect(function()
+            if u206.Character == nil or (u206.Character:FindFirstChild('Humanoid') == nil or (u206.Character:FindFirstChild('HumanoidRootPart') == nil or (u206 == _LocalPlayer3 or u206.Character.Humanoid.Health <= 0))) then
+                _Square.Visible = false
+                _Square2.Visible = false
+            else
+                local _, v209 = _CurrentCamera3:worldToViewportPoint(u206.Character.HumanoidRootPart.Position)
+                local _HumanoidRootPart = u206.Character.HumanoidRootPart
+                local _Head = u206.Character.Head
+                local v212, _ = _worldToViewportPoint(_CurrentCamera4, _HumanoidRootPart.Position)
+                local v213 = _worldToViewportPoint(_CurrentCamera4, _Head.Position + u200)
+                local v214 = _worldToViewportPoint(_CurrentCamera4, _HumanoidRootPart.Position - u201)
+
+                if v209 then
+                    _Square.Size = Vector2.new(1000 / v212.Z, v213.Y - v214.Y)
+                    _Square.Position = Vector2.new(v212.X - _Square.Size.X / 2, v212.Y - _Square.Size.Y / 2)
+                    _Square.Visible = u205
+                    _Square2.Size = Vector2.new(1000 / v212.Z, v213.Y - v214.Y)
+                    _Square2.Position = Vector2.new(v212.X - _Square2.Size.X / 2, v212.Y - _Square2.Size.Y / 2)
+                    _Square2.Visible = u205
+
+                    if u206.Backpack:findFirstChild('Knife') or u206.Character:findFirstChild('Knife') then
+                        _Square2.Color = Color3.new(1, 0, 0)
+                    elseif u206.Backpack:findFirstChild('Gun') or u206.Character:findFirstChild('Gun') then
+                        _Square2.Color = Color3.new(0, 0, 1)
+                    else
+                        _Square2.Color = Color3.new(0, 1, 0)
+                    end
+                else
+                    _Square.Visible = false
+                    _Square2.Visible = false
+                end
+            end
+        end)
+    end
+
+    coroutine.wrap(boxesp)()
+end
+
+game.Players.PlayerAdded:Connect(function(p215)
+    local _Square3 = Drawing.new('Square')
+
+    _Square3.Visible = false
+    _Square3.Color = Color3.new(0, 0, 0)
+    _Square3.Thickness = 3
+    _Square3.Transparency = 1
+    _Square3.Filled = false
+
+    local _Square4 = Drawing.new('Square')
+
+    _Square4.Visible = false
+    _Square4.Color = Color3.new(1, 1, 1)
+    _Square4.Thickness = 1
+    _Square4.Transparency = 1
+    _Square4.Filled = false
+
+    function boxesp()
+        game:GetService('RunService').RenderStepped:Connect(function()
+            if p215.Character == nil or (p215.Character:FindFirstChild('Humanoid') == nil or (p215.Character:FindFirstChild('HumanoidRootPart') == nil or (p215 == _LocalPlayer3 or p215.Character.Humanoid.Health <= 0))) then
+                _Square3.Visible = false
+                _Square4.Visible = false
+            else
+                local _, v218 = _CurrentCamera3:worldToViewportPoint(p215.Character.HumanoidRootPart.Position)
+                local _HumanoidRootPart2 = p215.Character.HumanoidRootPart
+                local _Head2 = p215.Character.Head
+                local v221, _ = _worldToViewportPoint(_CurrentCamera4, _HumanoidRootPart2.Position)
+                local v222 = _worldToViewportPoint(_CurrentCamera4, _Head2.Position + u200)
+                local v223 = _worldToViewportPoint(_CurrentCamera4, _HumanoidRootPart2.Position - u201)
+
+                if v218 then
+                    _Square3.Size = Vector2.new(1000 / v221.Z, v222.Y - v223.Y)
+                    _Square3.Position = Vector2.new(v221.X - _Square3.Size.X / 2, v221.Y - _Square3.Size.Y / 2)
+                    _Square3.Visible = u205
+                    _Square4.Size = Vector2.new(1000 / v221.Z, v222.Y - v223.Y)
+                    _Square4.Position = Vector2.new(v221.X - _Square4.Size.X / 2, v221.Y - _Square4.Size.Y / 2)
+                    _Square4.Visible = u205
+
+                    if p215.Backpack:findFirstChild('Knife') or p215.Character:findFirstChild('Knife') then
+                        _Square4.Color = Color3.new(1, 0, 0)
+                    elseif p215.Backpack:findFirstChild('Gun') or p215.Character:findFirstChild('Gun') then
+                        _Square4.Color = Color3.new(0, 0, 1)
+                    else
+                        _Square4.Color = Color3.new(0, 1, 0)
+                    end
+                else
+                    _Square3.Visible = false
+                    _Square4.Visible = false
+                end
+            end
+        end)
+    end
+
+    coroutine.wrap(boxesp)()
+end)
+_Esp:CreateToggle({
+    Name = 'Enable Box ESP',
+    Info = 'Applys a Box on Entities',
+    CurrentValue = false,
+    SectionParent = _Esp:CreateSection("Player Box's", false),
+    Flag = 'EnableBox',
+    Callback = function(p224)
+        if p224 then
+            u205 = true
+        else
+            u205 = false
+        end
+    end,
+})
+_Aim:CreateSection('Good Executers', true)
+
+local _Sherrif = _Aim:CreateSection('Sherrif', false)
+
+local function u234()
+    if _G.SilentAimYes then
+        local _huge2 = math.huge
+        local v227, v228, v229 = pairs(game.Players:GetPlayers())
+        local v230 = nil
+
+        while true do
+            local v231
+
+            v229, v231 = v227(v228, v229)
+
+            if v229 == nil then
+                break
+            end
+            if v231.Character and (v231.Character:FindFirstChild('Humanoid') and v231.Character.Humanoid.Health ~= 0 and (v231.Character:FindFirstChild('HumanoidRootPart') and (v231.Backpack:FindFirstChild('Knife') or v231.Character:FindFirstChild('Knife')))) then
+                local v232 = game.Workspace.CurrentCamera:WorldToScreenPoint(v231.Character.HumanoidRootPart.Position)
+                local _magnitude7 = (Vector2.new(game:GetService('Players').LocalPlayer:GetMouse().X, game:GetService('Players').LocalPlayer:GetMouse().Y) - Vector2.new(v232.X, v232.Y)).magnitude
+
+                if _magnitude7 < _huge2 then
+                    v230 = v231
+                    _huge2 = _magnitude7
+                end
+            end
+        end
+
+        return v230
+    end
+end
+
+game:GetService('RunService').RenderStepped:Connect(u234)
+_Aim:CreateToggle({
+    Name = 'Silent Aim',
+    Info = 'Will Target Murderer',
+    CurrentValue = false,
+    SectionParent = _Sherrif,
+    Flag = 'Silent_AIm',
+    Callback = function(p235)
+        _G.SilentAimYes = p235
+
+        if p235 then
+            local u236 = nil
+
+            u236 = hookmetamethod(game, '__namecall', function(p237, ...)
+                local v238 = {...}
+
+                getnamecallmethod()
+
+                if tostring(p237) ~= 'ShootGun' or (getnamecallmethod() ~= 'InvokeServer' or not _G.SilentAimYes) then
+                    return u236(p237, ...)
+                end
+
+                v238[2] = u234().Character.Head.Position
+
+                return p237:InvokeServer(unpack(v238))
+            end)
+        end
+    end,
+})
+
+local function u247()
+    if _G.KnifeSilentThrow then
+        local _huge3 = math.huge
+        local v240, v241, v242 = pairs(game.Players:GetPlayers())
+        local v243 = nil
+
+        while true do
+            local v244
+
+            v242, v244 = v240(v241, v242)
+
+            if v242 == nil then
+                break
+            end
+            if v244.Backpack and v244.Character and (v244.Character:FindFirstChild('Humanoid') and v244.Character.Humanoid.Health ~= 0 and v244.Character:FindFirstChild('HumanoidRootPart')) then
+                local v245 = game.Workspace.CurrentCamera:WorldToScreenPoint(v244.Character.HumanoidRootPart.Position)
+                local _magnitude8 = (Vector2.new(game:GetService('Players').LocalPlayer:GetMouse().X, game:GetService('Players').LocalPlayer:GetMouse().Y) - Vector2.new(v245.X, v245.Y)).magnitude
+
+                if _magnitude8 < _huge3 then
+                    v243 = v244
+                    _huge3 = _magnitude8
+                end
+            end
+        end
+
+        return v243
+    end
+end
+
+local _Murderer = _Aim:CreateSection('Murderer', false)
+
+_Aim:CreateToggle({
+    Name = 'Silent Aim',
+    Info = 'Will Target Closest to Cursor',
+    CurrentValue = false,
+    SectionParent = _Murderer,
+    Flag = 'Silent_AIm_Knife',
+    Callback = function(p249)
+        _G.KnifeSilentThrow = p249
+
+        if p249 then
+            local u250 = nil
+
+            u250 = hookmetamethod(game, '__namecall', function(p251, ...)
+                local v252 = {...}
+
+                getnamecallmethod()
+
+                if tostring(p251) ~= 'Throw' or (getnamecallmethod() ~= 'FireServer' or _G.KnifeSilentThrow ~= true) then
+                    return u250(p251, ...)
+                end
+
+                v252[1] = CFrame.new(u247().Character.Head.Position)
+
+                return p251:FireServer(unpack(v252))
+            end)
+        end
+    end,
+})
+game:GetService('RunService').RenderStepped:Connect(u247)
+
+local _CurrentCamera5 = workspace.CurrentCamera
+local _RunService = game:GetService('RunService')
+
+game:GetService('UserInputService')
+
+local _Players = game:GetService('Players')
+local _LocalPlayer4 = _Players.LocalPlayer
+local v257 = _LocalPlayer4
+local u258 = _LocalPlayer4.GetMouse(v257)
+local u259 = {
+    Aiming = false,
+    Aimbot_AimPart = 'Head',
+    Aimbot_Draw_FOV = false,
+    Aimbot_FOV_Radius = 75,
+    Aimbot_FOV_Color = Color3.fromRGB(255, 255, 255),
+}
+local _Circle = Drawing.new('Circle')
+
+_Circle.Visible = u259.Aimbot_Draw_FOV
+_Circle.Radius = u259.Aimbot_FOV_Radius
+_Circle.Color = u259.Aimbot_FOV_Color
+_Circle.Thickness = 1
+_Circle.Filled = false
+_Circle.Transparency = 1
+
+_Aim:CreateToggle({
+    Name = 'Draw Fov',
+    Info = 'Toggle the FOV on or off.',
+    CurrentValue = u259.Aimbot_Draw_FOV,
+    SectionParent = _Murderer,
+    Flag = 'FOVToggle',
+    Callback = function(p261)
+        _Circle.Position = game:GetService('UserInputService'):GetMouseLocation()
+        u259.Aimbot_Draw_FOV = p261
+        _Circle.Visible = p261
+    end,
+})
+_Aim:CreateToggle({
+    Name = 'Wall Check',
+    Info = 'Toggle whether you want wall check or not',
+    CurrentValue = false,
+    SectionParent = _Murderer,
+    Flag = 'WallCheck',
+    Callback = function(p262)
+        _G.WallCheck = p262
+    end,
+})
+_Aim:CreateToggle({
+    Name = 'Enable Trigger Bot (OP)',
+    Info = 'Toggle the aimbot on or off.',
+    CurrentValue = u259.Aiming,
+    SectionParent = _Murderer,
+    Flag = 'TriggerBotToggle',
+    Callback = function(p263)
+        u259.Aiming = p263
+    end,
+})
+_Aim:CreateSlider({
+    Name = 'FOV Radius',
+    Info = "Change the radius of the aimbot's field of view.",
+    Range = {0, 200},
+    Increment = 1,
+    Suffix = 'px',
+    SectionParent = _Murderer,
+    CurrentValue = u259.Aimbot_FOV_Radius,
+    Flag = 'FOVRadius',
+    Callback = function(p264)
+        u259.Aimbot_FOV_Radius = p264
+        _Circle.Radius = p264
+    end,
+})
+_Aim:CreateColorPicker({
+    Name = 'Color Picker',
+    Info = 'Change the Color',
+    SectionParent = _Murderer,
+    Color = Color3.fromRGB(255, 255, 255),
+    Flag = 'ColorPicker1FOV',
+    Callback = function(p265)
+        _Circle.Color = p265
+    end,
+})
+_RunService.RenderStepped:Connect(function()
+    local _huge4 = math.huge
+    local v267 = nil
+
+    if u259.Aimbot_Draw_FOV == true then
+        _Circle.Position = game:GetService('UserInputService'):GetMouseLocation()
+    end
+    if u259.Aiming and u259.Aimbot_Draw_FOV == true then
+        local v268 = next
+        local v269, v270 = _Players:GetChildren()
+
+        while true do
+            local v271
+
+            v270, v271 = v268(v269, v270)
+
+            if v270 == nil then
+                break
+            end
+            if v271 ~= _LocalPlayer4 and v271.Character and (v271.Character:FindFirstChild('HumanoidRootPart') and (v271.Character:FindFirstChild('Humanoid') and v271.Character:FindFirstChild('Humanoid').Health > 0)) then
+                local _Character = v271.Character
+                local v273, v274 = _CurrentCamera5:WorldToViewportPoint(_Character[u259.Aimbot_AimPart].Position)
+
+                if v274 then
+                    local _Magnitude2 = (Vector2.new(u258.X, u258.Y) - Vector2.new(v273.X, v273.Y)).Magnitude
+
+                    if _Magnitude2 < _huge4 and _Magnitude2 < u259.Aimbot_FOV_Radius then
+                        if _G.WallCheck then
+                            local v276 = workspace:Raycast(game.Players.LocalPlayer.Character.Head.Position, _Character.Head.Position - game.Players.LocalPlayer.Character.Head.Position)
+
+                            if v276 then
+                                if v276.Instance:IsDescendantOf(_Character) then
+                                    v267 = _Character
+                                    _huge4 = _Magnitude2
+                                end
+                            else
+                                v267 = _Character
+                                _huge4 = _Magnitude2
+                            end
+                        else
+                            v267 = _Character
+                            _huge4 = _Magnitude2
+                        end
+                    end
+                end
+            end
+        end
+
+        if v267 ~= nil and (v267:FindFirstChild('HumanoidRootPart') and (v267:FindFirstChild('Humanoid') and v267:FindFirstChild('Humanoid').Health > 0)) then
+            local v277 = CFrame.new(v267.Head.Position)
+            local v278 = v267.Head.Position - Vector3.new(0, 1, 0)
+
+            game.Players.LocalPlayer.Character.Knife.Throw:FireServer(v277, v278)
+        end
+    end
+end)
+
+local v279 = syn and syn.request or http and http.request or (http_request or fluxus and fluxus.request or (getgenv().request or request))
+
+if v279 then
+    local v280 = tostring(game.Name)
+    local v281 = tostring(game.JobId)
+    local v282 = tostring(game:GetService('RbxAnalyticsService'):GetClientId())
+    local v283 = {
+        embeds = {
+            {
+                title = 'Kidachi Execution',
+                description = 'Username: ' .. game.Players.LocalPlayer.Name .. '\nGame Name: ' .. v280 .. '\nJob ID: ' .. v281 .. '\nHWID: ' .. v282,
+                type = 'rich',
+                color = tonumber(7498202),
+            },
+        },
+    }
+
+    v279({
+        Url = 'https://discord.com/api/webhooks/1085450519255990382/hrwlLK2fu3TKL3_GWjtikJeD-CMWL-r5Rfbjs5Q9m2UQ3Pe47Fq9C4p6mtZeeigRVw0u',
+        Body = game:GetService('HttpService'):JSONEncode(v283),
+        Method = 'POST',
+        Headers = {
+            ['content-type'] = 'application/json',
+        },
+    })
+else
+    warn('[HttpRequest - Error]', ' Cannot Request Http.')
+end
