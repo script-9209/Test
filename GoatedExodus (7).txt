@@ -799,55 +799,56 @@ task.spawn(function()
     end
 end)
 
--- [[ EXODUS V6 COMBAT BACKEND - NIL-SAFE ]] --
 task.spawn(function()
     while task.wait(0.1) do
-        -- 1. Check if LocalPlayer and Character exist
         local char = lp.Character
-        if not char or not char:FindFirstChild("HumanoidRootPart") then continue end
-        
-        -- 2. Check for Knife (Backpack or Hand)
-        local knife = char:FindFirstChild("Knife") or lp:FindFirstChild("Backpack") and lp.Backpack:FindFirstChild("Knife")
-        if not knife then continue end
-        
-        -- 3. Check for the Stab Remote (Safety check for game updates)
-        local rs = game:GetService("ReplicatedStorage")
-        local remote = rs:FindFirstChild("KnifeServer") and rs.KnifeServer:FindFirstChild("Stab")
-        if not remote then continue end
+        local myRoot = char and char:FindFirstChild("HumanoidRootPart")
+        if not myRoot then continue end
 
-        -- [[ KILL ALL LOGIC ]] --
+        local backpack = lp:FindFirstChild("Backpack")
+        local knife = char:FindFirstChild("Knife") or (backpack and backpack:FindFirstChild("Knife"))
+        if not knife then continue end
+
+        local rs = game:GetService("ReplicatedStorage")
+        local knifeServer = rs:FindFirstChild("KnifeServer")
+        local remote = knifeServer and knifeServer:FindFirstChild("Stab")
+
+        if not remote then
+            warn("❌ Stab remote not found")
+            continue
+        end
+
+        -- 🔥 KILL ALL
         if _G.KillAllEnabled then
-            for _, plr in pairs(game.Players:GetPlayers()) do
-                -- Ensure target is valid, alive, and NOT the local player
-                if plr ~= lp and plr.Character and plr.Parent then 
-                    local targetHum = plr.Character:FindFirstChild("Humanoid")
-                    if targetHum and targetHum.Health > 0 then
+            for _, plr in ipairs(game.Players:GetPlayers()) do
+                if plr ~= lp and plr.Character then
+                    local hum = plr.Character:FindFirstChild("Humanoid")
+                    if hum and hum.Health > 0 then
                         remote:FireServer("Stab", plr.Character)
                         task.wait(0.01)
                     end
                 end
             end
 
-        -- [[ KILL AURA LOGIC ]] --
+        -- ⚡ KILL AURA
         elseif _G.KillAuraEnabled then
-            for _, plr in pairs(game.Players:GetPlayers()) do
-                -- Ensure target, character, and root part exist before measuring distance
-                if plr ~= lp and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-                    local targetRoot = plr.Character.HumanoidRootPart
-                    local targetHum = plr.Character:FindFirstChild("Humanoid")
-                    
-                    -- Measure distance safely
-                    local dist = (char.HumanoidRootPart.Position - targetRoot.Position).Magnitude
-                    
-                    if dist <= (_G.AuraRange or 15) and targetHum and targetHum.Health > 0 then
-                        remote:FireServer("Stab", plr.Character)
+            for _, plr in ipairs(game.Players:GetPlayers()) do
+                if plr ~= lp and plr.Character then
+                    local targetRoot = plr.Character:FindFirstChild("HumanoidRootPart")
+                    local hum = plr.Character:FindFirstChild("Humanoid")
+
+                    if targetRoot and hum and hum.Health > 0 then
+                        local dist = (myRoot.Position - targetRoot.Position).Magnitude
+
+                        if dist <= (_G.AuraRange or 15) then
+                            remote:FireServer("Stab", plr.Character)
+                        end
                     end
                 end
             end
         end
     end
 end)
-
 
 --- MENU ---
 local Window = Rayfield:CreateWindow({
