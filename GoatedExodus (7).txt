@@ -22,7 +22,7 @@ _G.RoleNotify = false
 _G.KillAuraEnabled = false
 _G.KillAllEnabled = false
 _G.AuraRange = 15
-_G.TriggerInstantKill
+_G.TriggerInstantKill = false
 
 
 -- MLBB Style Default Positions (Relative to bottom right)
@@ -804,46 +804,37 @@ end)
 task.spawn(function()
     while true do
         task.wait(0.1)
+        if not lp.Character or not (_G.KillAuraEnabled or _G.KillAllEnabled or _G.TriggerInstantKill) then continue end
         
-        local char = lp.Character
-        local bp = lp:FindFirstChild("Backpack")
-        local knife = char and char:FindFirstChild("Knife") or (bp and bp:FindFirstChild("Knife"))
+        local myHRP = lp.Character:FindFirstChild("HumanoidRootPart")
         local remote = game:GetService("ReplicatedStorage"):FindFirstChild("KnifeServer") and game:GetService("ReplicatedStorage").KnifeServer:FindFirstChild("Stab")
+        if not myHRP or not remote then continue end
 
-        if char and knife and remote then
-            local myHRP = char:FindFirstChild("HumanoidRootPart")
-            if not myHRP then continue end
-
-            -- INSTANT BUTTON LOGIC
-            if _G.TriggerInstantKill then
-                for _, p in ipairs(game.Players:GetPlayers()) do
-                    if p ~= lp and p.Character then remote:FireServer("Stab", p.Character) end
-                end
-                _G.TriggerInstantKill = false
-            end
-
-            -- LOOP LOGIC (Aura & Auto Kill)
+        -- Instant Kill Button Logic
+        if _G.TriggerInstantKill then
             for _, p in ipairs(game.Players:GetPlayers()) do
-                if p ~= lp and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                    local tHRP = p.Character.HumanoidRootPart
-                    local tHum = p.Character:FindFirstChild("Humanoid")
-                    
-                    if tHum and tHum.Health > 0 then
-                        -- Auto Kill All
-                        if _G.KillAllEnabled then
+                if p ~= lp and p.Character then remote:FireServer("Stab", p.Character) end
+            end
+            _G.TriggerInstantKill = false
+        end
+
+        -- Loop Logic
+        for _, p in ipairs(game.Players:GetPlayers()) do
+            if p ~= lp and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                local tHRP = p.Character.HumanoidRootPart
+                local tHum = p.Character:FindFirstChild("Humanoid")
+                
+                if tHum and tHum.Health > 0 then
+                    if _G.KillAllEnabled then
+                        remote:FireServer("Stab", p.Character)
+                    elseif _G.KillAuraEnabled then
+                        local dist = (myHRP.Position - tHRP.Position).Magnitude
+                        if dist <= (_G.AuraRange or 15) then
+                            tHRP.Anchored = true
+                            tHRP.CFrame = myHRP.CFrame * CFrame.new(0, 0, -2)
                             remote:FireServer("Stab", p.Character)
-                            task.wait(0.02)
-                        
-                        -- Kill Aura (Exact Reference Concept)
-                        elseif _G.KillAuraEnabled then
-                            local dist = (myHRP.Position - tHRP.Position).Magnitude
-                            if dist <= (_G.AuraRange or 15) then
-                                tHRP.Anchored = true
-                                tHRP.CFrame = myHRP.CFrame * CFrame.new(0, 0, -2) -- Exact idea from ref
-                                remote:FireServer("Stab", p.Character)
-                                task.wait(0.1)
-                                tHRP.Anchored = false
-                            end
+                            task.wait(0.1)
+                            tHRP.Anchored = false
                         end
                     end
                 end
