@@ -18,6 +18,9 @@ _G.SpeedGlitchEnabled = false
 _G.SpeedGlitchValue = 40
 _G.RoleNotify = false
 local leapDebounce = false
+_G.KillAuraEnabled = false
+‎_G.KillAllEnabled = false
+‎_G.AuraRange = 15 
 
 -- MLBB Style Default Positions (Relative to bottom right)
 local DefaultShootPos = UDim2.new(1, -190, 1, -180) -- Top Left of Jump
@@ -796,6 +799,56 @@ task.spawn(function()
     end
 end)
 
+-- [[ EXODUS V6 COMBAT BACKEND - NIL-SAFE ]] --
+task.spawn(function()
+    while task.wait(0.1) do
+        -- 1. Check if LocalPlayer and Character exist
+        local char = lp.Character
+        if not char or not char:FindFirstChild("HumanoidRootPart") then continue end
+        
+        -- 2. Check for Knife (Backpack or Hand)
+        local knife = char:FindFirstChild("Knife") or lp:FindFirstChild("Backpack") and lp.Backpack:FindFirstChild("Knife")
+        if not knife then continue end
+        
+        -- 3. Check for the Stab Remote (Safety check for game updates)
+        local rs = game:GetService("ReplicatedStorage")
+        local remote = rs:FindFirstChild("KnifeServer") and rs.KnifeServer:FindFirstChild("Stab")
+        if not remote then continue end
+
+        -- [[ KILL ALL LOGIC ]] --
+        if _G.KillAllEnabled then
+            for _, plr in pairs(game.Players:GetPlayers()) do
+                -- Ensure target is valid, alive, and NOT the local player
+                if plr ~= lp and plr.Character and plr.Parent then 
+                    local targetHum = plr.Character:FindFirstChild("Humanoid")
+                    if targetHum and targetHum.Health > 0 then
+                        remote:FireServer("Stab", plr.Character)
+                        task.wait(0.01)
+                    end
+                end
+            end
+
+        -- [[ KILL AURA LOGIC ]] --
+        elseif _G.KillAuraEnabled then
+            for _, plr in pairs(game.Players:GetPlayers()) do
+                -- Ensure target, character, and root part exist before measuring distance
+                if plr ~= lp and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                    local targetRoot = plr.Character.HumanoidRootPart
+                    local targetHum = plr.Character:FindFirstChild("Humanoid")
+                    
+                    -- Measure distance safely
+                    local dist = (char.HumanoidRootPart.Position - targetRoot.Position).Magnitude
+                    
+                    if dist <= (_G.AuraRange or 15) and targetHum and targetHum.Health > 0 then
+                        remote:FireServer("Stab", plr.Character)
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
 --- MENU ---
 local Window = Rayfield:CreateWindow({
    Name = "🔪 EXODUS HUB | MM2",
@@ -813,6 +866,7 @@ local KeybindsTab = Window:CreateTab("Keybinds", 4483362458)
 
 MainTab:CreateSection("Role ESP")
 MainTab:CreateToggle({Name = "Enable Arrow ESP", CurrentValue = false, Flag = "ESP_F", Callback = function(V) _G.ESPEnabled = V end})
+
 MainTab:CreateSection("Timer/Murd Chance")
 MainTab:CreateToggle({Name = "Show/Hide Timer", CurrentValue = false, Flag = "Timer_F", Callback = function(V) TimerBox.Visible = V end})
 MainTab:CreateToggle({Name = "Show/Hide Chance", CurrentValue = false, Flag = "Chance_F", Callback = function(V) ChanceBox.Visible = V end})
