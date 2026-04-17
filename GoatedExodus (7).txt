@@ -6,6 +6,7 @@ local Players = game:GetService("Players")
 local lp = Players.LocalPlayer
 local CurrentMurderer = nil 
 local roleCache = {}
+local leapDebounce = false
 
 -- Global State
 _G.LockAll = false
@@ -866,8 +867,29 @@ local KeybindsTab = Window:CreateTab("Keybinds", 4483362458)
 MainTab:CreateSection("Role ESP")
 MainTab:CreateToggle({Name = "Enable Arrow ESP", CurrentValue = false, Flag = "ESP_F", Callback = function(V) _G.ESPEnabled = V end})
 MainTab:CreateSection("Combat Utilities")
-MainTab:CreateToggle({Name = "Kill Aura", CurrentValue = false, Flag = "AuraToggle", Callback = function(V) _G.KillAuraEnabled = V end‎})
-MainTab:CreateInput({Name = "Range", PlaceholderText = "15", RemoveTextAfterFocusLost = false, Callback = function(Text) _G.AuraRange = tonumber(Text) or 15 end})
+MainTab:CreateToggle({
+    Name = "Kill Aura", 
+    CurrentValue = false, 
+    Flag = "AuraToggle", 
+    Callback = function(V) _G.KillAuraEnabled = V end -- Re-type this line completely
+})
+
+MainTab:CreateToggle({
+    Name = "Kill All", 
+    CurrentValue = false, 
+    Flag = "KillAllToggle", 
+    Callback = function(V) _G.KillAllEnabled = V end
+})
+
+MainTab:CreateInput({
+    Name = "Range", 
+    PlaceholderText = "15", 
+    RemoveTextAfterFocusLost = false, 
+    Callback = function(Text) 
+        _G.AuraRange = tonumber(Text) or 15 -- Added "or 15" as a nil-check
+    end
+})
+
 MainTab:CreateSection("Ui Settings")
 MainTab:CreateToggle({Name = "Lock Floating UI", CurrentValue = false, Flag = "Lock_F", Callback = function(V) _G.LockAll = V end})
 MainTab:CreateToggle({Name = "Show Gun Button", CurrentValue = false, Flag = "SGB_F", Callback = function(V) GunBtn.Visible = V end})
