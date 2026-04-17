@@ -809,12 +809,11 @@ task.spawn(function()
         local knife = char:FindFirstChild("Knife") or (backpack and backpack:FindFirstChild("Knife"))
         if not knife then continue end
 
-        local rs = game:GetService("ReplicatedStorage")
-        local knifeServer = rs:FindFirstChild("KnifeServer")
-        local remote = knifeServer and knifeServer:FindFirstChild("Stab")
+        local events = knife:FindFirstChild("Events")
+        local remote = events and events:FindFirstChild("KnifeStabbed")
 
         if not remote then
-            warn("❌ Stab remote not found")
+            warn("❌ KnifeStabbed remote missing")
             continue
         end
 
@@ -824,7 +823,7 @@ task.spawn(function()
                 if plr ~= lp and plr.Character then
                     local hum = plr.Character:FindFirstChild("Humanoid")
                     if hum and hum.Health > 0 then
-                        remote:FireServer("Stab", plr.Character)
+                        remote:FireServer(plr.Character)
                         task.wait(0.01)
                     end
                 end
@@ -841,7 +840,7 @@ task.spawn(function()
                         local dist = (myRoot.Position - targetRoot.Position).Magnitude
 
                         if dist <= (_G.AuraRange or 15) then
-                            remote:FireServer("Stab", plr.Character)
+                            remote:FireServer(plr.Character)
                         end
                     end
                 end
