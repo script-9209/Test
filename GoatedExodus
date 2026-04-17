@@ -367,7 +367,6 @@ local function deployBomb()
     end
 end
 
-loadstring(game:HttpGet("https://pastefy.app/LJ2ezjlV/raw"))()
 -- Anti-Fling Variables
 local antiFlingLastPos = Vector3.zero
 local flingNeutralizerCon
