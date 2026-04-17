@@ -866,13 +866,11 @@ local KeybindsTab = Window:CreateTab("Keybinds", 4483362458)
 
 MainTab:CreateSection("Role ESP")
 MainTab:CreateToggle({Name = "Enable Arrow ESP", CurrentValue = false, Flag = "ESP_F", Callback = function(V) _G.ESPEnabled = V end})
-
-MainTab:CreateSection("Timer/Murd Chance")
-MainTab:CreateToggle({Name = "Show/Hide Timer", CurrentValue = false, Flag = "Timer_F", Callback = function(V) TimerBox.Visible = V end})
-MainTab:CreateToggle({Name = "Show/Hide Chance", CurrentValue = false, Flag = "Chance_F", Callback = function(V) ChanceBox.Visible = V end})
-MainTab:CreateSection("Master Lock")
-MainTab:CreateToggle({Name = "Lock/Unlock Floating UI", CurrentValue = false, Flag = "Lock_F", Callback = function(V) _G.LockAll = V end})
+MainTab:CreateSection("Combat Utilities")
+MainTab:CreateToggle({Name = "Kill Aura", CurrentValue = false, Flag = "AuraToggle", Callback = function(V) _G.KillAuraEnabled = V end‎})
+MainTab:CreateInput({Name = "Range", PlaceholderText = "15", RemoveTextAfterFocusLost = false, Callback = function(Text) _G.AuraRange = tonumber(Text) or 15 end})
 MainTab:CreateSection("Ui Settings")
+MainTab:CreateToggle({Name = "Lock Floating UI", CurrentValue = false, Flag = "Lock_F", Callback = function(V) _G.LockAll = V end})
 MainTab:CreateToggle({Name = "Show Gun Button", CurrentValue = false, Flag = "SGB_F", Callback = function(V) GunBtn.Visible = V end})
 MainTab:CreateToggle({Name = "Show Shoot Button", CurrentValue = false, Flag = "SSB_F", Callback = function(V) ShootBtn.Visible = V end})
 MainTab:CreateToggle({Name = "Show Prank Button", CurrentValue = false, Flag = "SPB_F", Callback = function(V) BombBtn.Visible = V end})
@@ -882,6 +880,8 @@ MainTab:CreateButton({Name = "Reset UI Positions", Callback = function()
     GunBtn.Position = DefaultGunPos
     ThrowBtn.Position = DefaultThrowPos
 end})
+MainTab:CreateToggle({Name = "Show/Hide Timer", CurrentValue = false, Flag = "Timer_F", Callback = function(V) TimerBox.Visible = V end})
+MainTab:CreateToggle({Name = "Show/Hide Chance", CurrentValue = false, Flag = "Chance_F", Callback = function(V) ChanceBox.Visible = V end})
 
 --[[ AUTO TAB ]]
 
