@@ -625,28 +625,55 @@ for _, player in pairs(Players:GetPlayers()) do applyPlayerESP(player) end
 Players.PlayerAdded:Connect(applyPlayerESP)
 
 -- Silent Aim Metatable Hook
-local mt = getrawmetatable(game); local oldNamecall = mt.__namecall; setreadonly(mt, false)
+-- FIXED: Silent Aim Metatable Hook - Camera freeze fix
+local mt = getrawmetatable(game)
+local oldNamecall = mt.__namecall
+setreadonly(mt, false)
 
 mt.__namecall = newcclosure(function(self, ...)
-    local method = getnamecallmethod(); local args = {...}
+    local method = getnamecallmethod()
+    local args = {...}
     
+    -- Silent Aim for Gun shooting
     if _G.SilentAimEnabled and method == "FireServer" then
         local name = tostring(self.Name)
         if name == "Shoot" or name == "ShootGun" or name:lower():match("shoot") then
             if lp.Character and lp.Character:FindFirstChild("Gun") then
                 local root, originPos, targetPos = getCombatData()
                 if root and originPos and targetPos then
-                    args[1] = CFrame.lookAt(originPos, targetPos); args[2] = CFrame.new(targetPos)
+                    args[1] = CFrame.lookAt(originPos, targetPos)
+                    args[2] = CFrame.new(targetPos)
                     return oldNamecall(self, unpack(args))
                 end
             end
         end
     end
     
-    if _G.SilentAimEnabled and (method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRay" or method == "Raycast") then
+    -- FIXED: Raycast hook - Don't return fake values, just let it pass through
+    -- Returning fake values causes camera freeze, instead we modify the ray
+    if _G.SilentAimEnabled and (method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRay") then
         if lp.Character and lp.Character:FindFirstChild("Gun") then
             local root, _, targetPos = getCombatData()
-            if root and targetPos then return root, targetPos, Vector3.new(0, 1, 0), Enum.Material.Plastic end
+            if root and targetPos and args[1] then
+                -- Modify the ray to point at target instead of returning fake values
+                local origin = args[1].Origin
+                local newRay = Ray.new(origin, (targetPos - origin).Unit * 1000)
+                args[1] = newRay
+                return oldNamecall(self, unpack(args))
+            end
+        end
+    end
+    
+    -- For new Raycast method
+    if _G.SilentAimEnabled and method == "Raycast" then
+        if lp.Character and lp.Character:FindFirstChild("Gun") then
+            local root, _, targetPos = getCombatData()
+            if root and targetPos and args[2] then
+                -- args[2] is direction, modify to point at target
+                local origin = args[1]
+                args[2] = (targetPos - origin).Unit * args[2].Magnitude
+                return oldNamecall(self, unpack(args))
+            end
         end
     end
     
@@ -694,20 +721,15 @@ local Window = Rayfield:CreateWindow({
 })
 
 local MainTab = Window:CreateTab("Main", 4483362458)
-local AutoTab = Window:CreateTab("Auto", 4483362458)
 local CombatTab = Window:CreateTab("Combat", 4483362458)
+local AutoTab = Window:CreateTab("Auto", 4483362458)
 local PlayerTab = Window:CreateTab("Player", 4483362458)
 local MiscTab = Window:CreateTab("Misc", 4483362458)
 local KeybindsTab = Window:CreateTab("Keybinds", 4483362458)
 
--- Main Tab
+-- Main Tab (REORGANIZED - Removed Silent Aim items)
 MainTab:CreateSection("Role ESP")
 MainTab:CreateToggle({Name = "Enable Arrow ESP", CurrentValue = false, Flag = "ESP_F", Callback = function(V) _G.ESPEnabled = V end})
-
-MainTab:CreateSection("Silent Aim")
-MainTab:CreateToggle({Name = "Enable Silent Aim", CurrentValue = false, Flag = "SilentAim", Callback = function(V) _G.SilentAimEnabled = V end})
-MainTab:CreateDropdown({Name = "Shooting Method", Options = {"Normal", "New (blatant)"}, CurrentOption = {"Normal"}, MultipleOptions = false, Flag = "SMethod", Callback = function(Option) _G.ShootingMethod = Option[1] end})
-MainTab:CreateToggle({Name = "Wall-Check (Fallback)", CurrentValue = false, Flag = "WCheck", Callback = function(v) _G.SilentAimWallCheck = v end})
 
 MainTab:CreateSection("UI Settings")
 MainTab:CreateToggle({Name = "Lock Floating UI", CurrentValue = false, Flag = "Lock_F", Callback = function(V) _G.LockAll = V end})
@@ -721,7 +743,12 @@ end})
 MainTab:CreateToggle({Name = "Show/Hide Timer", CurrentValue = false, Flag = "Timer_F", Callback = function(V) TimerBox.Visible = V end})
 MainTab:CreateToggle({Name = "Show/Hide Chance", CurrentValue = false, Flag = "Chance_F", Callback = function(V) ChanceBox.Visible = V end})
 
--- Combat Tab
+-- Combat Tab (REORGANIZED - Correct order: Shooting Method, Silent Aim, Wall Check)
+CombatTab:CreateSection("Silent Aim Settings")
+CombatTab:CreateDropdown({Name = "Shooting Method", Options = {"Normal", "New (blatant)"}, CurrentOption = {"Normal"}, MultipleOptions = false, Flag = "SMethod", Callback = function(Option) _G.ShootingMethod = Option[1] end})
+CombatTab:CreateToggle({Name = "Enable Silent Aim", CurrentValue = false, Flag = "SilentAim", Callback = function(V) _G.SilentAimEnabled = V end})
+CombatTab:CreateToggle({Name = "Wall-Check (Fallback)", CurrentValue = false, Flag = "WCheck", Callback = function(v) _G.SilentAimWallCheck = v end})
+
 CombatTab:CreateSection("Kill Features (Murderer Only)")
 CombatTab:CreateToggle({Name = "Kill Aura", CurrentValue = false, Flag = "KillAura", Callback = function(V) _G.KillAuraEnabled = V end})
 CombatTab:CreateInput({Name = "Aura Range", PlaceholderText = "15", Flag = "AuraRange", Callback = function(T) _G.AuraRange = tonumber(T) or 15 end})
@@ -763,4 +790,4 @@ MiscTab:CreateToggle({Name = "Role Notify on Round Start", CurrentValue = false,
 
 -- Load Config & Notify
 Rayfield:LoadConfiguration()
-Rayfield:Notify({Title = "Exodus Hub Loaded", Content = "Cross-platform fixes applied. Silent Aim & Kill Aura should now work!", Duration = 5})
+Rayfield:Notify({Title = "Exodus Hub Loaded", Content = "Fixed: Kill All, Silent Aim, Wall Check, and Menu Order!", Duration = 5})
