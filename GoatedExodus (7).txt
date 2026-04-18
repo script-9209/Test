@@ -267,54 +267,27 @@ local function getSheriff()
     return nil
 end
 
+-- [[ EXODUS V6 - MANUAL FIRE BUTTON ]] --
 local function fireGun()
     local char = lp.Character
     if not char or not char:FindFirstChild("Humanoid") then return end
 
-    -- 1. GET GUN (BACKPACK OR HAND)
-    local gun = char:FindFirstChild("Gun") or (lp.Backpack:FindFirstChild("Gun"))
+    local gun = char:FindFirstChild("Gun") or lp.Backpack:FindFirstChild("Gun")
     if not gun then return end
 
-    -- 2. TARGET SCAN (BACKPACK CHECK)
-    local target = nil
-    for _, p in ipairs(game.Players:GetPlayers()) do
-        if p ~= lp and p.Character and (p.Character:FindFirstChild("Knife") or (p:FindFirstChild("Backpack") and p.Backpack:FindFirstChild("Knife"))) then
-            target = p
-            break
-        end
-    end
+    -- Call the universal brain
+    local root, originPos, targetPos = getCombatData()
 
-    if target and target.Character:FindFirstChild("HumanoidRootPart") then
-        -- 3. AUTO-EQUIP (FOR THE BUTTON)
+    if root and originPos and targetPos then
+        -- Auto-Equip for panic mode
         if gun.Parent ~= char then
             char.Humanoid:EquipTool(gun)
         end
 
-        local root = target.Character.HumanoidRootPart
-        local head = target.Character:FindFirstChild("Head")
-        local myPos = char.HumanoidRootPart.Position
-        local velocity = root.Velocity
-        
-        -- 4. THE UNIFIED SHOOTING METHOD LOGIC
-        local targetPos
-        if _G.ShootingMethod == "New" then
-            -- BLATANT RAGE: Headshot + Fixed High Prediction
-            targetPos = (head and head.Position or root.Position) + (velocity * 0.16)
-        elseif _G.ShootingMethod == "Old" then
-            -- CLASSIC: Static Center Mass
-            targetPos = root.Position
-        else
-            -- NORMAL: Distance-Based Prediction
-            local dist = (myPos - root.Position).Magnitude
-            local pTime = math.clamp(dist / 140, 0.08, 0.30)
-            targetPos = root.Position + (velocity * pTime) + Vector3.new(0, 1.2, 0)
-        end
-        
-        -- 5. THE HIT INJECTION
         local remote = gun:FindFirstChild("Shoot") or game:GetService("ReplicatedStorage"):FindFirstChild("ShootGun")
         if remote then
             local args = {
-                [1] = CFrame.lookAt(myPos, targetPos),
+                [1] = CFrame.lookAt(originPos, targetPos),
                 [2] = CFrame.new(targetPos)
             }
             remote:FireServer(unpack(args))
@@ -865,7 +838,7 @@ task.spawn(function()
     end
 end)
 
--- [[ EXODUS V6 - FINAL SILENT AIM ENGINE ]] --
+-- [[ EXODUS V6 - REMOTE SILENT AIM ]] --
 local mt = getrawmetatable(game)
 local oldNamecall = mt.__namecall
 setreadonly(mt, false)
@@ -874,47 +847,29 @@ mt.__namecall = newcclosure(function(self, ...)
     local method = getnamecallmethod()
     local args = {...}
 
-    -- Triggered when you tap the screen to shoot
-    if _G.SilentAimEnabled and (method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRay") then
+    -- Hijack the actual remote fire to fix the bullet trail and hitreg
+    if _G.SilentAimEnabled and method == "FireServer" and (self.Name == "Shoot" or self.Name == "ShootGun") then
+        local char = lp.Character
         
-        -- 1. HAND CHECK (Only works if gun is equipped)
+        -- Hand Check (Must be holding gun)
+        if char and char:FindFirstChild("Gun") then
+            local root, originPos, targetPos = getCombatData()
+            
+            if root and originPos and targetPos then
+                -- Override the arguments sent to the server
+                args[1] = CFrame.lookAt(originPos, targetPos)
+                args[2] = CFrame.new(targetPos)
+                return oldNamecall(self, unpack(args))
+            end
+        end
+    end
+
+    -- Keep the raycast hook just to trick the local crosshair math
+    if _G.SilentAimEnabled and (method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRay") then
         local char = lp.Character
         if char and char:FindFirstChild("Gun") then
-            
-            -- 2. BACKPACK SCAN (Find current Murderer)
-            local target = nil
-            for _, p in ipairs(game.Players:GetPlayers()) do
-                if p ~= lp and p.Character then
-                    if p.Character:FindFirstChild("Knife") or (p:FindFirstChild("Backpack") and p.Backpack:FindFirstChild("Knife")) then
-                        target = p
-                        break
-                    end
-                end
-            end
-
-            if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-                local root = target.Character.HumanoidRootPart
-                local head = target.Character:FindFirstChild("Head")
-                local velocity = root.Velocity
-                local myPos = char.HumanoidRootPart.Position
-                
-                -- 3. UNIFIED METHOD LOGIC
-                local targetPos
-                if _G.ShootingMethod == "New" then
-                    -- Blatant Rage
-                    targetPos = (head and head.Position or root.Position) + (velocity * 0.16)
-                elseif _G.ShootingMethod == "Old" then
-                    -- Static Center
-                    targetPos = root.Position
-                else
-                    -- Normal Distance-Based
-                    local dist = (myPos - root.Position).Magnitude
-                    local pTime = math.clamp(dist / 140, 0.08, 0.30)
-                    targetPos = root.Position + (velocity * pTime) + Vector3.new(0, 1.2, 0)
-                end
-                
-                -- 4. THE INJECTION
-                -- Returns the hit part and the forced position
+            local root, _, targetPos = getCombatData()
+            if root and targetPos then
                 return root, targetPos, Vector3.new(0, 0, 0), Enum.Material.Plastic
             end
         end
