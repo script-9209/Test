@@ -24,7 +24,7 @@ _G.AuraRange = 15
 _G.TriggerInstantKill = false
 _G.SilentAimEnabled = false
 _G.SilentAimWallCheck = false
-_G.ShootingMethod = "Normal"
+_G.ShootingMethod = "New (blatant)"
 
 
 -- MLBB Style Default Positions (Relative to bottom right)
@@ -244,7 +244,7 @@ local function getCombatData()
 
     if activeMethod == "New (blatant)" then
         -- BLATANT: Bullet spawns ON the murderer
-        originPos = root.Position 
+        originPos = root.Position + Vector3.new(0, 0.25, 0.4)
         targetPos = (head and head.Position or root.Position) + (velocity * 0.16)
     else 
         -- NORMAL: Standard path from your body
