@@ -923,7 +923,7 @@ task.spawn(function()
     end
 end)
 
--- [[ EXODUS V6 - FINAL SILENT AIM HOOK ]] --
+-- [[ EXODUS V6 - FIXED SILENT AIM HOOK ]] --
 local mt = getrawmetatable(game)
 local oldNamecall = mt.__namecall
 setreadonly(mt, false)
@@ -932,10 +932,12 @@ mt.__namecall = newcclosure(function(self, ...)
     local method = getnamecallmethod()
     local args = {...}
 
+    -- Hijack the actual remote fire
     if _G.SilentAimEnabled and method == "FireServer" and (self.Name == "Shoot" or self.Name == "ShootGun") then
         if lp.Character and lp.Character:FindFirstChild("Gun") then
             local root, originPos, targetPos = getCombatData()
             
+            -- ONLY override if we actually found a target
             if root and originPos and targetPos then
                 args[1] = CFrame.lookAt(originPos, targetPos)
                 args[2] = CFrame.new(targetPos)
@@ -944,6 +946,17 @@ mt.__namecall = newcclosure(function(self, ...)
         end
     end
 
+    -- Fix for the Raycast (Crosshair)
+    if _G.SilentAimEnabled and (method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRay") then
+        if lp.Character and lp.Character:FindFirstChild("Gun") then
+            local root, _, targetPos = getCombatData()
+            if root and targetPos then
+                return root, targetPos, Vector3.new(0, 0, 0), Enum.Material.Plastic
+            end
+        end
+    end
+
+    -- CRITICAL: If target isn't found or Silent Aim is off, fire normally!
     return oldNamecall(self, unpack(args))
 end)
 setreadonly(mt, true)
