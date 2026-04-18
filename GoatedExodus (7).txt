@@ -269,9 +269,13 @@ end
 
 local function fireGun()
     local char = lp.Character
-    if not char then return end
+    if not char or not char:FindFirstChild("Humanoid") then return end
 
-    -- Direct Backpack Scan (Instant)
+    -- 1. GET GUN (BACKPACK OR HAND)
+    local gun = char:FindFirstChild("Gun") or (lp.Backpack:FindFirstChild("Gun"))
+    if not gun then return end
+
+    -- 2. TARGET SCAN (BACKPACK CHECK)
     local target = nil
     for _, p in ipairs(game.Players:GetPlayers()) do
         if p ~= lp and p.Character and (p.Character:FindFirstChild("Knife") or (p:FindFirstChild("Backpack") and p.Backpack:FindFirstChild("Knife"))) then
@@ -280,31 +284,43 @@ local function fireGun()
         end
     end
 
-    local gun = char:FindFirstChild("Gun") or lp.Backpack:FindFirstChild("Gun")
-    if not gun or not target or not target.Character:FindFirstChild("HumanoidRootPart") then return end
+    if target and target.Character:FindFirstChild("HumanoidRootPart") then
+        -- 3. AUTO-EQUIP (FOR THE BUTTON)
+        if gun.Parent ~= char then
+            char.Humanoid:EquipTool(gun)
+        end
 
-    -- Instant Equip
-    if gun.Parent == lp.Backpack then
-        char.Humanoid:EquipTool(gun)
-    end
-
-    local targetHRP = target.Character.HumanoidRootPart
-    local targetHead = target.Character:FindFirstChild("Head")
-    
-    -- Blatant Prediction (Targets the future position)
-    local predictedPos = (targetHead and targetHead.Position or targetHRP.Position) + (targetHRP.Velocity * 0.15)
-    
-    -- Blatant CF: Bullet starts at target and stays at target for 100% hit rate
-    local args = {
-        [1] = CFrame.new(predictedPos) * CFrame.Angles(math.rad(90), 0, 0),
-        [2] = CFrame.new(predictedPos)
-    }
-
-    if gun:FindFirstChild("Shoot") then
-        gun.Shoot:FireServer(unpack(args))
+        local root = target.Character.HumanoidRootPart
+        local head = target.Character:FindFirstChild("Head")
+        local myPos = char.HumanoidRootPart.Position
+        local velocity = root.Velocity
+        
+        -- 4. THE UNIFIED SHOOTING METHOD LOGIC
+        local targetPos
+        if _G.ShootingMethod == "New" then
+            -- BLATANT RAGE: Headshot + Fixed High Prediction
+            targetPos = (head and head.Position or root.Position) + (velocity * 0.16)
+        elseif _G.ShootingMethod == "Old" then
+            -- CLASSIC: Static Center Mass
+            targetPos = root.Position
+        else
+            -- NORMAL: Distance-Based Prediction
+            local dist = (myPos - root.Position).Magnitude
+            local pTime = math.clamp(dist / 140, 0.08, 0.30)
+            targetPos = root.Position + (velocity * pTime) + Vector3.new(0, 1.2, 0)
+        end
+        
+        -- 5. THE HIT INJECTION
+        local remote = gun:FindFirstChild("Shoot") or game:GetService("ReplicatedStorage"):FindFirstChild("ShootGun")
+        if remote then
+            local args = {
+                [1] = CFrame.lookAt(myPos, targetPos),
+                [2] = CFrame.new(targetPos)
+            }
+            remote:FireServer(unpack(args))
+        end
     end
 end
-
 
 local function throwAction()
     local knife = lp.Character:FindFirstChild("Knife") or lp.Backpack:FindFirstChild("Knife")
