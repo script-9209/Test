@@ -200,6 +200,67 @@ task.spawn(function()
 end)
 
 --- COMBAT UTILITY ---
+local function getCombatData()
+    local char = lp.Character
+    local myHRP = char and char:FindFirstChild("HumanoidRootPart")
+    local myHead = char and char:FindFirstChild("Head")
+    if not myHRP then return nil end
+
+    -- 1. DIRECT BACKPACK SCAN
+    local target = nil
+    for _, p in ipairs(game.Players:GetPlayers()) do
+        if p ~= lp and p.Character then
+            if p.Character:FindFirstChild("Knife") or (p:FindFirstChild("Backpack") and p.Backpack:FindFirstChild("Knife")) then
+                target = p
+                break
+            end
+        end
+    end
+
+    if not target or not target.Character or not target.Character:FindFirstChild("HumanoidRootPart") then return nil end
+
+    local root = target.Character.HumanoidRootPart
+    local head = target.Character:FindFirstChild("Head")
+    local velocity = root.Velocity
+
+    -- 2. DYNAMIC WALL-CHECK (The 🤓 Logic)
+    local activeMethod = _G.ShootingMethod
+
+    if activeMethod == "New" and _G.SilentAimWallCheck and myHead and head then
+        local rayParams = RaycastParams.new()
+        rayParams.FilterDescendantsInstances = {lp.Character, target.Character}
+        rayParams.FilterType = Enum.RaycastFilterType.Exclude
+        
+        -- Draw invisible line between heads
+        local ray = workspace:Raycast(myHead.Position, head.Position - myHead.Position, rayParams)
+        if ray then
+            -- Wall in the way! Fallback to Normal.
+            activeMethod = "Normal"
+        end
+    end
+
+    -- 3. CALCULATE ORIGIN & TARGET
+    local originPos, targetPos
+
+    if activeMethod == "New" then
+        -- BLATANT: Spawns ON the Murderer
+        originPos = root.Position 
+        targetPos = (head and head.Position or root.Position) + (velocity * 0.16)
+    elseif activeMethod == "Old" then
+        -- CLASSIC
+        originPos = myHRP.Position
+        targetPos = root.Position
+    else 
+        -- NORMAL: Unaffected by wall-check fallback, shoots from your body
+        originPos = myHRP.Position
+        local dist = (myHRP.Position - root.Position).Magnitude
+        local pTime = math.clamp(dist / 140, 0.08, 0.30)
+        targetPos = root.Position + (velocity * pTime) + Vector3.new(0, 1.2, 0)
+    end
+
+    return root, originPos, targetPos
+end
+
 local function getMurderer()
     -- 1. Use the locked target if we already found them
     if CurrentMurderer and CurrentMurderer.Parent == Players then 
