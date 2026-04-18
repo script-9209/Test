@@ -128,45 +128,81 @@ local function findKnifeRemote()
 end
 
 local function getCombatData()
-    local char = lp.Character; local myHRP = char and char:FindFirstChild("HumanoidRootPart"); local myHead = char and char:FindFirstChild("Head")
+    local char = lp.Character
+    local myHRP = char and char:FindFirstChild("HumanoidRootPart")
     if not myHRP then return nil end
     
+    -- Target: Lock onto murderer via roleCache first (most reliable)
     local target = nil
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= lp and p.Character and p.Character:FindFirstChild("Humanoid") then
-            local pHum = p.Character.Humanoid
-            if pHum.Health > 0 then
-                local hasKnife = p.Character:FindFirstChild("Knife") or (p:FindFirstChild("Backpack") and p.Backpack:FindFirstChild("Knife"))
-                if hasKnife then target = p; break end
+    for name, data in pairs(roleCache) do
+        if data.Role == "Murderer" then
+            local p = Players:FindFirstChild(name)
+            if p and p.Character and p.Character:FindFirstChild("Humanoid") then
+                if p.Character.Humanoid.Health > 0 then
+                    target = p
+                    break
+                end
             end
         end
     end
     
+    -- Fallback: Physical knife check
+    if not target then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= lp and p.Character and p.Character:FindFirstChild("Humanoid") then
+                local pHum = p.Character.Humanoid
+                if pHum.Health > 0 then
+                    local hasKnife = p.Character:FindFirstChild("Knife") or (p.Backpack and p.Backpack:FindFirstChild("Knife"))
+                    if hasKnife then target = p; break end
+                end
+            end
+        end
+    end
+    
+    -- Safety: Multiple nil checks prevent errors
     if not target or not target.Character then return nil end
-    local targetChar = target.Character; local root = targetChar:FindFirstChild("HumanoidRootPart"); local head = targetChar:FindFirstChild("Head")
+    local targetChar = target.Character
+    local root = targetChar:FindFirstChild("HumanoidRootPart")
+    local head = targetChar:FindFirstChild("Head")
     if not root then return nil end
     local targetHum = targetChar:FindFirstChild("Humanoid")
     if not targetHum or targetHum.Health <= 0 then return nil end
     
-    local velocity = root.Velocity; local activeMethod = _G.ShootingMethod
+    local velocity = root.Velocity
+    local activeMethod = _G.ShootingMethod
     
-    if activeMethod == "New (blatant)" and _G.SilentAimWallCheck and myHead and head then
-        local rayParams = RaycastParams.new()
-        rayParams.FilterDescendantsInstances = {lp.Character, targetChar}; rayParams.FilterType = Enum.RaycastFilterType.Exclude
-        local ray = workspace:Raycast(myHead.Position, (head.Position - myHead.Position).Unit * 1000, rayParams)
-        if ray then activeMethod = "Normal" end
+    -- Wall Check: Fixed ray validation
+    if activeMethod == "New (blatant)" and _G.SilentAimWallCheck then
+        local myHead = char:FindFirstChild("Head")
+        if myHead and head then
+            local rayParams = RaycastParams.new()
+            rayParams.FilterDescendantsInstances = {lp.Character, targetChar}
+            rayParams.FilterType = Enum.RaycastFilterType.Exclude
+            
+            local direction = (head.Position - myHead.Position)
+            local ray = workspace:Raycast(myHead.Position, direction, rayParams)
+            
+            -- Only fallback if we hit something NOT on the target
+            if ray and ray.Instance and not ray.Instance:IsDescendantOf(targetChar) then
+                activeMethod = "Normal"
+            end
+        end
     end
     
     local originPos, targetPos
+    
+    -- Prediction: velocity × prediction slider
     if activeMethod == "New (blatant)" then
-        originPos = root.Position + Vector3.new(0, 2, 0)
-        local aimTarget = head and head.Position or root.Position
-        targetPos = aimTarget + (velocity * 0.12)
+        local aimPoint = head and head.Position or root.Position
+        originPos = aimPoint + Vector3.new(0, 0.2, 0.35)
+        targetPos = aimPoint + (velocity * _G.PredictionTime)
     else
-        originPos = myHRP.Position; local dist = (myHRP.Position - root.Position).Magnitude
+        originPos = myHRP.Position
+        local dist = (myHRP.Position - root.Position).Magnitude
         local pTime = math.clamp(dist / 140, 0.05, 0.25)
         targetPos = root.Position + (velocity * pTime) + Vector3.new(0, 1.5, 0)
     end
+    
     return root, originPos, targetPos
 end
 
@@ -242,7 +278,6 @@ local function applyStats(char)
     hum.WalkSpeed = _G.DesiredSpeed; hum.UseJumpPower = true; hum.JumpPower = _G.DesiredJump
 end
 
--- Combat Action Functions
 -- Combat Action Functions
 local function fireGun()
     local char = lp.Character; local hum = char and char:FindFirstChild("Humanoid"); local myHRP = char and char:FindFirstChild("HumanoidRootPart")
@@ -625,7 +660,6 @@ for _, player in pairs(Players:GetPlayers()) do applyPlayerESP(player) end
 Players.PlayerAdded:Connect(applyPlayerESP)
 
 -- Silent Aim Metatable Hook
--- FIXED: Silent Aim Metatable Hook - Camera freeze fix
 local mt = getrawmetatable(game)
 local oldNamecall = mt.__namecall
 setreadonly(mt, false)
@@ -634,10 +668,12 @@ mt.__namecall = newcclosure(function(self, ...)
     local method = getnamecallmethod()
     local args = {...}
     
-    -- Silent Aim for Gun shooting
+    -- Hook: Intercepts ShootGun remote event when sheriff fires
+    -- Condition: Only works when SilentAim toggle is ON
     if _G.SilentAimEnabled and method == "FireServer" then
-        local name = tostring(self.Name)
-        if name == "Shoot" or name == "ShootGun" or name:lower():match("shoot") then
+        local selfName = tostring(self.Name)
+        if selfName == "Shoot" or selfName == "ShootGun" then
+            -- Verify gun is equipped
             if lp.Character and lp.Character:FindFirstChild("Gun") then
                 local root, originPos, targetPos = getCombatData()
                 if root and originPos and targetPos then
@@ -649,33 +685,8 @@ mt.__namecall = newcclosure(function(self, ...)
         end
     end
     
-    -- FIXED: Raycast hook - Don't return fake values, just let it pass through
-    -- Returning fake values causes camera freeze, instead we modify the ray
-    if _G.SilentAimEnabled and (method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRay") then
-        if lp.Character and lp.Character:FindFirstChild("Gun") then
-            local root, _, targetPos = getCombatData()
-            if root and targetPos and args[1] then
-                -- Modify the ray to point at target instead of returning fake values
-                local origin = args[1].Origin
-                local newRay = Ray.new(origin, (targetPos - origin).Unit * 1000)
-                args[1] = newRay
-                return oldNamecall(self, unpack(args))
-            end
-        end
-    end
-    
-    -- For new Raycast method
-    if _G.SilentAimEnabled and method == "Raycast" then
-        if lp.Character and lp.Character:FindFirstChild("Gun") then
-            local root, _, targetPos = getCombatData()
-            if root and targetPos and args[2] then
-                -- args[2] is direction, modify to point at target
-                local origin = args[1]
-                args[2] = (targetPos - origin).Unit * args[2].Magnitude
-                return oldNamecall(self, unpack(args))
-            end
-        end
-    end
+    -- REMOVED: FindPartOnRay/Raycast hooks that freeze camera
+    -- Server-side FireServer override is sufficient for hit registration
     
     return oldNamecall(self, unpack(args))
 end)
