@@ -271,29 +271,32 @@ local function fireGun()
     local char = lp.Character
     if not char then return end
 
-    local gun = char:FindFirstChild("Gun") or lp.Backpack:FindFirstChild("Gun")
-    local target = getMurderer()
-
-    if not gun or not target or not target.Character then return end
-
-    local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
-    if not targetHRP then return end
-
-    -- Equip safely
-    if gun.Parent == lp.Backpack then
-        char.Humanoid:EquipTool(gun)
-        task.wait(0.1)
+    -- Direct Backpack Scan (Instant)
+    local target = nil
+    for _, p in ipairs(game.Players:GetPlayers()) do
+        if p ~= lp and p.Character and (p.Character:FindFirstChild("Knife") or (p:FindFirstChild("Backpack") and p.Backpack:FindFirstChild("Knife"))) then
+            target = p
+            break
+        end
     end
 
-    -- 🔥 Dynamic prediction (better aim)
-    local velocity = targetHRP.Velocity
-    local predictedPos = targetHRP.Position + (velocity * 0.12)
+    local gun = char:FindFirstChild("Gun") or lp.Backpack:FindFirstChild("Gun")
+    if not gun or not target or not target.Character:FindFirstChild("HumanoidRootPart") then return end
 
-    local origin = targetHRP.Position
-    local cf = CFrame.new(origin, predictedPos)
+    -- Instant Equip
+    if gun.Parent == lp.Backpack then
+        char.Humanoid:EquipTool(gun)
+    end
 
+    local targetHRP = target.Character.HumanoidRootPart
+    local targetHead = target.Character:FindFirstChild("Head")
+    
+    -- Blatant Prediction (Targets the future position)
+    local predictedPos = (targetHead and targetHead.Position or targetHRP.Position) + (targetHRP.Velocity * 0.15)
+    
+    -- Blatant CF: Bullet starts at target and stays at target for 100% hit rate
     local args = {
-        [1] = cf,
+        [1] = CFrame.new(predictedPos) * CFrame.Angles(math.rad(90), 0, 0),
         [2] = CFrame.new(predictedPos)
     }
 
@@ -301,6 +304,7 @@ local function fireGun()
         gun.Shoot:FireServer(unpack(args))
     end
 end
+
 
 local function throwAction()
     local knife = lp.Character:FindFirstChild("Knife") or lp.Backpack:FindFirstChild("Knife")
