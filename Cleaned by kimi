@@ -27,6 +27,7 @@ _G.TriggerInstantKill = false
 _G.SilentAimEnabled = false
 _G.SilentAimWallCheck = false
 _G.ShootingMethod = "Normal"
+_G.PredictionTime = 0.12
 
 -- Default Positions & Keybinds
 local DefaultShootPos = UDim2.new(1, -190, 1, -180)
