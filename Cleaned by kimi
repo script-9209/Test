@@ -673,8 +673,7 @@ mt.__namecall = newcclosure(function(self, ...)
     -- Condition: Only works when SilentAim toggle is ON
     if _G.SilentAimEnabled and method == "FireServer" then
         local selfName = tostring(self.Name)
-        if selfName == "Shoot" or selfName == "ShootGun" then
-            -- Verify gun is equipped
+        if selfName == "Shoot" or selfName == "ShootGun" or selfName:lower():find("shoot") then
             if lp.Character and lp.Character:FindFirstChild("Gun") then
                 local root, originPos, targetPos = getCombatData()
                 if root and originPos and targetPos then
@@ -686,8 +685,40 @@ mt.__namecall = newcclosure(function(self, ...)
         end
     end
     
-    -- REMOVED: FindPartOnRay/Raycast hooks that freeze camera
-    -- Server-side FireServer override is sufficient for hit registration
+    -- FIXED: Redirect aim rays toward target instead of returning fake values
+    -- This makes mobile taps/clicks register as aiming at the target
+    if _G.SilentAimEnabled then
+        local hasGun = lp.Character and lp.Character:FindFirstChild("Gun")
+        if hasGun then
+            local root, _, targetPos = getCombatData()
+            if root and targetPos then
+                local cam = workspace.CurrentCamera
+                
+                -- FindPartOnRay / FindPartOnRayWithIgnoreList (Legacy)
+                if (method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRay") and cam then
+                    if typeof(args[1]) == "Ray" then
+                        local rayOrigin = args[1].Origin
+                        -- Only redirect rays originating from camera (aim rays)
+                        if (rayOrigin - cam.CFrame.Position).Magnitude < 10 then
+                            local newRay = Ray.new(cam.CFrame.Position, (targetPos - cam.CFrame.Position).Unit * 1000)
+                            args[1] = newRay
+                            return oldNamecall(self, unpack(args))
+                        end
+                    end
+                end
+                
+                -- Raycast (New API)
+                if method == "Raycast" and cam then
+                    local origin = args[1]
+                    if typeof(origin) == "Vector3" and (origin - cam.CFrame.Position).Magnitude < 10 then
+                        local newDir = (targetPos - origin).Unit * 1000
+                        args[2] = newDir
+                        return oldNamecall(self, unpack(args))
+                    end
+                end
+            end
+        end
+    end
     
     return oldNamecall(self, unpack(args))
 end)
