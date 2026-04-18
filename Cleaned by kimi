@@ -754,17 +754,105 @@ end})
 MainTab:CreateToggle({Name = "Show/Hide Timer", CurrentValue = false, Flag = "Timer_F", Callback = function(V) TimerBox.Visible = V end})
 MainTab:CreateToggle({Name = "Show/Hide Chance", CurrentValue = false, Flag = "Chance_F", Callback = function(V) ChanceBox.Visible = V end})
 
--- Combat Tab (REORGANIZED - Correct order: Shooting Method, Silent Aim, Wall Check)
 CombatTab:CreateSection("Silent Aim Settings")
-CombatTab:CreateDropdown({Name = "Shooting Method", Options = {"Normal", "New (blatant)"}, CurrentOption = {"Normal"}, MultipleOptions = false, Flag = "SMethod", Callback = function(Option) _G.ShootingMethod = Option[1] end})
-CombatTab:CreateToggle({Name = "Enable Silent Aim", CurrentValue = false, Flag = "SilentAim", Callback = function(V) _G.SilentAimEnabled = V end})
-CombatTab:CreateToggle({Name = "Wall-Check (Fallback)", CurrentValue = false, Flag = "WCheck", Callback = function(v) _G.SilentAimWallCheck = v end})
+
+CombatTab:CreateDropdown({
+    Name = "Shooting Method", 
+    Options = {"Normal", "New (blatant)"}, 
+    CurrentOption = {"Normal"}, 
+    MultipleOptions = false, 
+    Flag = "SMethod", 
+    Callback = function(Option) 
+        _G.ShootingMethod = Option[1] 
+    end
+})
+
+CombatTab:CreateToggle({
+    Name = "Enable Silent Aim", 
+    CurrentValue = false, 
+    Flag = "SilentAim", 
+    Callback = function(V) 
+        _G.SilentAimEnabled = V 
+    end
+})
+
+CombatTab:CreateToggle({
+    Name = "Wall-Check (Fallback)", 
+    CurrentValue = false, 
+    Flag = "WCheck", 
+    Callback = function(v) 
+        _G.SilentAimWallCheck = v 
+    end
+})
+
+CombatTab:CreateSlider({
+    Name = "Prediction Time",
+    Range = {0, 0.5},
+    Increment = 0.01,
+    Suffix = "s",
+    CurrentValue = 0.12,
+    Flag = "PredTime",
+    Callback = function(Value)
+        _G.PredictionTime = Value
+    end,
+})
 
 CombatTab:CreateSection("Kill Features (Murderer Only)")
 CombatTab:CreateToggle({Name = "Kill Aura", CurrentValue = false, Flag = "KillAura", Callback = function(V) _G.KillAuraEnabled = V end})
 CombatTab:CreateInput({Name = "Aura Range", PlaceholderText = "15", Flag = "AuraRange", Callback = function(T) _G.AuraRange = tonumber(T) or 15 end})
 CombatTab:CreateToggle({Name = "Kill All (Loop)", CurrentValue = false, Flag = "KillAll", Callback = function(V) _G.KillAllEnabled = V end})
-CombatTab:CreateButton({Name = "Instant Kill (One Shot)", Callback = function() _G.TriggerInstantKill = true end})
+
+CombatTab:CreateButton({Name = "Instant Kill (One Shot)", Callback = function()
+    local char = lp.Character
+    if not char then return end
+    
+    local knife = char:FindFirstChild("Knife")
+    if not knife then
+        local backpackKnife = lp.Backpack:FindFirstChild("Knife")
+        if backpackKnife then
+            local hum = char:FindFirstChild("Humanoid")
+            if hum then
+                hum:EquipTool(backpackKnife)
+                task.wait(0.2)
+                knife = char:FindFirstChild("Knife")
+            end
+        end
+    end
+    
+    if not knife then
+        Rayfield:Notify({Title = "Error", Content = "You need to be Murderer!", Duration = 2})
+        return
+    end
+    
+    local killed = 0
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= lp and p.Character and p.Character:FindFirstChild("Humanoid") then
+            local targetHum = p.Character.Humanoid
+            if targetHum.Health > 0 then
+                local myHRP = char:FindFirstChild("HumanoidRootPart")
+                local targetHRP = p.Character:FindFirstChild("HumanoidRootPart")
+                if myHRP and targetHRP then
+                    myHRP.CFrame = targetHRP.CFrame * CFrame.new(0, 0, 2.5)
+                    task.wait(0.05)
+                end
+                
+                pcall(function()
+                    local remote = findKnifeRemote()
+                    if remote then
+                        remote:FireServer(p.Character)
+                    else
+                        knife:Activate()
+                    end
+                end)
+                
+                killed = killed + 1
+                task.wait(0.1)
+            end
+        end
+    end
+    
+    Rayfield:Notify({Title = "Instant Kill", Content = "Killed " .. killed .. " players!", Duration = 2})
+end})
 
 -- Auto Tab
 AutoTab:CreateToggle({Name = "Auto Collect Coins", CurrentValue = false, Flag = "AC_F", Callback = function(V) _G.AutoCoins = V; if not V then ResetCharacterPhysics() end end})
