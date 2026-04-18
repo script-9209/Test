@@ -874,55 +874,47 @@ mt.__namecall = newcclosure(function(self, ...)
     local method = getnamecallmethod()
     local args = {...}
 
-    -- "FindPartOnRayWithIgnoreList" is the internal math MM2 uses for bullet travel
-    if _G.SilentAimEnabled and method == "FindPartOnRayWithIgnoreList" then
-        local target = nil
+    -- Triggered when you tap the screen to shoot
+    if _G.SilentAimEnabled and (method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRay") then
         
-        -- 1. DIRECT BACKPACK/CHARACTER SCAN (No Function Needed)
-        for _, p in ipairs(game.Players:GetPlayers()) do
-            if p ~= lp and p.Character then
-                if p.Character:FindFirstChild("Knife") or (p:FindFirstChild("Backpack") and p.Backpack:FindFirstChild("Knife")) then
-                    target = p
-                    break
+        -- 1. HAND CHECK (Only works if gun is equipped)
+        local char = lp.Character
+        if char and char:FindFirstChild("Gun") then
+            
+            -- 2. BACKPACK SCAN (Find current Murderer)
+            local target = nil
+            for _, p in ipairs(game.Players:GetPlayers()) do
+                if p ~= lp and p.Character then
+                    if p.Character:FindFirstChild("Knife") or (p:FindFirstChild("Backpack") and p.Backpack:FindFirstChild("Knife")) then
+                        target = p
+                        break
+                    end
                 end
             end
-        end
 
-        if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-            local root = target.Character.HumanoidRootPart
-            local head = target.Character:FindFirstChild("Head")
-            
-            -- 2. WALL-CHECK LOGIC (Optional Toggle)
-            local visible = true
-            if _G.SilentAimWallCheck then
-                local origin = workspace.CurrentCamera.CFrame.Position
-                local rayParams = RaycastParams.new()
-                rayParams.FilterDescendantsInstances = {lp.Character, target.Character}
-                rayParams.FilterType = Enum.RaycastFilterType.Exclude
-                
-                local ray = workspace:Raycast(origin, root.Position - origin, rayParams)
-                if ray then visible = false end -- Something is in the way
-            end
-
-            if visible then
-                -- 3. METHOD SELECTION (New, Old, Normal)
-                local targetPos
+            if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+                local root = target.Character.HumanoidRootPart
+                local head = target.Character:FindFirstChild("Head")
                 local velocity = root.Velocity
+                local myPos = char.HumanoidRootPart.Position
                 
+                -- 3. UNIFIED METHOD LOGIC
+                local targetPos
                 if _G.ShootingMethod == "New" then
-                    -- Blatant: Prediction + Headshot
-                    targetPos = (head and head.Position or root.Position) + (velocity * 0.15)
+                    -- Blatant Rage
+                    targetPos = (head and head.Position or root.Position) + (velocity * 0.16)
                 elseif _G.ShootingMethod == "Old" then
-                    -- Static RootPart (Classic)
+                    -- Static Center
                     targetPos = root.Position
                 else
-                    -- Normal: Balanced Prediction + Torso
-                    local dist = (lp.Character.HumanoidRootPart.Position - root.Position).Magnitude
+                    -- Normal Distance-Based
+                    local dist = (myPos - root.Position).Magnitude
                     local pTime = math.clamp(dist / 140, 0.08, 0.30)
-                    targetPos = root.Position + (velocity * pTime) + Vector3.new(0, 1, 0)
+                    targetPos = root.Position + (velocity * pTime) + Vector3.new(0, 1.2, 0)
                 end
                 
-                -- THE LIE: Force the game to hit the Murderer regardless of where you look
+                -- 4. THE INJECTION
+                -- Returns the hit part and the forced position
                 return root, targetPos, Vector3.new(0, 0, 0), Enum.Material.Plastic
             end
         end
