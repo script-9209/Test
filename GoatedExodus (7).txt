@@ -22,6 +22,9 @@ _G.KillAuraEnabled = false
 _G.KillAllEnabled = false
 _G.AuraRange = 15
 _G.TriggerInstantKill = false
+_G.SilentAimEnabled = false
+_G.SilentAimWallCheck = false
+_G.ShootingMethod = "Normal"
 
 
 -- MLBB Style Default Positions (Relative to bottom right)
@@ -842,6 +845,68 @@ task.spawn(function()
     end
 end)
 
+-- [[ EXODUS V6 SILENT AIM - DIRECT SCAN VERSION ]] --
+local mt = getrawmetatable(game)
+local oldNamecall = mt.__namecall
+setreadonly(mt, false)
+
+mt.__namecall = newcclosure(function(self, ...)
+    local method = getnamecallmethod()
+    local args = {...}
+
+    -- "FindPartOnRayWithIgnoreList" is the internal math MM2 uses to calculate shots
+    if _G.SilentAimEnabled and method == "FindPartOnRayWithIgnoreList" then
+        local targetPlayer = nil
+        
+        -- Scanning everyone for the knife
+        for _, p in ipairs(game.Players:GetPlayers()) do
+            if p ~= lp and p.Character then
+                -- Check character (if knife is equipped) or backpack (if knife is holstered)
+                if p.Character:FindFirstChild("Knife") or (p:FindFirstChild("Backpack") and p.Backpack:FindFirstChild("Knife")) then
+                    targetPlayer = p
+                    break
+                end
+            end
+        end
+
+        if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local root = targetPlayer.Character.HumanoidRootPart
+            local head = targetPlayer.Character:FindFirstChild("Head")
+            
+            -- Wall Check Logic
+            local visible = true
+            if _G.SilentAimWallCheck then
+                local origin = workspace.CurrentCamera.CFrame.Position
+                local params = RaycastParams.new()
+                params.FilterDescendantsInstances = {lp.Character, targetPlayer.Character}
+                params.FilterType = Enum.RaycastFilterType.Exclude
+                local cast = workspace:Raycast(origin, root.Position - origin, params)
+                if cast then visible = false end
+            end
+
+            if visible then
+                -- Apply Shooting Method
+                local targetPos
+                if _G.ShootingMethod == "New" then
+                    targetPos = head and head.Position or root.Position
+                elseif _G.ShootingMethod == "Old" then
+                    targetPos = root.Position
+                else
+                    targetPos = root.Position + Vector3.new(0, 1.2, 0) -- Standard center-mass
+                end
+                
+                -- Lie to the game: The bullet hit the Murderer
+                return root, targetPos, Vector3.new(0, 0, 0), Enum.Material.Plastic
+            end
+        end
+    end
+
+    return oldNamecall(self, unpack(args))
+end)
+
+setreadonly(mt, true)
+
+
 --- MENU ---
 local Window = Rayfield:CreateWindow({
    Name = "🔪 EXODUS HUB | MM2",
@@ -864,6 +929,9 @@ MainTab:CreateToggle({Name = "Kill Aura", CurrentValue = false, Flag = "KA", Cal
 MainTab:CreateInput({Name = "Aura Range", PlaceholderText = "15", Callback = function(t) _G.AuraRange = tonumber(t) or 15 end})
 MainTab:CreateToggle({Name = "Auto Kill All", CurrentValue = false, Flag = "AKA", Callback = function(v) _G.KillAllEnabled = v end})
 MainTab:CreateButton({Name = "Instant Kill All", Callback = function() _G.TriggerInstantKill = true end})
+MainTab:CreateDropdown({Name = "Shooting Method", Options = {"Normal","Old","New"}, CurrentOption = {"Normal"}, MultipleOptions = false, Flag = "SMeth", Callback = function(v) _G.ShootingMethod = v[1] end})
+MainTab:CreateToggle({Name = "Silent Aim", CurrentValue = false, Flag = "SAim", Callback = function(v) _G.SilentAimEnabled = v end})
+MainTab:CreateToggle({Name = "Wall-Check", CurrentValue = false, Flag = "WCheck", Callback = function(v) _G.SilentAimWallCheck = v end})
 MainTab:CreateSection("Ui Settings")
 MainTab:CreateToggle({Name = "Lock Floating UI", CurrentValue = false, Flag = "Lock_F", Callback = function(V) _G.LockAll = V end})
 MainTab:CreateToggle({Name = "Show Gun Button", CurrentValue = false, Flag = "SGB_F", Callback = function(V) GunBtn.Visible = V end})
