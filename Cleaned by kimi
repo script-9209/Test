@@ -243,6 +243,7 @@ local function applyStats(char)
 end
 
 -- Combat Action Functions
+-- Combat Action Functions
 local function fireGun()
     local char = lp.Character; local hum = char and char:FindFirstChild("Humanoid"); local myHRP = char and char:FindFirstChild("HumanoidRootPart")
     if not hum or not myHRP then return end
