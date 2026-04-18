@@ -849,7 +849,7 @@ task.spawn(function()
     end
 end)
 
--- [[ EXODUS V6 SILENT AIM - DIRECT SCAN VERSION ]] --
+-- [[ EXODUS V6 - FINAL SILENT AIM ENGINE ]] --
 local mt = getrawmetatable(game)
 local oldNamecall = mt.__namecall
 setreadonly(mt, false)
@@ -858,48 +858,55 @@ mt.__namecall = newcclosure(function(self, ...)
     local method = getnamecallmethod()
     local args = {...}
 
-    -- "FindPartOnRayWithIgnoreList" is the internal math MM2 uses to calculate shots
+    -- "FindPartOnRayWithIgnoreList" is the internal math MM2 uses for bullet travel
     if _G.SilentAimEnabled and method == "FindPartOnRayWithIgnoreList" then
-        local targetPlayer = nil
+        local target = nil
         
-        -- Scanning everyone for the knife
+        -- 1. DIRECT BACKPACK/CHARACTER SCAN (No Function Needed)
         for _, p in ipairs(game.Players:GetPlayers()) do
             if p ~= lp and p.Character then
-                -- Check character (if knife is equipped) or backpack (if knife is holstered)
                 if p.Character:FindFirstChild("Knife") or (p:FindFirstChild("Backpack") and p.Backpack:FindFirstChild("Knife")) then
-                    targetPlayer = p
+                    target = p
                     break
                 end
             end
         end
 
-        if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            local root = targetPlayer.Character.HumanoidRootPart
-            local head = targetPlayer.Character:FindFirstChild("Head")
+        if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+            local root = target.Character.HumanoidRootPart
+            local head = target.Character:FindFirstChild("Head")
             
-            -- Wall Check Logic
+            -- 2. WALL-CHECK LOGIC (Optional Toggle)
             local visible = true
             if _G.SilentAimWallCheck then
                 local origin = workspace.CurrentCamera.CFrame.Position
-                local params = RaycastParams.new()
-                params.FilterDescendantsInstances = {lp.Character, targetPlayer.Character}
-                params.FilterType = Enum.RaycastFilterType.Exclude
-                local cast = workspace:Raycast(origin, root.Position - origin, params)
-                if cast then visible = false end
+                local rayParams = RaycastParams.new()
+                rayParams.FilterDescendantsInstances = {lp.Character, target.Character}
+                rayParams.FilterType = Enum.RaycastFilterType.Exclude
+                
+                local ray = workspace:Raycast(origin, root.Position - origin, rayParams)
+                if ray then visible = false end -- Something is in the way
             end
 
             if visible then
-                -- Apply Shooting Method
+                -- 3. METHOD SELECTION (New, Old, Normal)
                 local targetPos
+                local velocity = root.Velocity
+                
                 if _G.ShootingMethod == "New" then
-                    targetPos = head and head.Position or root.Position
+                    -- Blatant: Prediction + Headshot
+                    targetPos = (head and head.Position or root.Position) + (velocity * 0.15)
                 elseif _G.ShootingMethod == "Old" then
+                    -- Static RootPart (Classic)
                     targetPos = root.Position
                 else
-                    targetPos = root.Position + Vector3.new(0, 1.2, 0) -- Standard center-mass
+                    -- Normal: Balanced Prediction + Torso
+                    local dist = (lp.Character.HumanoidRootPart.Position - root.Position).Magnitude
+                    local pTime = math.clamp(dist / 140, 0.08, 0.30)
+                    targetPos = root.Position + (velocity * pTime) + Vector3.new(0, 1, 0)
                 end
                 
-                -- Lie to the game: The bullet hit the Murderer
+                -- THE LIE: Force the game to hit the Murderer regardless of where you look
                 return root, targetPos, Vector3.new(0, 0, 0), Enum.Material.Plastic
             end
         end
@@ -909,7 +916,6 @@ mt.__namecall = newcclosure(function(self, ...)
 end)
 
 setreadonly(mt, true)
-
 
 --- MENU ---
 local Window = Rayfield:CreateWindow({
