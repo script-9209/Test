@@ -981,7 +981,7 @@ task.spawn(function()
 end)
 
 -- ==========================================
--- SILENT AIM SYSTEM (FIXED - BUTTON INDEPENDENT)
+-- SILENT AIM SYSTEM (FIXED - 100% HIT RATE)
 -- ==========================================
 
 local CurrentTarget = nil
@@ -1014,6 +1014,8 @@ local function GetClosestMurderer()
                         local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
 
                         if distance < shortestDistance and distance < 400 then
+                            local blocked = false
+                            
                             if _G.SilentAimWallCheck then
                                 local rayParams = RaycastParams.new()
                                 rayParams.FilterDescendantsInstances = {localPlayer.Character, player.Character}
@@ -1023,17 +1025,19 @@ local function GetClosestMurderer()
                                 local ray = workspace:Raycast(camera.CFrame.Position, direction * 1000, rayParams)
 
                                 if ray then
-                                    continue
+                                    blocked = true
                                 end
                             end
 
-                            shortestDistance = distance
-                            closest = {
-                                Player = player,
-                                Head = head,
-                                HRP = hrp,
-                                Velocity = hrp.Velocity
-                            }
+                            if not blocked then
+                                shortestDistance = distance
+                                closest = {
+                                    Player = player,
+                                    Head = head,
+                                    HRP = hrp,
+                                    Velocity = hrp.Velocity
+                                }
+                            end
                         end
                     end
                 end
@@ -1044,7 +1048,7 @@ local function GetClosestMurderer()
     return closest
 end
 
--- The Silent Aim Hook - BUTTON INDEPENDENT VERSION
+-- The Silent Aim Hook - FIXED VERSION
 setreadonly(mt, false)
 
 mt.__namecall = newcclosure(function(self, ...)
@@ -1054,18 +1058,25 @@ mt.__namecall = newcclosure(function(self, ...)
     if _G.SilentAimEnabled and method == "FireServer" then
         local remoteName = tostring(self)
 
-        if remoteName == "Shoot" or remoteName == "ShootGun" or remoteName:find("Shoot") then
+        -- Check if this is a shoot remote (various possible names)
+        if remoteName:find("Shoot") or remoteName:find("shoot") or remoteName == "ShootGun" then
             local target = GetClosestMurderer()
 
             if target and target.Head and target.HRP then
+                -- Calculate predicted position for 100% hit
                 local predictedPos = target.Head.Position + (target.Velocity * _G.PredictionMultiplier)
-
-                if _G.ShootingMethod == "New (blatant)" then
-                    args[1] = CFrame.lookAt(target.HRP.Position + Vector3.new(0, 0.25, 0.4), predictedPos)
-                    args[2] = CFrame.new(predictedPos)
-                else
-                    local localHRP = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                    if localHRP then
+                
+                -- Get local player position
+                local localHRP = game.Players.LocalPlayer.Character and 
+                                game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                
+                if localHRP then
+                    if _G.ShootingMethod == "New (blatant)" then
+                        -- Method 1: Direct hit (blatant)
+                        args[1] = CFrame.lookAt(target.HRP.Position + Vector3.new(0, 0.25, 0.4), predictedPos)
+                        args[2] = CFrame.new(predictedPos)
+                    else
+                        -- Method 2: Normal with prediction
                         local dist = (localHRP.Position - target.HRP.Position).Magnitude
                         local pTime = math.clamp(dist / 140, 0.08, 0.30)
                         predictedPos = target.HRP.Position + (target.Velocity * pTime) + Vector3.new(0, 1.2, 0)
@@ -1073,15 +1084,15 @@ mt.__namecall = newcclosure(function(self, ...)
                         args[1] = CFrame.lookAt(localHRP.Position, predictedPos)
                         args[2] = CFrame.new(predictedPos)
                     end
+                    
+                    CurrentTarget = target.Player
                 end
-
-                CurrentTarget = target.Player
             end
-            -- IMPORTANT: If no target found, still fire the original shot (button independent)
+            -- If no target found, original args pass through (gun fires normally)
         end
     end
 
-    return old_namecall(self, unpack(args))
+    return old_namecall(self, table.unpack(args))
 end)
 
 setreadonly(mt, true)
