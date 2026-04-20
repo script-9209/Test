@@ -230,7 +230,7 @@ local function getCombatData()
 
     if activeMethod == "New (blatant)" then
         originPos = (root.CFrame * CFrame.new(0, 0.4, -0.67)).Position
-        targetPos = (head and head.Position or root.Position) + (velocity * 0.16)
+        targetPos = (head and head.Position or root.Position) + (velocity * 0.12)
     else 
         originPos = arm and arm.Position or myHRP.Position
         local dist = (myHRP.Position - root.Position).Magnitude
@@ -270,29 +270,36 @@ local function fireGun()
 end
 
 local function getMurderer()
-    if CurrentMurderer and CurrentMurderer.Parent == Players then 
-        return CurrentMurderer 
-    end
+    -- 1. HARD CHECK: Backpack priority (real-time)
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= lp then
+            local backpack = p:FindFirstChild("Backpack")
+            local char = p.Character
 
-    for _, p in pairs(Players:GetPlayers()) do
-        if p ~= lp and p.Character then
-            if p.Character:FindFirstChild("Knife") or p.Backpack:FindFirstChild("Knife") then
+            if backpack and backpack:FindFirstChild("Knife") then
+                CurrentMurderer = p
+                return p
+            end
+
+            if char and char:FindFirstChild("Knife") then
                 CurrentMurderer = p
                 return p
             end
         end
     end
 
+    -- 2. FALLBACK: role cache / playerData (only if knife not found)
     for name, data in pairs(roleCache) do
         if data.Role == "Murderer" then
             local p = Players:FindFirstChild(name)
             if p then
-                CurrentMurderer = p
-                return p
+                return p -- don't cache aggressively
             end
         end
     end
 
+    -- 3. No murderer found
+    CurrentMurderer = nil
     return nil
 end
 
