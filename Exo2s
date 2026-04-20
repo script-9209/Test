@@ -20,7 +20,7 @@ _G.SpeedGlitchValue = 40
 _G.RoleNotify = false
 _G.KillAuraEnabled = false
 _G.KillAllEnabled = false
-_G.AuraRange = 15
+_G.AuraRange = 10
 _G.TriggerInstantKill = false
 _G.SilentAimEnabled = false
 _G.SilentAimWallCheck = false
@@ -1014,58 +1014,55 @@ task.spawn(function()
 end)
 
 -- [[ 1. COMBAT SYSTEM LOGIC ]]
-task.spawn(function()
-    while true do
-        task.wait(0.1)
-        if not lp.Character then continue end
-        if not (_G.KillAuraEnabled or _G.KillAllEnabled or _G.TriggerInstantKill) then continue end
-        
-        local char = lp.Character
-        local myHRP = char:FindFirstChild("HumanoidRootPart")
-        local hum = char:FindFirstChild("Humanoid")
-        if not myHRP or not hum then continue end
-
-        local knife = char:FindFirstChild("Knife")
-        local remote = findKnifeRemote()
-        
-        -- Auto-equip: Only for Kill All or Instant Kill
-        if not knife and (_G.KillAllEnabled or _G.TriggerInstantKill) then
-            local backpackKnife = lp.Backpack:FindFirstChild("Knife")
-            if backpackKnife then
-                hum:EquipTool(backpackKnife)
-                task.wait(0.1)
-                knife = char:FindFirstChild("Knife")
-            end
-        end
-
-        for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
-            if p ~= lp and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                local tHRP = p.Character.HumanoidRootPart
-                local tHum = p.Character:FindFirstChild("Humanoid")
-                
-                if tHum and tHum.Health > 0 then
-                    local dist = (myHRP.Position - tHRP.Position).Magnitude
-                    
-                    -- Kill All / Instant Kill Logic (No Distance Check, No TP)
-                    if _G.KillAllEnabled or _G.TriggerInstantKill then
-                        pcall(function()
-                            if remote then remote:FireServer(p.Character) end
-                            if knife then knife:Activate() end
-                        end)
-                    
-                    -- Kill Aura Logic (Range Check, No TP, No Auto-Equip)
-                    elseif _G.KillAuraEnabled and knife and dist <= (_G.AuraRange or 15) then
-                        pcall(function()
-                            if remote then remote:FireServer(p.Character) end
-                            knife:Activate()
-                        end)
-                    end
-                end
-            end
-        end
-        if _G.TriggerInstantKill then _G.TriggerInstantKill = false end
-    end
-end)
+‎-- Kill Aura & Kill All System
+‎task.spawn(function()
+‎    while true do
+‎        task.wait(0.1)
+‎        if not lp.Character then continue end
+‎        if not (_G.KillAuraEnabled or _G.KillAllEnabled or _G.TriggerInstantKill) then continue end
+‎        local myHRP = lp.Character:FindFirstChild("HumanoidRootPart"); if not myHRP then continue end
+‎        local char = lp.Character; local knife = char:FindFirstChild("Knife"); local hum = char:FindFirstChild("Humanoid")
+‎        if not knife then
+‎            local backpackKnife = lp.Backpack:FindFirstChild("Knife")
+‎            if backpackKnife and hum then hum:EquipTool(backpackKnife); task.wait(0.1); knife = char:FindFirstChild("Knife") end
+‎        end
+‎        if not knife then continue end
+‎        local remote = findKnifeRemote(); local knifeTool = knife
+‎        
+‎        if _G.TriggerInstantKill then
+‎            for _, p in ipairs(Players:GetPlayers()) do
+‎                if p ~= lp and p.Character and p.Character:FindFirstChild("Humanoid") then
+‎                    local targetHum = p.Character.Humanoid
+‎                    if targetHum.Health > 0 then
+‎                        pcall(function() if remote then remote:FireServer(p.Character) end end)
+‎                        pcall(function() if knifeTool then knifeTool:Activate() end end)
+‎                    end
+‎                end
+‎            end
+‎            _G.TriggerInstantKill = false
+‎        end
+‎        
+‎        for _, p in ipairs(Players:GetPlayers()) do
+‎            if p ~= lp and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") then
+‎                local tHRP = p.Character.HumanoidRootPart; local tHum = p.Character.Humanoid
+‎                if tHum.Health > 0 then
+‎                    if _G.KillAllEnabled then
+‎                        tHRP.Anchored = true; local oldPos = myHRP.CFrame; myHRP.CFrame = tHRP.CFrame * CFrame.new(0, 0, 2)
+‎                        pcall(function() if remote then remote:FireServer(p.Character) elseif knifeTool then knifeTool:Activate() end end)
+‎                        task.wait(0.1); tHRP.Anchored = false
+‎                    elseif _G.KillAuraEnabled then
+‎                        local dist = (myHRP.Position - tHRP.Position).Magnitude
+‎                        if dist <= (_G.AuraRange or 15) then
+‎                            tHRP.Anchored = true; tHRP.CFrame = myHRP.CFrame * CFrame.new(0, 0, -2)
+‎                            pcall(function() if remote then remote:FireServer(p.Character) elseif knifeTool then knifeTool:Activate() end end)
+‎                            task.wait(0.1); tHRP.Anchored = false
+‎                        end
+‎                    end
+‎                end
+‎            end
+‎        end
+‎    end
+‎end)
 
 -- ==========================================
 -- SILENT AIM SYSTEM (FIXED - BUTTON INDEPENDENT)
@@ -1195,7 +1192,7 @@ MainTab:CreateDropdown({Name = "Shooting Method", Options = {"Normal", "New (bla
 MainTab:CreateToggle({Name = "Wall-Check", CurrentValue = false, Flag = "WCheck", Callback = function(v) _G.SilentAimWallCheck = v end})
 MainTab:CreateSection("Knife Utilities (Murderer)")
 MainTab:CreateToggle({Name="Kill Aura",CurrentValue=false,Flag="KillAura_T",Callback=function(v)_G.KillAuraEnabled=v end})
-MainTab:CreateInput({Name="Aura Range",PlaceholderText="Enter Range (e.g. 25)",RemoveTextAfterFocusLost=false,Callback=function(t)local v=tonumber(t)if v then _G.AuraRange=v end end})
+MainTab:CreateInput({Name="Aura Range",PlaceholderText="Enter Range (e.g. 10)",RemoveTextAfterFocusLost=false,Callback=function(t)local v=tonumber(t)if v then _G.AuraRange=v end end})
 MainTab:CreateToggle({Name="Kill All Players",CurrentValue=false,Flag="KillAll_T",Callback=function(v)_G.KillAllEnabled=v end})
 MainTab:CreateButton({Name="Instant Kill All (One-Time)",Callback=function()_G.TriggerInstantKill=true end})
 MainTab:CreateSection("Ui Settings")
