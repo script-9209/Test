@@ -25,7 +25,7 @@ _G.TriggerInstantKill = false
 _G.SilentAimEnabled = false
 _G.SilentAimWallCheck = false
 _G.ShootingMethod = "New (blatant)"
-_G.PredictionMultiplier = 0.165
+_G.PredictionMultiplier = 0.125
 
 -- MLBB Style Default Positions (Relative to bottom right)
 local DefaultShootPos = UDim2.new(1, -190, 1, -180)
@@ -1096,9 +1096,7 @@ MainTab:CreateSection("Role ESP")
 MainTab:CreateToggle({Name = "Enable Arrow ESP", CurrentValue = false, Flag = "ESP_F", Callback = function(V) _G.ESPEnabled = V end})
 MainTab:CreateSection("Combat Utilities")
 MainTab:CreateDropdown({Name = "Shooting Method", Options = {"Normal", "New (blatant)"}, CurrentOption = {"Normal"}, MultipleOptions = false, Flag = "SMethod", Callback = function(Option) _G.ShootingMethod = Option[1] end})
-MainTab:CreateToggle({Name = "Silent Aim (Auto Aim)", CurrentValue = false, Flag = "SilentAim_F", Callback = function(V) _G.SilentAimEnabled = V end})
 MainTab:CreateToggle({Name = "Wall-Check", CurrentValue = false, Flag = "WCheck", Callback = function(v) _G.SilentAimWallCheck = v end})
-MainTab:CreateSlider({Name = "Prediction Time", Range = {0.05, 0.5}, Increment = 0.01, Suffix = "s", CurrentValue = 0.165, Flag = "PredSlider", Callback = function(Value) _G.PredictionMultiplier = Value end})
 MainTab:CreateSection("Ui Settings")
 MainTab:CreateToggle({Name = "Lock Floating UI", CurrentValue = false, Flag = "Lock_F", Callback = function(V) _G.LockAll = V end})
 MainTab:CreateToggle({Name = "Show Gun Button", CurrentValue = false, Flag = "SGB_F", Callback = function(V) GunBtn.Visible = V end})
