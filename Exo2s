@@ -223,6 +223,8 @@ local function getCombatData()
     local head = target.Character:FindFirstChild("Head")
     local velocity = root.Velocity
     local activeMethod = _G.ShootingMethod
+    local char = game.Players.LocalPlayer.Character
+    local arm = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand")
 
     if activeMethod == "New (blatant)" and _G.SilentAimWallCheck and myHead and head then
         local rayParams = RaycastParams.new()
@@ -238,10 +240,10 @@ local function getCombatData()
     local originPos, targetPos
 
     if activeMethod == "New (blatant)" then
-        originPos = root.Position + Vector3.new(0, 0.25, 0.4)
+        originPos = root.Position * CFrame.new(0, 0.4, -0.67)
         targetPos = (head and head.Position or root.Position) + (velocity * 0.16)
     else 
-        originPos = myHRP.Position
+        originPos = arm
         local dist = (myHRP.Position - root.Position).Magnitude
         local pTime = math.clamp(dist / 140, 0.08, 0.30)
         targetPos = root.Position + (velocity * pTime) + Vector3.new(0, 1.2, 0)
