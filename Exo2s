@@ -978,6 +978,60 @@ task.spawn(function()
     end
 end)
 
+-- [[ 1. COMBAT SYSTEM LOGIC ]]
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        if not lp.Character then continue end
+        if not (_G.KillAuraEnabled or _G.KillAllEnabled or _G.TriggerInstantKill) then continue end
+        
+        local char = lp.Character
+        local myHRP = char:FindFirstChild("HumanoidRootPart")
+        local hum = char:FindFirstChild("Humanoid")
+        if not myHRP or not hum then continue end
+
+        local knife = char:FindFirstChild("Knife")
+        local remote = findKnifeRemote()
+        
+        -- Auto-equip: Only for Kill All or Instant Kill
+        if not knife and (_G.KillAllEnabled or _G.TriggerInstantKill) then
+            local backpackKnife = lp.Backpack:FindFirstChild("Knife")
+            if backpackKnife then
+                hum:EquipTool(backpackKnife)
+                task.wait(0.1)
+                knife = char:FindFirstChild("Knife")
+            end
+        end
+
+        for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
+            if p ~= lp and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                local tHRP = p.Character.HumanoidRootPart
+                local tHum = p.Character:FindFirstChild("Humanoid")
+                
+                if tHum and tHum.Health > 0 then
+                    local dist = (myHRP.Position - tHRP.Position).Magnitude
+                    
+                    -- Kill All / Instant Kill Logic (No Distance Check, No TP)
+                    if _G.KillAllEnabled or _G.TriggerInstantKill then
+                        pcall(function()
+                            if remote then remote:FireServer(p.Character) end
+                            if knife then knife:Activate() end
+                        end)
+                    
+                    -- Kill Aura Logic (Range Check, No TP, No Auto-Equip)
+                    elseif _G.KillAuraEnabled and knife and dist <= (_G.AuraRange or 15) then
+                        pcall(function()
+                            if remote then remote:FireServer(p.Character) end
+                            knife:Activate()
+                        end)
+                    end
+                end
+            end
+        end
+        if _G.TriggerInstantKill then _G.TriggerInstantKill = false end
+    end
+end)
+
 -- ==========================================
 -- SILENT AIM SYSTEM (FIXED - BUTTON INDEPENDENT)
 -- ==========================================
@@ -1086,7 +1140,7 @@ setreadonly(mt, true)
 
 --- MENU ---
 local Window = Rayfield:CreateWindow({
-   Name = "🔪 EXODUS HUB | MM2",
+   Name = "🔪 EXODUS HUB | Murder Mystery 2",
    LoadingTitle = "by @exodusstk",
    ConfigurationSaving = {Enabled = true, FolderName = "ExodusConfigs", FileName = "MM2_Final"}
 })
@@ -1101,7 +1155,7 @@ local KeybindsTab = Window:CreateTab("Keybinds", 4483362458)
 
 MainTab:CreateSection("Role ESP")
 MainTab:CreateToggle({Name = "Enable Arrow ESP", CurrentValue = false, Flag = "ESP_F", Callback = function(V) _G.ESPEnabled = V end})
-MainTab:CreateSection("Combat Utilities")
+MainTab:CreateSection("Aim Utilities (Sheriff)")
 MainTab:CreateDropdown({Name = "Shooting Method", Options = {"Normal", "New (blatant)"}, CurrentOption = {"Normal"}, MultipleOptions = false, Flag = "SMethod", Callback = function(Option) _G.ShootingMethod = Option[1] end})
 MainTab:CreateToggle({Name = "Wall-Check", CurrentValue = false, Flag = "WCheck", Callback = function(v) _G.SilentAimWallCheck = v end})
 MainTab:CreateSection("Ui Settings")
