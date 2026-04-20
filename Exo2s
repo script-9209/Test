@@ -264,7 +264,7 @@ local function getCombatData()
     if activeMethod == "New (blatant)" then
         -- Blatant mode: Fixed offset origin for precision
         originPos = (root.CFrame * CFrame.new(0, 0.4, -0.67)).Position
-        targetPos = (root.Position) + (velocity * 0.12)
+        targetPos = (root and root.Position) + (velocity * 0.12)
     else 
         -- Normal mode: Fired from arm with distance-based prediction
         originPos = arm.Position
