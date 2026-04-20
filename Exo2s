@@ -200,16 +200,18 @@ task.spawn(function()
 end)
 
 --- COMBAT UTILITY ---
--- [[ EXODUS V6 - UNIFIED COMBAT LOGIC ]] --
 local function getCombatData()
     local char = lp.Character
     local myHRP = char and char:FindFirstChild("HumanoidRootPart")
     local myHead = char and char:FindFirstChild("Head")
-    if not myHRP then return nil end
+    local arm = char and (char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand"))
+    
+    if not myHRP or not arm then return nil end
 
     local target = nil
     for _, p in ipairs(game.Players:GetPlayers()) do
         if p ~= lp and p.Character then
+            -- Identify Murderer (holding or having knife)
             if p.Character:FindFirstChild("Knife") or (p:FindFirstChild("Backpack") and p.Backpack:FindFirstChild("Knife")) then
                 target = p
                 break
@@ -223,16 +225,49 @@ local function getCombatData()
     local head = target.Character:FindFirstChild("Head")
     local velocity = root.AssemblyLinearVelocity
     local activeMethod = _G.ShootingMethod
+    
+    -- [[ WALL CHECK LOGIC ]]
+    if activeMethod == "New (blatant)" and _G.SilentAimWallCheck then
+        local visible = false
+        local partsToCheck = {head, root, target.Character:FindFirstChild("UpperTorso")}
+        
+        local rayParams = RaycastParams.new()
+        rayParams.FilterType = Enum.RaycastFilterType.Exclude
+        -- Ignore all player characters so we only detect walls/parts
+        local ignoreList = {}
+        for _, v in ipairs(game.Players:GetPlayers()) do
+            if v.Character then table.insert(ignoreList, v.Character) end
+        end
+        rayParams.FilterDescendantsInstances = ignoreList
 
-    local arm = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand")
+        for _, part in ipairs(partsToCheck) do
+            if part then
+                local direction = (part.Position - arm.Position)
+                local result = workspace:Raycast(arm.Position, direction, rayParams)
+                
+                if not result then -- No wall hit
+                    visible = true
+                    break
+                end
+            end
+        end
 
+        -- Fallback to Normal if all parts are behind walls
+        if not visible then
+            activeMethod = "Normal"
+        end
+    end
+
+    -- [[ CALCULATION ]]
     local originPos, targetPos
 
     if activeMethod == "New (blatant)" then
+        -- Blatant mode: Fixed offset origin for precision
         originPos = (root.CFrame * CFrame.new(0, 0.4, -0.67)).Position
-        targetPos = (head and head.Position or root.Position) + (velocity * 0.12)
+        targetPos = (root.Position) + (velocity * 0.12)
     else 
-        originPos = arm and arm.Position or myHRP.Position
+        -- Normal mode: Fired from arm with distance-based prediction
+        originPos = arm.Position
         local dist = (myHRP.Position - root.Position).Magnitude
         local pTime = math.clamp(dist / 140, 0.08, 0.30)
         targetPos = root.Position + (velocity * pTime) + Vector3.new(0, 1.2, 0)
