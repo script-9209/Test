@@ -216,7 +216,7 @@ ToggleImage.Parent = ToggleButton
 ToggleImage.BackgroundTransparency = 1
 ToggleImage.Size = UDim2.new(0.8, 0, 0.8, 0)
 ToggleImage.Position = UDim2.new(0.1, 0, 0.1, 0)
-ToggleImage.Image = "rbxassetid://0" -- REPLACE WITH YOUR LOGO ASSET ID
+ToggleImage.Image = "rbxassetid://132521278068086" -- REPLACE WITH YOUR LOGO ASSET ID
 ToggleImage.ZIndex = 101
 
 -- Glow Animation
