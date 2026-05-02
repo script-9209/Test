@@ -4,7 +4,8 @@ local TweenService = game:GetService("TweenService")
 -- Database
 local SupportedGames = {
     [142823291] = "MURDER MYSTERY 2",
-    [109983668079237] = "STEAL A BRAINROT"
+    [109983668079237] = "STEAL A BRAINROT",
+    [] = ""
 }
 
 local PlaceId = game.PlaceId
@@ -147,7 +148,7 @@ FadeIn()
 task.wait(1)
 
 if GameName == "UNSUPPORTED" then
-    warn("Exodus Debug: Unsupported Game")
+    warn("Exodus Hub: Unsupported Game")
     task.wait(2)
     FadeOut()
 else
@@ -173,7 +174,6 @@ else
     print("Exodus Hub: Loaded for " .. GameName)
     FadeOut()
     
-    -- Here you would put your loadstring after checking PlaceId
     if PlaceId == 142823291 then
         loadstring(game:HttpGet("https://raw.githubusercontent.com/script-9209/roblox/refs/heads/main/mm2-keyless-auto"))()
     end
