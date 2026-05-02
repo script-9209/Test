@@ -1,0 +1,181 @@
+local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
+
+-- Database
+local SupportedGames = {
+    [142823291] = "MURDER MYSTERY 2",
+    [109983668079237] = "STEAL A BRAINROT"
+}
+
+local PlaceId = game.PlaceId
+local GameName = SupportedGames[PlaceId] or "UNSUPPORTED"
+local AssetID = "rbxassetid://139147837665266"
+
+-- UI Container
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ExodusLoader"
+ScreenGui.Parent = CoreGui
+
+-- Main Frame (Deep Black & Red Outline)
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 280, 0, 300)
+MainFrame.Position = UDim2.new(0.5, -140, 0.6, -150) -- Starts slightly lower for animation
+local bgTransparency = 0.1 -- Slight glass effect
+MainFrame.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
+MainFrame.BackgroundTransparency = 1 -- Start transparent for fade-in
+MainFrame.BorderSizePixel = 0
+MainFrame.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 10)
+UICorner.Parent = MainFrame
+
+-- Red Neon Outline
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Thickness = 2.5
+UIStroke.Color = Color3.fromRGB(255, 0, 0)
+UIStroke.Transparency = 1 -- Start transparent
+UIStroke.Parent = MainFrame
+
+-- The Logo Image
+local Logo = Instance.new("ImageLabel")
+Logo.Size = UDim2.new(0, 150, 0, 150)
+Logo.Position = UDim2.new(0.5, -75, 0, 20)
+Logo.BackgroundTransparency = 1
+Logo.Image = AssetID
+Logo.ImageTransparency = 1
+Logo.Parent = MainFrame
+
+-- Labels
+local GameStatus = Instance.new("TextLabel")
+GameStatus.Size = UDim2.new(1, 0, 0, 20)
+GameStatus.Position = UDim2.new(0, 0, 0, 180)
+GameStatus.BackgroundTransparency = 1
+GameStatus.Text = "DETECTED GAME:"
+GameStatus.TextColor3 = Color3.fromRGB(255, 50, 50)
+GameStatus.TextSize = 14
+GameStatus.Font = Enum.Font.GothamBold
+GameStatus.TextTransparency = 1
+GameStatus.Parent = MainFrame
+
+local GameLabel = Instance.new("TextLabel")
+GameLabel.Size = UDim2.new(1, 0, 0, 30)
+GameLabel.Position = UDim2.new(0, 0, 0, 205)
+GameLabel.BackgroundTransparency = 1
+GameLabel.Text = GameName
+GameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+GameLabel.TextSize = 20
+GameLabel.Font = Enum.Font.GothamBlack
+GameLabel.TextTransparency = 1
+GameLabel.Parent = MainFrame
+
+-- PROGRESS BAR ADDED HERE
+local BarBG = Instance.new("Frame")
+BarBG.Size = UDim2.new(0, 200, 0, 8)
+BarBG.Position = UDim2.new(0.5, -100, 0, 245)
+BarBG.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+BarBG.BackgroundTransparency = 1
+BarBG.Parent = MainFrame
+
+local BarStroke = Instance.new("UIStroke")
+BarStroke.Thickness = 1.2
+BarStroke.Color = Color3.fromRGB(255, 0, 0)
+BarStroke.Transparency = 1
+BarStroke.Parent = BarBG
+
+local BarCorner = Instance.new("UICorner")
+BarCorner.CornerRadius = UDim.new(0, 4)
+BarCorner.Parent = BarBG
+
+local Fill = Instance.new("Frame")
+Fill.Size = UDim2.new(0, 0, 1, 0)
+Fill.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+Fill.BackgroundTransparency = 1
+Fill.BorderSizePixel = 0
+Fill.Parent = BarBG
+
+local FillCorner = Instance.new("UICorner")
+FillCorner.CornerRadius = UDim.new(0, 4)
+FillCorner.Parent = Fill
+
+local Credits = Instance.new("TextLabel")
+Credits.Size = UDim2.new(1, 0, 0, 20)
+Credits.Position = UDim2.new(0, 0, 1, -40)
+Credits.BackgroundTransparency = 1
+Credits.Text = "CREDITS: EXO2S | @EXODUSSTK"
+Credits.TextColor3 = Color3.fromRGB(100, 100, 100)
+Credits.TextSize = 11
+Credits.Font = Enum.Font.Gotham
+Credits.TextTransparency = 1
+Credits.Parent = MainFrame
+
+-- ANIMATION: FADE IN
+local function FadeIn()
+    local info = TweenInfo.new(0.8, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+    TweenService:Create(MainFrame, info, {Position = UDim2.new(0.5, -140, 0.5, -150), BackgroundTransparency = bgTransparency}):Play()
+    TweenService:Create(UIStroke, info, {Transparency = 0}):Play()
+    TweenService:Create(Logo, info, {ImageTransparency = 0}):Play()
+    TweenService:Create(GameStatus, info, {TextTransparency = 0}):Play()
+    TweenService:Create(GameLabel, info, {TextTransparency = 0}):Play()
+    TweenService:Create(Credits, info, {TextTransparency = 0}):Play()
+    -- Fade in bar
+    TweenService:Create(BarBG, info, {BackgroundTransparency = 0}):Play()
+    TweenService:Create(BarStroke, info, {Transparency = 0}):Play()
+    TweenService:Create(Fill, info, {BackgroundTransparency = 0}):Play()
+end
+
+-- ANIMATION: FADE OUT
+local function FadeOut()
+    local info = TweenInfo.new(0.6, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+    TweenService:Create(MainFrame, info, {Position = UDim2.new(0.5, -140, 0.6, -150), BackgroundTransparency = 1}):Play()
+    TweenService:Create(UIStroke, info, {Transparency = 1}):Play()
+    TweenService:Create(Logo, info, {ImageTransparency = 1}):Play()
+    TweenService:Create(GameStatus, info, {TextTransparency = 1}):Play()
+    TweenService:Create(GameLabel, info, {TextTransparency = 1}):Play()
+    TweenService:Create(Credits, info, {TextTransparency = 1}):Play()
+    -- Fade out bar
+    TweenService:Create(BarBG, info, {BackgroundTransparency = 1}):Play()
+    TweenService:Create(BarStroke, info, {Transparency = 1}):Play()
+    TweenService:Create(Fill, info, {BackgroundTransparency = 1}):Play()
+    
+    task.wait(0.6)
+    ScreenGui:Destroy()
+end
+
+-- Start Logic
+FadeIn()
+task.wait(1)
+
+if GameName == "UNSUPPORTED" then
+    warn("Exodus Debug: Unsupported Game")
+    task.wait(2)
+    FadeOut()
+else
+    -- PROGRESS BAR DOWNLOAD LOGIC
+    local function fillBar(percent, duration)
+        local t = TweenService:Create(Fill, TweenInfo.new(duration, Enum.EasingStyle.Sine), {Size = UDim2.new(percent, 0, 1, 0)})
+        t:Play()
+        t.Completed:Wait()
+    end
+
+    -- Stage 1: Load to 40%
+    fillBar(0.4, 0.6)
+    task.wait(0.4) -- First Stop
+    
+    -- Stage 2: Crawl to 85%
+    fillBar(0.85, 1.2)
+    task.wait(0.6) -- Second Stop
+    
+    -- Stage 3: Complete
+    fillBar(1, 0.4)
+    task.wait(0.5)
+
+    print("Exodus Hub: Loaded for " .. GameName)
+    FadeOut()
+    
+    -- Here you would put your loadstring after checking PlaceId
+    if PlaceId == 142823291 then
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/script-9209/roblox/refs/heads/main/mm2-keyless-auto"))()
+    end
+end
+
