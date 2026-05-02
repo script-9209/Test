@@ -6,7 +6,8 @@ local SupportedGames = {
     [142823291] = "MURDER MYSTERY 2",
     [109983668079237] = "STEAL A BRAINROT",
     [79546208627805] = "99 NIGHTS IN THE FOREST",
-    [9872472334] = "EVADE"
+    [9872472334] = "EVADE",
+    [92416421522960] = "SLIME RNG"
 }
 
 local PlaceId = game.PlaceId
