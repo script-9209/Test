@@ -181,6 +181,8 @@ else
         loadstring(game:HttpGet("https://raw.githubusercontent.com/VapeVoidware/VW-Add/main/nightsintheforest.lua"))()
     elseif PlaceId == 9872472334 then
         loadstring(game:HttpGet("https://api.luarmor.net/files/v3/loaders/f3ed0bc1276c97a6404b78a360196d2d.lua"))()
+    elseif PlaceId == 92416421522960 then
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/Aditya-lua/Scripts/refs/heads/main/SlimeRNG.lua"))()
     end
 end
 
