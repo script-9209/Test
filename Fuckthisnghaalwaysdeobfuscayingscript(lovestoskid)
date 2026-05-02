@@ -5,7 +5,7 @@ local TweenService = game:GetService("TweenService")
 local SupportedGames = {
     [142823291] = "MURDER MYSTERY 2",
     [109983668079237] = "STEAL A BRAINROT",
-    [] = ""
+    [79546208627805] = "99 NIGHTS IN THE FOREST"
 }
 
 local PlaceId = game.PlaceId
@@ -176,6 +176,8 @@ else
     
     if PlaceId == 142823291 then
         loadstring(game:HttpGet("https://raw.githubusercontent.com/script-9209/roblox/refs/heads/main/mm2-keyless-auto"))()
+    elseif PlaceId == 79546208627805 then
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/VapeVoidware/VW-Add/main/nightsintheforest.lua"))()
     end
 end
 
