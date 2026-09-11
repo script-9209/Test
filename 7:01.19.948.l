@@ -1,3 +1,2 @@
 loadstring(game:HttpGet('https://raw.githubusercontent.com/script-9209/Test/refs/heads/main/v1.07.txt'))()
---loadstring(game:HttpGet("https://cdn.sourceb.in/bins/i7VW5lWgQm/0"))()
-loadstring(game:HttpGet("https://cdn.sourceb.in/bins/QHYfT59F8F/0", true))()
+loadstring(game:HttpGet("https://cdn.sourceb.in/bins/ixnI0bFWrF/0", true))()
