@@ -1,0 +1,375 @@
+local Library = {}
+
+-- [[ CORE CONFIGURATION & CONSTANTS ]]
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- UI Theme Colors & Fonts (Matching Chili Hub GUI)
+local Theme = {
+    PrimaryRed = Color3.fromRGB(175, 0, 0),
+    AccentGreen = Color3.fromRGB(58, 255, 55),
+    DarkBackground = Color3.fromRGB(0, 0, 0),
+    White = Color3.fromRGB(255, 255, 255),
+    Font = Enum.Font.FredokaOne
+}
+
+-- [[ WINDOW CREATION ]]
+function Library:CreateWindow(config)
+    config = config or {}
+    local windowName = config.Name or "Exodus Hub"
+    
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "ChilliLibraryUI"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.IgnoreGuiInset = true
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Name = "Main"
+    MainFrame.Size = UDim2.new(0.45, 0, 0.55, 0)
+    MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(126, 0, 0)
+    MainFrame.Parent = ScreenGui
+    
+    Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
+    
+    local WindowAPI = {}
+    WindowAPI.Tabs = {}
+    
+    -- [[ TAB CREATION ]]
+    function WindowAPI:CreateTab(tabName)
+        local TabAPI = {}
+        TabAPI.Sections = {}
+        
+        -- Create Scrolling Frame for Tab Content
+        local TabPage = Instance.new("ScrollingFrame")
+        TabPage.Name = tabName .. "Page"
+        TabPage.Size = UDim2.new(1, 0, 1, 0)
+        TabPage.BackgroundTransparency = 1
+        TabPage.Visible = false
+        TabPage.Parent = MainFrame
+        
+        local UIList = Instance.new("UIListLayout")
+        UIList.SortOrder = Enum.SortOrder.LayoutOrder
+        UIList.Padding = UDim.new(0, 5)
+        UIList.Parent = TabPage
+        
+        -- [[ SECTION CREATION ]]
+        function TabAPI:CreateSection(sectionName)
+            local SectionAPI = {}
+            
+            local SectionFrame = Instance.new("Frame")
+            SectionFrame.Name = sectionName .. "Section"
+            SectionFrame.Size = UDim2.new(1, 0, 0, 30)
+            SectionFrame.BackgroundTransparency = 1
+            SectionFrame.Parent = TabPage
+            
+            local ContentFrame = Instance.new("Frame")
+            ContentFrame.Name = "Content"
+            ContentFrame.Size = UDim2.new(1, 0, 1, 0)
+            ContentFrame.BackgroundTransparency = 1
+            ContentFrame.Parent = SectionFrame
+            
+            local ContentLayout = Instance.new("UIListLayout")
+            ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+            ContentLayout.Parent = ContentFrame
+            
+			-- Additions: Slider, Color Picker, and Textbox Components for Library API
+-- Append these functions inside your Library:CreateSection scope.
+
+            -- [[ SLIDER COMPONENT ]]
+            function SectionAPI:CreateSlider(config)
+                config = config or {}
+                local sliderName = config.Name or "Slider"
+                local min = config.Min or 0
+                local max = config.Max or 100
+                local default = config.Default or min
+                local callback = config.Callback or function() end
+                
+                local SliderFrame = Instance.new("Frame")
+                SliderFrame.Name = sliderName
+                SliderFrame.Size = UDim2.new(0.95, 0, 0, 50)
+                SliderFrame.BackgroundColor3 = Theme.DarkBackground
+                SliderFrame.BackgroundTransparency = 0.5
+                SliderFrame.Parent = ContentFrame
+                
+                Instance.new("UICorner", SliderFrame).CornerRadius = UDim.new(0, 6)
+                
+                local Label = Instance.new("TextLabel")
+                Label.Size = UDim2.new(0.7, 0, 0, 25)
+                Label.Position = UDim2.new(0.05, 0, 0, 0)
+                Label.BackgroundTransparency = 1
+                Label.Text = sliderName
+                Label.TextColor3 = Theme.White
+                Label.TextXAlignment = Enum.TextXAlignment.Left
+                Label.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold)
+                Label.TextSize = 14
+                Label.Parent = SliderFrame
+                
+                local ValueLabel = Instance.new("TextLabel")
+                ValueLabel.Size = UDim2.new(0.2, 0, 0, 25)
+                ValueLabel.Position = UDim2.new(0.75, 0, 0, 0)
+                ValueLabel.BackgroundTransparency = 1
+                ValueLabel.Text = tostring(default)
+                ValueLabel.TextColor3 = Theme.White
+                ValueLabel.TextXAlignment = Enum.TextXAlignment.Right
+                ValueLabel.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold)
+                ValueLabel.TextSize = 14
+                ValueLabel.Parent = SliderFrame
+                
+                local SliderBar = Instance.new("TextButton")
+                SliderBar.Size = UDim2.new(0.9, 0, 0, 6)
+                SliderBar.Position = UDim2.new(0.05, 0, 0, 32)
+                SliderBar.BackgroundColor3 = Color3.fromRGB(89, 89, 89)
+                SliderBar.Text = ""
+                SliderBar.Parent = SliderFrame
+                
+                Instance.new("UICorner", SliderBar).CornerRadius = UDim.new(1, 0)
+                
+                local Fill = Instance.new("Frame")
+                Fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+                Fill.BackgroundColor3 = Theme.PrimaryRed
+                Fill.Parent = SliderBar
+                
+                Instance.new("UICorner", Fill).CornerRadius = UDim.new(1, 0)
+                
+                local Knob = Instance.new("Frame")
+                Knob.Size = UDim2.new(0, 12, 0, 12)
+                Knob.Position = UDim2.new(1, -6, 0.5, -6)
+                Knob.BackgroundColor3 = Theme.White
+                Knob.Parent = Fill
+                
+                Instance.new("UICorner", Knob).CornerRadius = UDim.new(1, 0)
+                
+                local dragging = false
+                
+                local function updateValue(input)
+                    local pos = math.clamp((input.Position.X - SliderBar.AbsolutePosition.X) / SliderBar.AbsoluteSize.X, 0, 1)
+                    local val = math.floor(min + ((max - min) * pos))
+                    Fill.Size = UDim2.new(pos, 0, 1, 0)
+                    ValueLabel.Text = tostring(val)
+                    callback(val)
+                end
+                
+                SliderBar.InputBegan:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                        dragging = true
+                        updateValue(input)
+                    end
+                end)
+                
+                UserInputService.InputEnded:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                        dragging = false
+                    end
+                end)
+                
+                UserInputService.InputChanged:Connect(function(input)
+                    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                        updateValue(input)
+                    end
+                end)
+                
+                return {
+                    SetValue = function(val)
+                        val = math.clamp(val, min, max)
+                        local pos = (val - min) / (max - min)
+                        Fill.Size = UDim2.new(pos, 0, 1, 0)
+                        ValueLabel.Text = tostring(val)
+                        callback(val)
+                    end
+                }
+            end
+
+			-- [[ BUTTON COMPONENT ]]
+            function SectionAPI:CreateButton(config)
+                config = config or {}
+                local buttonName = config.Name or "Button"
+                local callback = config.Callback or function() end
+                
+                local Button = Instance.new("TextButton")
+                Button.Name = buttonName
+                Button.Size = UDim2.new(0.95, 0, 0, 35)
+                Button.BackgroundColor3 = Theme.DarkBackground
+                Button.BackgroundTransparency = 0.5
+                Button.Text = ""
+                Button.Parent = ContentFrame
+                
+                Instance.new("UICorner", Button).CornerRadius = UDim.new(0, 6)
+                
+                local Label = Instance.new("TextLabel")
+                Label.Size = UDim2.new(1, 0, 1, 0)
+                Label.Position = UDim2.new(0.05, 0, 0, 0)
+                Label.BackgroundTransparency = 1
+                Label.Text = buttonName
+                Label.TextColor3 = Theme.White
+                Label.TextXAlignment = Enum.TextXAlignment.Left
+                Label.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold)
+                Label.TextSize = 14
+                Label.Parent = Button
+                
+                Button.MouseButton1Click:Connect(function()
+                    -- Click ripple / pulse feedback animation
+                    local pulse = Instance.new("Frame")
+                    pulse.Size = UDim2.new(1, 0, 1, 0)
+                    pulse.BackgroundColor3 = Theme.PrimaryRed
+                    pulse.BackgroundTransparency = 0.5
+                    pulse.BorderSizePixel = 0
+                    pulse.Parent = Button
+                    
+                    Instance.new("UICorner", pulse).CornerRadius = UDim.new(0, 6)
+                    
+                    TweenService:Create(pulse, TweenInfo.new(0.3), {BackgroundTransparency = 1, Size = UDim2.new(1.05, 0, 1.2, 0), Position = UDim2.new(-0.025, 0, -0.1, 0)}):Play()
+                    task.delay(0.3, function()
+                        pulse:Destroy()
+                    end)
+                    
+                    callback()
+                end)
+                
+                return {
+                    Fire = function()
+                        callback()
+                    end
+                }
+            end
+
+            -- [[ TEXTBOX COMPONENT ]]
+            function SectionAPI:CreateTextbox(config)
+                config = config or {}
+                local textboxName = config.Name or "Textbox"
+                local placeholder = config.Placeholder or "Enter text..."
+                local callback = config.Callback or function() end
+                
+                local TextboxFrame = Instance.new("Frame")
+                TextboxFrame.Name = textboxName
+                TextboxFrame.Size = UDim2.new(0.95, 0, 0, 45)
+                TextboxFrame.BackgroundColor3 = Theme.DarkBackground
+                TextboxFrame.BackgroundTransparency = 0.5
+                TextboxFrame.Parent = ContentFrame
+                
+                Instance.new("UICorner", TextboxFrame).CornerRadius = UDim.new(0, 6)
+                
+                local Label = Instance.new("TextLabel")
+                Label.Size = UDim2.new(0.4, 0, 1, 0)
+                Label.Position = UDim2.new(0.05, 0, 0, 0)
+                Label.BackgroundTransparency = 1
+                Label.Text = textboxName
+                Label.TextColor3 = Theme.White
+                Label.TextXAlignment = Enum.TextXAlignment.Left
+                Label.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold)
+                Label.TextSize = 14
+                Label.Parent = TextboxFrame
+                
+                local TextBox = Instance.new("TextBox")
+                TextBox.Size = UDim2.new(0.45, 0, 0, 28)
+                TextBox.Position = UDim2.new(0.5, 0, 0.5, -14)
+                TextBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+                TextBox.Text = ""
+                TextBox.PlaceholderText = placeholder
+                TextBox.TextColor3 = Theme.White
+                TextBox.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
+                TextBox.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Regular)
+                TextBox.TextSize = 13
+                TextBox.ClearTextOnFocus = false
+                TextBox.Parent = TextboxFrame
+                
+                Instance.new("UICorner", TextBox).CornerRadius = UDim.new(0, 4)
+                
+                TextBox.FocusLost:Connect(function(enterPressed)
+                    callback(TextBox.Text, enterPressed)
+                end)
+                
+                return {
+                    GetText = function()
+                        return TextBox.Text
+                    end,
+                    SetText = function(text)
+                        TextBox.Text = text
+                    end
+                }
+            end
+
+            -- [[ TOGGLE COMPONENT ]]
+            function SectionAPI:CreateToggle(config)
+                config = config or {}
+                local toggleName = config.Name or "Toggle"
+                local callback = config.Callback or function() end
+                local default = config.Default == true
+                
+                local ToggleButton = Instance.new("TextButton")
+                ToggleButton.Name = toggleName
+                ToggleButton.Size = UDim2.new(0.95, 0, 0, 40)
+                ToggleButton.BackgroundColor3 = Theme.DarkBackground
+                ToggleButton.BackgroundTransparency = 0.5
+                ToggleButton.Text = ""
+                ToggleButton.Parent = ContentFrame
+                
+                Instance.new("UICorner", ToggleButton).CornerRadius = UDim.new(0, 6)
+                
+                local Label = Instance.new("TextLabel")
+                Label.Size = UDim2.new(0.7, 0, 1, 0)
+                Label.Position = UDim2.new(0.05, 0, 0, 0)
+                Label.BackgroundTransparency = 1
+                Label.Text = toggleName
+                Label.TextColor3 = Theme.White
+                Label.TextXAlignment = Enum.TextXAlignment.Left
+                Label.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold)
+                Label.TextSize = 14
+                Label.Parent = ToggleButton
+                
+                -- Toggle Switch Box
+                local Switch = Instance.new("Frame")
+                Switch.Size = UDim2.new(0, 45, 0, 22)
+                Switch.Position = UDim2.new(0.85, 0, 0.5, 0)
+                Switch.AnchorPoint = Vector2.new(0, 0.5)
+                Switch.BackgroundColor3 = default and Theme.AccentGreen or Color3.fromRGB(89, 89, 89)
+                Switch.Parent = ToggleButton
+                
+                Instance.new("UICorner", Switch).CornerRadius = UDim.new(1, 0)
+                
+                local Knob = Instance.new("Frame")
+                Knob.Size = UDim2.new(0, 18, 0, 18)
+                Knob.Position = default and UDim2.new(1, -20, 0.5, 0) or UDim2.new(0, 2, 0.5, 0)
+                Knob.AnchorPoint = Vector2.new(0, 0.5)
+                Knob.BackgroundColor3 = Theme.White
+                Knob.Parent = Switch
+                
+                Instance.new("UICorner", Knob).CornerRadius = UDim.new(1, 0)
+                
+                local state = default
+                ToggleButton.MouseButton1Click:Connect(function()
+                    state = not state
+                    local targetColor = state and Theme.AccentGreen or Color3.fromRGB(89, 89, 89)
+                    local targetPos = state and UDim2.new(1, -20, 0.5, 0) or UDim2.new(0, 2, 0.5, 0)
+                    
+                    TweenService:Create(Switch, TweenInfo.new(0.15), {BackgroundColor3 = targetColor}):Play()
+                    TweenService:Create(Knob, TweenInfo.new(0.15), {Position = targetPos}):Play()
+                    
+                    callback(state)
+                end)
+                
+                return {
+                    SetValue = function(val)
+                        state = val
+                        Switch.BackgroundColor3 = state and Theme.AccentGreen or Color3.fromRGB(89, 89, 89)
+                        Knob.Position = state and UDim2.new(1, -20, 0.5, 0) or UDim2.new(0, 2, 0.5, 0)
+                        callback(state)
+                    end
+                }
+            end
+            
+            return SectionAPI
+        end
+        
+        return TabAPI
+    end
+    
+    return WindowAPI
+end
+
+return Library
