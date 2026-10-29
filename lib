@@ -78,15 +78,13 @@ function Library:CreateWindow(config)
             ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
             ContentLayout.Parent = ContentFrame
             
-			-- Additions: Slider, Color Picker, and Textbox Components for Library API
--- Append these functions inside your Library:CreateSection scope.
-
-            -- [[ SLIDER COMPONENT ]]
+            -- [[ SLIDER COMPONENT (WITH INCREMENT) ]]
             function SectionAPI:CreateSlider(config)
                 config = config or {}
                 local sliderName = config.Name or "Slider"
                 local min = config.Min or 0
                 local max = config.Max or 100
+                local increment = config.Increment or 1 -- Default step size (e.g., 1, 5, 0.1)
                 local default = config.Default or min
                 local callback = config.Callback or function() end
                 
@@ -149,9 +147,26 @@ function Library:CreateWindow(config)
                 
                 local function updateValue(input)
                     local pos = math.clamp((input.Position.X - SliderBar.AbsolutePosition.X) / SliderBar.AbsoluteSize.X, 0, 1)
-                    local val = math.floor(min + ((max - min) * pos))
-                    Fill.Size = UDim2.new(pos, 0, 1, 0)
+                    
+                    -- Calculate raw value based on min/max
+                    local rawVal = min + ((max - min) * pos)
+                    
+                    -- Snap value to the nearest increment
+                    local val = math.round((rawVal - min) / increment) * increment + min
+                    val = math.clamp(val, min, max)
+                    
+                    -- Format decimals cleanly if needed
+                    if increment % 1 ~= 0 then
+                        val = tonumber(string.format("%.2f", val))
+                    else
+                        val = math.floor(val)
+                    end
+                    
+                    -- Recalculate exact visual position based on snapped value
+                    local snappedPos = (val - min) / (max - min)
+                    Fill.Size = UDim2.new(snappedPos, 0, 1, 0)
                     ValueLabel.Text = tostring(val)
+                    
                     callback(val)
                 end
                 
