@@ -1,0 +1,771 @@
+-- Chilli Hub UI Library (Executor Ready - Rayfield Style)
+local ChilliHub = {
+	Flags = {},
+	Themes = {
+		Red = { Primary = Color3.fromRGB(220, 20, 20), Light = Color3.fromRGB(255, 120, 120), Dark = Color3.fromRGB(120, 0, 0) },
+		Blue = { Primary = Color3.fromRGB(20, 100, 220), Light = Color3.fromRGB(120, 180, 255), Dark = Color3.fromRGB(0, 50, 120) },
+		Green = { Primary = Color3.fromRGB(20, 180, 60), Light = Color3.fromRGB(100, 255, 140), Dark = Color3.fromRGB(0, 90, 20) },
+		Purple = { Primary = Color3.fromRGB(130, 20, 220), Light = Color3.fromRGB(190, 120, 255), Dark = Color3.fromRGB(60, 0, 120) },
+		Dark = { Primary = Color3.fromRGB(45, 45, 45), Light = Color3.fromRGB(90, 90, 90), Dark = Color3.fromRGB(20, 20, 20) }
+	},
+	CurrentTheme = "Red",
+	ThemeElements = {} -- Registry for live theme updates
+}
+
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+
+local LocalPlayer = Players.LocalPlayer
+local ParentGui = (syn and syn.protect_gui) and game:GetService("CoreGui") or LocalPlayer:WaitForChild("PlayerGui")
+
+--------------------------------------------------------------------------------
+-- Helper: Apply 3D Beveled Shadow/Light Effect & Register Theme Elements
+--------------------------------------------------------------------------------
+local function apply3DEffect(frame, mainColor, topLightColor, darkShadowColor, borderWidth, isPrimaryTheme)
+	frame.BackgroundColor3 = mainColor
+	frame.BorderSizePixel = 0
+	
+	local TopHighlight = Instance.new("Frame")
+	TopHighlight.Name = "TopHighlight"
+	TopHighlight.Size = UDim2.new(1, 0, 0, borderWidth or 2)
+	TopHighlight.Position = UDim2.new(0, 0, 0, 0)
+	TopHighlight.BackgroundColor3 = topLightColor
+	TopHighlight.BorderSizePixel = 0
+	TopHighlight.ZIndex = (frame.ZIndex or 1) + 1
+	TopHighlight.Parent = frame
+	
+	local LeftHighlight = Instance.new("Frame")
+	LeftHighlight.Name = "LeftHighlight"
+	LeftHighlight.Size = UDim2.new(0, borderWidth or 2, 1, 0)
+	LeftHighlight.Position = UDim2.new(0, 0, 0, 0)
+	LeftHighlight.BackgroundColor3 = topLightColor
+	LeftHighlight.BorderSizePixel = 0
+	LeftHighlight.ZIndex = (frame.ZIndex or 1) + 1
+	LeftHighlight.Parent = frame
+
+	local BottomShadow = Instance.new("Frame")
+	BottomShadow.Name = "BottomShadow"
+	BottomShadow.Size = UDim2.new(1, 0, 0, borderWidth or 3)
+	BottomShadow.Position = UDim2.new(0, 0, 1, -(borderWidth or 3))
+	BottomShadow.BackgroundColor3 = darkShadowColor
+	BottomShadow.BorderSizePixel = 0
+	BottomShadow.ZIndex = (frame.ZIndex or 1) + 1
+	BottomShadow.Parent = frame
+	
+	local RightShadow = Instance.new("Frame")
+	RightShadow.Name = "RightShadow"
+	RightShadow.Size = UDim2.new(0, borderWidth or 3, 1, 0)
+	RightShadow.Position = UDim2.new(1, -(borderWidth or 3), 0, 0)
+	RightShadow.BackgroundColor3 = darkShadowColor
+	RightShadow.BorderSizePixel = 0
+	RightShadow.ZIndex = (frame.ZIndex or 1) + 1
+	RightShadow.Parent = frame
+
+	local UIStroke = Instance.new("UIStroke")
+	UIStroke.Color = Color3.fromRGB(0, 0, 0)
+	UIStroke.Thickness = 2
+	UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	UIStroke.Parent = frame
+
+	if isPrimaryTheme then
+		table.insert(ChilliHub.ThemeElements, {
+			Frame = frame,
+			Top = TopHighlight,
+			Left = LeftHighlight,
+			Bottom = BottomShadow,
+			Right = RightShadow
+		})
+	end
+end
+
+--------------------------------------------------------------------------------
+-- Theme Changer Function
+--------------------------------------------------------------------------------
+function ChilliHub:SetTheme(themeName)
+	if not self.Themes[themeName] then return end
+	self.CurrentTheme = themeName
+	local theme = self.Themes[themeName]
+
+	for _, item in ipairs(self.ThemeElements) do
+		if item.Frame and item.Top then
+			item.Frame.BackgroundColor3 = theme.Primary
+			item.Top.BackgroundColor3 = theme.Light
+			item.Left.BackgroundColor3 = theme.Light
+			item.Bottom.BackgroundColor3 = theme.Dark
+			item.Right.BackgroundColor3 = theme.Dark
+		end
+	end
+end
+
+--------------------------------------------------------------------------------
+-- Configuration Saving & Loading System
+--------------------------------------------------------------------------------
+local ConfigFolder = "ChilliHub_Configs"
+
+function ChilliHub:SaveConfig(configName)
+	if not writefile then return end
+	if not isfolder or not isfolder(ConfigFolder) then
+		if makefolder then makefolder(ConfigFolder) end
+	end
+	
+	local success, encoded = pcall(function()
+		return HttpService:JSONEncode(self.Flags)
+	end)
+	
+	if success then
+		writefile(ConfigFolder .. "/" .. (configName or "default") .. ".json", encoded)
+		self:Notify("Config System", "Configuration saved successfully!", 2.5)
+	end
+end
+
+function ChilliHub:LoadConfig(configName)
+	if not readfile or not isfile then return end
+	local filePath = ConfigFolder .. "/" .. (configName or "default") .. ".json"
+	
+	if isfile(filePath) then
+		local success, decoded = pcall(function()
+			return HttpService:JSONDecode(readfile(filePath))
+		end)
+		if success and type(decoded) == "table" then
+			for flag, value in pairs(decoded) do
+				self.Flags[flag] = value
+			end
+			self:Notify("Config System", "Configuration loaded successfully!", 2.5)
+		end
+	end
+end
+
+--------------------------------------------------------------------------------
+-- Global Notification System
+--------------------------------------------------------------------------------
+function ChilliHub:Notify(title, message, duration)
+	duration = duration or 3.5
+	local ScreenGui = ParentGui:FindFirstChild("ChilliHubUI")
+	if not ScreenGui then return end
+
+	local Holder = ScreenGui:FindFirstChild("NotificationHolder")
+	if not Holder then
+		Holder = Instance.new("Frame")
+		Holder.Name = "NotificationHolder"
+		Holder.Size = UDim2.new(0, 260, 1, -40)
+		Holder.Position = UDim2.new(1, -270, 0, 20)
+		Holder.BackgroundTransparency = 1
+		Holder.ZIndex = 200
+		Holder.Parent = ScreenGui
+
+		local NotifLayout = Instance.new("UIListLayout")
+		NotifLayout.Padding = UDim.new(0, 8)
+		NotifLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+		NotifLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+		NotifLayout.SortOrder = Enum.SortOrder.LayoutOrder
+		NotifLayout.Parent = Holder
+	end
+
+	local NotifFrame = Instance.new("Frame")
+	NotifFrame.Name = "Notification"
+	NotifFrame.Size = UDim2.new(0, 250, 0, 60)
+	NotifFrame.Position = UDim2.new(1, 300, 0, 0)
+	NotifFrame.ZIndex = 201
+	NotifFrame.Parent = Holder
+
+	local theme = self.Themes[self.CurrentTheme]
+	apply3DEffect(NotifFrame, Color3.fromRGB(25, 25, 25), Color3.fromRGB(60, 60, 60), Color3.fromRGB(10, 10, 10), 2)
+
+	local TitleLabel = Instance.new("TextLabel")
+	TitleLabel.Size = UDim2.new(1, -12, 0, 20)
+	TitleLabel.Position = UDim2.new(0, 8, 0, 4)
+	TitleLabel.BackgroundTransparency = 1
+	TitleLabel.Text = "🌶️ " .. title
+	TitleLabel.Font = Enum.Font.FredokaOne
+	TitleLabel.TextSize = 14
+	TitleLabel.TextColor3 = theme.Light
+	TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+	TitleLabel.ZIndex = 202
+	TitleLabel.Parent = NotifFrame
+
+	local MsgLabel = Instance.new("TextLabel")
+	MsgLabel.Size = UDim2.new(1, -16, 0, 28)
+	MsgLabel.Position = UDim2.new(0, 8, 0, 24)
+	MsgLabel.BackgroundTransparency = 1
+	MsgLabel.Text = message
+	MsgLabel.Font = Enum.Font.SourceSans
+	MsgLabel.TextSize = 13
+	MsgLabel.TextColor3 = Color3.fromRGB(230, 230, 230)
+	MsgLabel.TextXAlignment = Enum.TextXAlignment.Left
+	MsgLabel.TextYAlignment = Enum.TextYAlignment.Top
+	MsgLabel.TextWrapped = true
+	MsgLabel.ZIndex = 202
+	MsgLabel.Parent = NotifFrame
+
+	local ProgressBar = Instance.new("Frame")
+	ProgressBar.Size = UDim2.new(1, 0, 0, 3)
+	ProgressBar.Position = UDim2.new(0, 0, 1, -3)
+	ProgressBar.BackgroundColor3 = theme.Primary
+	ProgressBar.BorderSizePixel = 0
+	ProgressBar.ZIndex = 203
+	ProgressBar.Parent = NotifFrame
+
+	TweenService:Create(NotifFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Position = UDim2.new(0, 0, 0, 0)
+	}):Play()
+
+	TweenService:Create(ProgressBar, TweenInfo.new(duration, Enum.EasingStyle.Linear), {
+		Size = UDim2.new(0, 0, 0, 3)
+	}):Play()
+
+	task.delay(duration, function()
+		local slideOut = TweenService:Create(NotifFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			Position = UDim2.new(1, 300, 0, 0)
+		})
+		slideOut:Play()
+		slideOut.Completed:Connect(function() NotifFrame:Destroy() end)
+	end)
+end
+
+--------------------------------------------------------------------------------
+-- CreateWindow API
+--------------------------------------------------------------------------------
+function ChilliHub:CreateWindow(Settings)
+	Settings = Settings or {}
+	local WindowTitle = Settings.Name or "Chilli Hub"
+	local defaultTheme = Settings.Theme or "Red"
+	self.CurrentTheme = defaultTheme
+
+	if ParentGui:FindFirstChild("ChilliHubUI") then
+		ParentGui.ChilliHubUI:Destroy()
+	end
+
+	local ScreenGui = Instance.new("ScreenGui")
+	ScreenGui.Name = "ChilliHubUI"
+	ScreenGui.ResetOnSpawn = false
+	ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	ScreenGui.Parent = ParentGui
+
+	-- Top-Left Circular Open Toggle Button
+	local OpenBtn = Instance.new("TextButton")
+	OpenBtn.Name = "OpenBtn"
+	OpenBtn.Size = UDim2.new(0, 40, 0, 40)
+	OpenBtn.Position = UDim2.new(0, 55, 0, 10)
+	OpenBtn.Text = "🌶️"
+	OpenBtn.TextSize = 20
+	OpenBtn.ZIndex = 100
+	OpenBtn.Parent = ScreenGui
+
+	local theme = self.Themes[self.CurrentTheme]
+	apply3DEffect(OpenBtn, theme.Primary, theme.Light, theme.Dark, 3, true)
+
+	local UICorner = Instance.new("UICorner")
+	UICorner.CornerRadius = UDim.new(1, 0)
+	UICorner.Parent = OpenBtn
+
+	-- Main Centered Container
+	local MainFrame = Instance.new("Frame")
+	MainFrame.Name = "MainFrame"
+	MainFrame.Size = UDim2.new(0, 720, 0, 430)
+	MainFrame.Position = UDim2.new(0.5, -360, 0.5, -215)
+	MainFrame.BackgroundTransparency = 1
+	MainFrame.Parent = ScreenGui
+
+	OpenBtn.Activated:Connect(function()
+		MainFrame.Visible = not MainFrame.Visible
+	end)
+
+	-- Sidebars
+	local LeftSidebar = Instance.new("Frame")
+	LeftSidebar.Name = "LeftSidebar"
+	LeftSidebar.Size = UDim2.new(0, 136, 1, -42)
+	LeftSidebar.Position = UDim2.new(0, 0, 0, 42)
+	LeftSidebar.BackgroundTransparency = 1
+	LeftSidebar.ZIndex = 5
+	LeftSidebar.Parent = MainFrame
+
+	local LeftLayout = Instance.new("UIListLayout")
+	LeftLayout.Padding = UDim.new(0, 11)
+	LeftLayout.Parent = LeftSidebar
+
+	local RightSidebar = Instance.new("Frame")
+	RightSidebar.Name = "RightSidebar"
+	RightSidebar.Size = UDim2.new(0, 136, 1, -42)
+	RightSidebar.Position = UDim2.new(1, -136, 0, 42)
+	RightSidebar.BackgroundTransparency = 1
+	RightSidebar.ZIndex = 5
+	RightSidebar.Parent = MainFrame
+
+	local RightLayout = Instance.new("UIListLayout")
+	RightLayout.Padding = UDim.new(0, 11)
+	RightLayout.Parent = RightSidebar
+
+	-- Center Container
+	local CenterContainer = Instance.new("Frame")
+	CenterContainer.Name = "CenterContainer"
+	CenterContainer.Size = UDim2.new(0, 420, 1, -46)
+	CenterContainer.Position = UDim2.new(0, 150, 0, 0)
+	CenterContainer.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+	CenterContainer.BackgroundTransparency = 0.35
+	CenterContainer.BorderSizePixel = 0
+	CenterContainer.ZIndex = 1
+	CenterContainer.Parent = MainFrame
+
+	apply3DEffect(CenterContainer, Color3.fromRGB(15, 15, 15), Color3.fromRGB(60, 60, 60), Color3.fromRGB(0, 0, 0), 2)
+
+	-- Header
+	local Header = Instance.new("Frame")
+	Header.Name = "Header"
+	Header.Size = UDim2.new(1, 0, 0, 42)
+	Header.ZIndex = 10
+	Header.Parent = CenterContainer
+
+	apply3DEffect(Header, theme.Primary, theme.Light, theme.Dark, 3, true)
+
+	local Title = Instance.new("TextLabel")
+	Title.Size = UDim2.new(1, -50, 1, 0)
+	Title.Position = UDim2.new(0, 10, 0, 0)
+	Title.BackgroundTransparency = 1
+	Title.Text = WindowTitle
+	Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+	Title.TextSize = 22
+	Title.Font = Enum.Font.FredokaOne
+	Title.ZIndex = 11
+	Title.Parent = Header
+
+	local TitleStroke = Instance.new("UIStroke")
+	TitleStroke.Color = Color3.fromRGB(0, 0, 0)
+	TitleStroke.Thickness = 2.5
+	TitleStroke.Parent = Title
+
+	local CloseBtn = Instance.new("TextButton")
+	CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+	CloseBtn.Position = UDim2.new(1, -36, 0.5, -15)
+	CloseBtn.Text = "X"
+	CloseBtn.Font = Enum.Font.FredokaOne
+	CloseBtn.TextSize = 18
+	CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	CloseBtn.ZIndex = 12
+	CloseBtn.Parent = Header
+
+	apply3DEffect(CloseBtn, theme.Primary, theme.Light, theme.Dark, 2, true)
+	CloseBtn.Activated:Connect(function() MainFrame.Visible = false end)
+
+	-- Standalone Search Bar Frame
+	local SeparateSearchContainer = Instance.new("Frame")
+	SeparateSearchContainer.Name = "SeparateSearchContainer"
+	SeparateSearchContainer.Size = UDim2.new(0, 420, 0, 38)
+	SeparateSearchContainer.Position = UDim2.new(0, 150, 1, -38)
+	SeparateSearchContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	SeparateSearchContainer.ZIndex = 10
+	SeparateSearchContainer.Parent = MainFrame
+
+	apply3DEffect(SeparateSearchContainer, Color3.fromRGB(20, 20, 20), Color3.fromRGB(50, 50, 50), Color3.fromRGB(5, 5, 5), 2)
+
+	local SearchInput = Instance.new("TextBox")
+	SearchInput.Size = UDim2.new(1, -16, 1, -8)
+	SearchInput.Position = UDim2.new(0, 8, 0, 4)
+	SearchInput.BackgroundTransparency = 1
+	SearchInput.PlaceholderText = "Search / Filter features..."
+	SearchInput.PlaceholderColor3 = Color3.fromRGB(140, 140, 140)
+	SearchInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+	SearchInput.Font = Enum.Font.SourceSans
+	SearchInput.TextSize = 14
+	SearchInput.ClipsDescendants = true
+	SearchInput.TextTruncate = Enum.TextTruncate.AtEnd
+	SearchInput.ZIndex = 11
+	SearchInput.Parent = SeparateSearchContainer
+
+	-- Dragging
+	local dragging, dragStart, startPos
+	Header.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			dragStart = input.Position
+			startPos = MainFrame.Position
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			local delta = input.Position - dragStart
+			MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+		end
+	end)
+
+	UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = false
+		end
+	end)
+
+	----------------------------------------------------------------------------
+	-- Window Object API
+	----------------------------------------------------------------------------
+	local Window = { Tabs = {} }
+
+	function Window:CreateTab(Name, Side)
+		Side = (Side and Side:lower() == "right") and "right" or "left"
+		local ParentSidebar = (Side == "right") and RightSidebar or LeftSidebar
+
+		local TabBtn = Instance.new("TextButton")
+		TabBtn.Name = Name .. "Tab"
+		TabBtn.Size = UDim2.new(1, 0, 0, 42)
+		TabBtn.Text = Name
+		TabBtn.Font = Enum.Font.FredokaOne
+		TabBtn.TextSize = 16
+		TabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		TabBtn.ZIndex = 6
+		TabBtn.Parent = ParentSidebar
+
+		local tTheme = ChilliHub.Themes[ChilliHub.CurrentTheme]
+		apply3DEffect(TabBtn, tTheme.Primary, tTheme.Light, tTheme.Dark, 3, true)
+
+		local TabPage = Instance.new("ScrollingFrame")
+		TabPage.Name = Name .. "Page"
+		TabPage.Size = UDim2.new(1, -16, 1, -52)
+		TabPage.Position = UDim2.new(0, 8, 0, 46)
+		TabPage.BackgroundTransparency = 1
+		TabPage.BorderSizePixel = 0
+		TabPage.ScrollBarThickness = 4
+		TabPage.ScrollBarImageColor3 = tTheme.Primary
+		TabPage.Visible = false
+		TabPage.ZIndex = 5
+		TabPage.Parent = CenterContainer
+
+		local PageLayout = Instance.new("UIListLayout")
+		PageLayout.Padding = UDim.new(0, 8)
+		PageLayout.SortOrder = Enum.SortOrder.LayoutOrder
+		PageLayout.Parent = TabPage
+
+		PageLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+			TabPage.CanvasSize = UDim2.new(0, 0, 0, PageLayout.AbsoluteContentSize.Y + 12)
+		end)
+
+		local function SelectTab()
+			for _, tab in pairs(Window.Tabs) do
+				tab.Page.Visible = false
+				local curTheme = ChilliHub.Themes[ChilliHub.CurrentTheme]
+				tab.Button.BackgroundColor3 = curTheme.Primary
+			end
+			TabPage.Visible = true
+			local curTheme = ChilliHub.Themes[ChilliHub.CurrentTheme]
+			TabBtn.BackgroundColor3 = curTheme.Light
+		end
+
+		TabBtn.Activated:Connect(SelectTab)
+		if #Window.Tabs == 0 then SelectTab() end
+
+		------------------------------------------------------------------------
+		-- Tab Object API
+		------------------------------------------------------------------------
+		local Tab = { Page = TabPage, Button = TabBtn }
+
+		function Tab:CreateSection(titleText)
+			local expanded = true
+
+			local SectionFrame = Instance.new("Frame")
+			SectionFrame.Size = UDim2.new(1, 0, 0, 28)
+			SectionFrame.ZIndex = 6
+			SectionFrame.Parent = TabPage
+
+			local curTheme = ChilliHub.Themes[ChilliHub.CurrentTheme]
+			apply3DEffect(SectionFrame, curTheme.Dark, curTheme.Primary, Color3.fromRGB(10, 10, 10), 1, false)
+
+			local ToggleHeader = Instance.new("TextButton")
+			ToggleHeader.Size = UDim2.new(1, 0, 1, 0)
+			ToggleHeader.BackgroundTransparency = 1
+			ToggleHeader.Text = "  ▼ " .. string.upper(titleText)
+			ToggleHeader.Font = Enum.Font.FredokaOne
+			ToggleHeader.TextSize = 13
+			ToggleHeader.TextColor3 = Color3.fromRGB(255, 255, 255)
+			ToggleHeader.TextXAlignment = Enum.TextXAlignment.Left
+			ToggleHeader.ZIndex = 7
+			ToggleHeader.Parent = SectionFrame
+
+			local ItemsContainer = Instance.new("Frame")
+			ItemsContainer.Name = "ItemsContainer"
+			ItemsContainer.Size = UDim2.new(1, 0, 0, 0)
+			ItemsContainer.BackgroundTransparency = 1
+			ItemsContainer.AutomaticSize = Enum.AutomaticSize.Y
+			ItemsContainer.ZIndex = 6
+			ItemsContainer.Parent = TabPage
+
+			local ItemsLayout = Instance.new("UIListLayout")
+			ItemsLayout.Padding = UDim.new(0, 6)
+			ItemsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+			ItemsLayout.Parent = ItemsContainer
+
+			ToggleHeader.Activated:Connect(function()
+				expanded = not expanded
+				ItemsContainer.Visible = expanded
+				ToggleHeader.Text = (expanded and "  ▼ " or "  ► ") .. string.upper(titleText)
+			end)
+
+			--------------------------------------------------------------------
+			-- Section Component Builders
+			--------------------------------------------------------------------
+			local Section = { Container = ItemsContainer }
+
+			function Section:CreateButton(Config)
+				Config = Config or {}
+				local labelText = Config.Name or "Button"
+				local btnText = Config.ButtonName or "Click"
+				local callback = Config.Callback or function() end
+
+				local Container = Instance.new("Frame")
+				Container.Size = UDim2.new(1, 0, 0, 38)
+				Container.ZIndex = 6
+				Container.Parent = ItemsContainer
+				apply3DEffect(Container, Color3.fromRGB(30, 30, 30), Color3.fromRGB(60, 60, 60), Color3.fromRGB(15, 15, 15), 2)
+
+				local Label = Instance.new("TextLabel")
+				Label.Size = UDim2.new(1, -120, 1, 0)
+				Label.Position = UDim2.new(0, 10, 0, 0)
+				Label.BackgroundTransparency = 1
+				Label.Text = labelText
+				Label.Font = Enum.Font.FredokaOne
+				Label.TextSize = 14
+				Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+				Label.TextXAlignment = Enum.TextXAlignment.Left
+				Label.ClipsDescendants = true
+				Label.TextTruncate = Enum.TextTruncate.AtEnd
+				Label.ZIndex = 7
+				Label.Parent = Container
+
+				local TriggerBtn = Instance.new("TextButton")
+				TriggerBtn.Size = UDim2.new(0, 100, 0, 26)
+				TriggerBtn.Position = UDim2.new(1, -106, 0.5, -13)
+				TriggerBtn.Text = btnText
+				TriggerBtn.Font = Enum.Font.FredokaOne
+				TriggerBtn.TextSize = 13
+				TriggerBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+				TriggerBtn.ZIndex = 8
+				TriggerBtn.Parent = Container
+
+				local t = ChilliHub.Themes[ChilliHub.CurrentTheme]
+				apply3DEffect(TriggerBtn, t.Primary, t.Light, t.Dark, 2, true)
+				TriggerBtn.Activated:Connect(callback)
+			end
+
+			function Section:CreateToggle(Config)
+				Config = Config or {}
+				local name = Config.Name or "Toggle"
+				local flag = Config.Flag or name
+				local toggled = (Config.CurrentValue ~= nil) and Config.CurrentValue or (ChilliHub.Flags[flag] ~= nil and ChilliHub.Flags[flag] or false)
+				ChilliHub.Flags[flag] = toggled
+				local callback = Config.Callback or function() end
+
+				local Frame = Instance.new("Frame")
+				Frame.Size = UDim2.new(1, 0, 0, 38)
+				Frame.ZIndex = 6
+				Frame.Parent = ItemsContainer
+				apply3DEffect(Frame, Color3.fromRGB(30, 30, 30), Color3.fromRGB(60, 60, 60), Color3.fromRGB(15, 15, 15), 2)
+
+				local Label = Instance.new("TextLabel")
+				Label.Size = UDim2.new(1, -65, 1, 0)
+				Label.Position = UDim2.new(0, 10, 0, 0)
+				Label.BackgroundTransparency = 1
+				Label.Text = name
+				Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+				Label.Font = Enum.Font.FredokaOne
+				Label.TextSize = 14
+				Label.TextXAlignment = Enum.TextXAlignment.Left
+				Label.ClipsDescendants = true
+				Label.TextTruncate = Enum.TextTruncate.AtEnd
+				Label.ZIndex = 7
+				Label.Parent = Frame
+
+				local Track = Instance.new("TextButton")
+				Track.Size = UDim2.new(0, 46, 0, 22)
+				Track.Position = UDim2.new(1, -54, 0.5, -11)
+				Track.Text = ""
+				Track.AutoButtonColor = false
+				Track.ZIndex = 7
+				Track.Parent = Frame
+
+				local t = ChilliHub.Themes[ChilliHub.CurrentTheme]
+				apply3DEffect(Track, toggled and t.Primary or Color3.fromRGB(45, 45, 45), Color3.fromRGB(80, 80, 80), Color3.fromRGB(10, 10, 10), 1)
+
+				local Thumb = Instance.new("Frame")
+				Thumb.Size = UDim2.new(0, 18, 0, 18)
+				Thumb.Position = toggled and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9)
+				Thumb.ZIndex = 8
+				Thumb.Parent = Track
+				apply3DEffect(Thumb, Color3.fromRGB(240, 240, 240), Color3.fromRGB(255, 255, 255), Color3.fromRGB(150, 150, 150), 1)
+
+				Track.Activated:Connect(function()
+					toggled = not toggled
+					ChilliHub.Flags[flag] = toggled
+					local curT = ChilliHub.Themes[ChilliHub.CurrentTheme]
+					local targetPos = toggled and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9)
+					local targetColor = toggled and curT.Primary or Color3.fromRGB(45, 45, 45)
+					TweenService:Create(Thumb, TweenInfo.new(0.15), {Position = targetPos}):Play()
+					TweenService:Create(Track, TweenInfo.new(0.15), {BackgroundColor3 = targetColor}):Play()
+					callback(toggled)
+				end)
+			end
+
+			function Section:CreateSlider(Config)
+				Config = Config or {}
+				local name = Config.Name or "Slider"
+				local flag = Config.Flag or name
+				local min = Config.Min or 0
+				local max = Config.Max or 100
+				local increment = Config.Increment or 1
+				local val = (Config.Default ~= nil) and Config.Default or (ChilliHub.Flags[flag] ~= nil and ChilliHub.Flags[flag] or min)
+				ChilliHub.Flags[flag] = val
+				local callback = Config.Callback or function() end
+
+				local Frame = Instance.new("Frame")
+				Frame.Size = UDim2.new(1, 0, 0, 52)
+				Frame.ZIndex = 6
+				Frame.Parent = ItemsContainer
+				apply3DEffect(Frame, Color3.fromRGB(30, 30, 30), Color3.fromRGB(60, 60, 60), Color3.fromRGB(15, 15, 15), 2)
+
+				local Label = Instance.new("TextLabel")
+				Label.Size = UDim2.new(1, -20, 0, 20)
+				Label.Position = UDim2.new(0, 10, 0, 4)
+				Label.BackgroundTransparency = 1
+				Label.Text = name .. ": " .. tostring(val)
+				Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+				Label.Font = Enum.Font.FredokaOne
+				Label.TextSize = 14
+				Label.TextXAlignment = Enum.TextXAlignment.Left
+				Label.ZIndex = 7
+				Label.Parent = Frame
+
+				local SliderBar = Instance.new("TextButton")
+				SliderBar.Size = UDim2.new(1, -24, 0, 10)
+				SliderBar.Position = UDim2.new(0, 12, 0, 32)
+				SliderBar.Text = ""
+				SliderBar.AutoButtonColor = false
+				SliderBar.ZIndex = 7
+				SliderBar.Parent = Frame
+				apply3DEffect(SliderBar, Color3.fromRGB(20, 20, 20), Color3.fromRGB(50, 50, 50), Color3.fromRGB(5, 5, 5), 1)
+
+				local Fill = Instance.new("Frame")
+				Fill.Size = UDim2.new((val - min) / (max - min), 0, 1, 0)
+				local t = ChilliHub.Themes[ChilliHub.CurrentTheme]
+				Fill.BackgroundColor3 = t.Primary
+				Fill.BorderSizePixel = 0
+				Fill.ZIndex = 8
+				Fill.Parent = SliderBar
+
+				local WhiteKnob = Instance.new("Frame")
+				WhiteKnob.Size = UDim2.new(0, 8, 0, 20)
+				WhiteKnob.Position = UDim2.new(1, -4, 0.5, -10)
+				WhiteKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+				WhiteKnob.BorderSizePixel = 0
+				WhiteKnob.ZIndex = 9
+				WhiteKnob.Parent = Fill
+
+				local KnobStroke = Instance.new("UIStroke")
+				KnobStroke.Color = Color3.fromRGB(0, 0, 0)
+				KnobStroke.Thickness = 1.5
+				KnobStroke.Parent = WhiteKnob
+
+				local draggingSlider = false
+				local function updateSlider(input)
+					local pos = math.clamp((input.Position.X - SliderBar.AbsolutePosition.X) / SliderBar.AbsoluteSize.X, 0, 1)
+					local rawVal = min + ((max - min) * pos)
+					-- Apply increment snapping
+					val = math.floor(math.round(rawVal / increment) * increment * 1000) / 1000
+					val = math.clamp(val, min, max)
+					
+					ChilliHub.Flags[flag] = val
+					Fill.Size = UDim2.new((val - min) / (max - min), 0, 1, 0)
+					Label.Text = name .. ": " .. tostring(val)
+					callback(val)
+				end
+
+				SliderBar.InputBegan:Connect(function(input)
+					if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+						draggingSlider = true
+						updateSlider(input)
+					end
+				end)
+				UserInputService.InputEnded:Connect(function(input)
+					if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+						draggingSlider = false
+					end
+				end)
+				UserInputService.InputChanged:Connect(function(input)
+					if draggingSlider and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+						updateSlider(input)
+					end
+				end)
+			end
+
+			function Section:CreateTextBox(Config)
+				Config = Config or {}
+				local nameText = Config.Name or "Text Box"
+				local flag = Config.Flag or nameText
+				local placeholder = Config.Placeholder or "Type here..."
+				local callback = Config.Callback or function() end
+
+				local Container = Instance.new("Frame")
+				Container.Size = UDim2.new(1, 0, 0, 42)
+				Container.ZIndex = 6
+				Container.Parent = ItemsContainer
+				apply3DEffect(Container, Color3.fromRGB(30, 30, 30), Color3.fromRGB(60, 60, 60), Color3.fromRGB(15, 15, 15), 2)
+
+				local Label = Instance.new("TextLabel")
+				Label.Size = UDim2.new(0.48, -10, 0, 20)
+				Label.Position = UDim2.new(0, 10, 0, 11)
+				Label.BackgroundTransparency = 1
+				Label.Text = nameText
+				Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+				Label.Font = Enum.Font.FredokaOne
+				Label.TextSize = 14
+				Label.TextXAlignment = Enum.TextXAlignment.Left
+				Label.TextYAlignment = Enum.TextYAlignment.Top
+				Label.TextWrapped = true
+				Label.ZIndex = 7
+				Label.Parent = Container
+
+				local BoxFrame = Instance.new("Frame")
+				BoxFrame.Size = UDim2.new(0.48, -10, 0, 28)
+				BoxFrame.Position = UDim2.new(0.5, 2, 0, 7)
+				BoxFrame.ZIndex = 7
+				BoxFrame.Parent = Container
+				apply3DEffect(BoxFrame, Color3.fromRGB(15, 15, 15), Color3.fromRGB(40, 40, 40), Color3.fromRGB(0, 0, 0), 1)
+
+				local InputBox = Instance.new("TextBox")
+				InputBox.Size = UDim2.new(1, -12, 1, 0)
+				InputBox.Position = UDim2.new(0, 6, 0, 0)
+				InputBox.BackgroundTransparency = 1
+				InputBox.Text = ChilliHub.Flags[flag] or ""
+				InputBox.PlaceholderText = placeholder
+				InputBox.PlaceholderColor3 = Color3.fromRGB(130, 130, 130)
+				InputBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+				InputBox.Font = Enum.Font.SourceSans
+				InputBox.TextSize = 14
+				InputBox.TextXAlignment = Enum.TextXAlignment.Left
+				InputBox.ClipsDescendants = true
+				InputBox.TextTruncate = Enum.TextTruncate.AtEnd
+				InputBox.ZIndex = 8
+				InputBox.Parent = BoxFrame
+
+				Label:GetPropertyChangedSignal("TextBounds"):Connect(function()
+					local requiredLabelHeight = Label.TextBounds.Y
+					local totalHeight = math.max(42, requiredLabelHeight + 20)
+					Container.Size = UDim2.new(1, 0, 0, totalHeight)
+					Label.Size = UDim2.new(0.48, -10, 0, requiredLabelHeight)
+					BoxFrame.Position = UDim2.new(0.5, 2, 0.5, -14)
+				end)
+
+				InputBox.FocusLost:Connect(function(enterPressed)
+					ChilliHub.Flags[flag] = InputBox.Text
+					callback(InputBox.Text, enterPressed)
+				end)
+			end
+
+			return Section
+		end
+
+		table.insert(Window.Tabs, Tab)
+		return Tab
+	end
+
+	return Window
+end
+
+return ChilliHub
