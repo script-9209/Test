@@ -177,7 +177,7 @@ function ChilliHub:Notify(title, message, duration)
 	TitleLabel.Size = UDim2.new(1, -12, 0, 20)
 	TitleLabel.Position = UDim2.new(0, 8, 0, 4)
 	TitleLabel.BackgroundTransparency = 1
-	TitleLabel.Text = "🌶️ " .. title
+	TitleLabel.Text = title
 	TitleLabel.Font = Enum.Font.FredokaOne
 	TitleLabel.TextSize = 14
 	TitleLabel.TextColor3 = theme.Light
