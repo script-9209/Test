@@ -1,334 +1,849 @@
-local Library = {}
+-- Exodus Hub / Custom UI Library (Native Implementation with Configuration Saving, Themes, and Tabs)
+local ExodusHub = {
+	Flags = {},
+	Themes = {
+		Red = { Primary = Color3.fromRGB(220, 20, 20), Light = Color3.fromRGB(255, 120, 120), Dark = Color3.fromRGB(120, 0, 0) },
+		Blue = { Primary = Color3.fromRGB(20, 100, 220), Light = Color3.fromRGB(120, 180, 255), Dark = Color3.fromRGB(0, 50, 120) },
+		Green = { Primary = Color3.fromRGB(20, 180, 60), Light = Color3.fromRGB(100, 255, 140), Dark = Color3.fromRGB(0, 90, 20) },
+		Purple = { Primary = Color3.fromRGB(130, 20, 220), Light = Color3.fromRGB(190, 120, 255), Dark = Color3.fromRGB(60, 0, 120) },
+		Dark = { Primary = Color3.fromRGB(45, 45, 45), Light = Color3.fromRGB(90, 90, 90), Dark = Color3.fromRGB(20, 20, 20) }
+	},
+	CurrentTheme = "Red",
+	ConfigEnabled = false,
+	ConfigFolder = "ExodusHub_Configs",
+	ConfigFileName = "config"
+}
 
--- [[ CORE CONFIGURATION & CONSTANTS ]]
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+
 local LocalPlayer = Players.LocalPlayer
+local ParentGui = (syn and syn.protect_gui) and game:GetService("CoreGui") or LocalPlayer:WaitForChild("PlayerGui")
 
-local Theme = {
-    PrimaryRed = Color3.fromRGB(175, 0, 0),
-    AccentGreen = Color3.fromRGB(58, 255, 55),
-    DarkBackground = Color3.fromRGB(0, 0, 0),
-    White = Color3.fromRGB(255, 255, 255)
-}
+local function apply3DEffect(frame, mainColor, topLightColor, darkShadowColor, borderWidth)
+	frame.BackgroundColor3 = mainColor
+	frame.BorderSizePixel = 0
+	
+	local TopHighlight = Instance.new("Frame")
+	TopHighlight.Size = UDim2.new(1, 0, 0, borderWidth or 2)
+	TopHighlight.BackgroundColor3 = topLightColor
+	TopHighlight.BorderSizePixel = 0
+	TopHighlight.ZIndex = (frame.ZIndex or 1) + 1
+	TopHighlight.Parent = frame
+	
+	local LeftHighlight = Instance.new("Frame")
+	LeftHighlight.Size = UDim2.new(0, borderWidth or 2, 1, 0)
+	LeftHighlight.BackgroundColor3 = topLightColor
+	LeftHighlight.BorderSizePixel = 0
+	LeftHighlight.ZIndex = (frame.ZIndex or 1) + 1
+	LeftHighlight.Parent = frame
 
-function Library:CreateWindow(config)
-    config = config or {}
-    local windowName = config.Name or "Exodus Hub"
-    
-    local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "ExodusLibraryUI"
-    ScreenGui.ResetOnSpawn = false
-    ScreenGui.IgnoreGuiInset = true
-    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-    
-    local MainFrame = Instance.new("Frame")
-    MainFrame.Name = "Main"
-    MainFrame.Size = UDim2.new(0, 500, 0, 350)
-    MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-    MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-    MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    MainFrame.BorderSizePixel = 0
-    MainFrame.Parent = ScreenGui
-    
-    Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
-    
-    -- Top Bar Title
-    local TitleLabel = Instance.new("TextLabel")
-    TitleLabel.Size = UDim2.new(1, -20, 0, 35)
-    TitleLabel.Position = UDim2.new(0, 10, 0, 0)
-    TitleLabel.BackgroundTransparency = 1
-    TitleLabel.Text = windowName
-    TitleLabel.TextColor3 = Theme.White
-    TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    TitleLabel.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold)
-    TitleLabel.TextSize = 15
-    TitleLabel.Parent = MainFrame
-    
-    -- Container for Tabs/Pages
-    local Container = Instance.new("Frame")
-    Container.Size = UDim2.new(1, -20, 1, -45)
-    Container.Position = UDim2.new(0, 10, 0, 40)
-    Container.BackgroundTransparency = 1
-    Container.Parent = MainFrame
-    
-    local WindowAPI = {}
-    local firstTab = true
-    
-    function WindowAPI:CreateTab(tabName)
-        local TabAPI = {}
-        
-        local TabPage = Instance.new("ScrollingFrame")
-        TabPage.Name = tabName .. "Page"
-        TabPage.Size = UDim2.new(1, 0, 1, 0)
-        TabPage.BackgroundTransparency = 1
-        TabPage.BorderSizePixel = 0
-        TabPage.CanvasSize = UDim2.new(0, 0, 0, 0)
-        TabPage.AutomaticCanvasSize = Enum.AutomaticSize.Y
-        TabPage.Visible = firstTab
-        TabPage.Parent = Container
-        firstTab = false
-        
-        local UIList = Instance.new("UIListLayout")
-        UIList.SortOrder = Enum.SortOrder.LayoutOrder
-        UIList.Padding = UDim.new(0, 8)
-        UIList.Parent = TabPage
-        
-        function TabAPI:CreateSection(sectionName)
-            local SectionAPI = {}
-            
-            local SectionFrame = Instance.new("Frame")
-            SectionFrame.Name = sectionName .. "Section"
-            SectionFrame.Size = UDim2.new(1, 0, 0, 0)
-            SectionFrame.BackgroundTransparency = 1
-            SectionFrame.AutomaticSize = Enum.AutomaticSize.Y
-            SectionFrame.Parent = TabPage
-            
-            local ContentLayout = Instance.new("UIListLayout")
-            ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
-            ContentLayout.Padding = UDim.new(0, 5)
-            ContentLayout.Parent = SectionFrame
-            
-            -- [[ TOGGLE COMPONENT ]]
-            function SectionAPI:CreateToggle(config)
-                config = config or {}
-                local toggleName = config.Name or "Toggle"
-                local callback = config.Callback or function() end
-                local default = config.Default == true
-                
-                local ToggleButton = Instance.new("TextButton")
-                ToggleButton.Size = UDim2.new(1, 0, 0, 38)
-                ToggleButton.BackgroundColor3 = Theme.DarkBackground
-                ToggleButton.BackgroundTransparency = 0.4
-                ToggleButton.Text = ""
-                ToggleButton.Parent = SectionFrame
-                
-                Instance.new("UICorner", ToggleButton).CornerRadius = UDim.new(0, 6)
-                
-                local Label = Instance.new("TextLabel")
-                Label.Size = UDim2.new(0.7, 0, 1, 0)
-                Label.Position = UDim2.new(0.03, 0, 0, 0)
-                Label.BackgroundTransparency = 1
-                Label.Text = toggleName
-                Label.TextColor3 = Theme.White
-                Label.TextXAlignment = Enum.TextXAlignment.Left
-                Label.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold)
-                Label.TextSize = 13
-                Label.Parent = ToggleButton
-                
-                local Switch = Instance.new("Frame")
-                Switch.Size = UDim2.new(0, 40, 0, 20)
-                Switch.Position = UDim2.new(1, -50, 0.5, 0)
-                Switch.AnchorPoint = Vector2.new(0, 0.5)
-                Switch.BackgroundColor3 = default and Theme.AccentGreen or Color3.fromRGB(89, 89, 89)
-                Switch.Parent = ToggleButton
-                
-                Instance.new("UICorner", Switch).CornerRadius = UDim.new(1, 0)
-                
-                local Knob = Instance.new("Frame")
-                Knob.Size = UDim2.new(0, 16, 0, 16)
-                Knob.Position = default and UDim2.new(1, -18, 0.5, 0) or UDim2.new(0, 2, 0.5, 0)
-                Knob.AnchorPoint = Vector2.new(0, 0.5)
-                Knob.BackgroundColor3 = Theme.White
-                Knob.Parent = Switch
-                
-                Instance.new("UICorner", Knob).CornerRadius = UDim.new(1, 0)
-                
-                local state = default
-                ToggleButton.MouseButton1Click:Connect(function()
-                    state = not state
-                    local targetColor = state and Theme.AccentGreen or Color3.fromRGB(89, 89, 89)
-                    local targetPos = state and UDim2.new(1, -18, 0.5, 0) or UDim2.new(0, 2, 0.5, 0)
-                    
-                    TweenService:Create(Switch, TweenInfo.new(0.15), {BackgroundColor3 = targetColor}):Play()
-                    TweenService:Create(Knob, TweenInfo.new(0.15), {Position = targetPos}):Play()
-                    
-                    callback(state)
-                end)
-            end
-            
-            -- [[ SLIDER COMPONENT ]]
-            function SectionAPI:CreateSlider(config)
-                config = config or {}
-                local sliderName = config.Name or "Slider"
-                local min = config.Min or 0
-                local max = config.Max or 100
-                local increment = config.Increment or 1
-                local default = config.Default or min
-                local callback = config.Callback or function() end
-                
-                local SliderFrame = Instance.new("Frame")
-                SliderFrame.Size = UDim2.new(1, 0, 0, 50)
-                SliderFrame.BackgroundColor3 = Theme.DarkBackground
-                SliderFrame.BackgroundTransparency = 0.4
-                SliderFrame.Parent = SectionFrame
-                
-                Instance.new("UICorner", SliderFrame).CornerRadius = UDim.new(0, 6)
-                
-                local Label = Instance.new("TextLabel")
-                Label.Size = UDim2.new(0.7, 0, 0, 22)
-                Label.Position = UDim2.new(0.03, 0, 0, 4)
-                Label.BackgroundTransparency = 1
-                Label.Text = sliderName
-                Label.TextColor3 = Theme.White
-                Label.TextXAlignment = Enum.TextXAlignment.Left
-                Label.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold)
-                Label.TextSize = 13
-                Label.Parent = SliderFrame
-                
-                local ValueLabel = Instance.new("TextLabel")
-                ValueLabel.Size = UDim2.new(0.3, -15, 0, 22)
-                ValueLabel.Position = UDim2.new(0.7, 0, 0, 4)
-                ValueLabel.BackgroundTransparency = 1
-                ValueLabel.Text = tostring(default)
-                ValueLabel.TextColor3 = Theme.White
-                ValueLabel.TextXAlignment = Enum.TextXAlignment.Right
-                ValueLabel.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold)
-                ValueLabel.TextSize = 13
-                ValueLabel.Parent = SliderFrame
-                
-                local SliderBar = Instance.new("TextButton")
-                SliderBar.Size = UDim2.new(0.94, 0, 0, 6)
-                SliderBar.Position = UDim2.new(0.03, 0, 0, 32)
-                SliderBar.BackgroundColor3 = Color3.fromRGB(89, 89, 89)
-                SliderBar.Text = ""
-                SliderBar.Parent = SliderFrame
-                
-                Instance.new("UICorner", SliderBar).CornerRadius = UDim.new(1, 0)
-                
-                local Fill = Instance.new("Frame")
-                Fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
-                Fill.BackgroundColor3 = Theme.PrimaryRed
-                Fill.Parent = SliderBar
-                
-                Instance.new("UICorner", Fill).CornerRadius = UDim.new(1, 0)
-                
-                local dragging = false
-                
-                local function updateValue(input)
-                    local pos = math.clamp((input.Position.X - SliderBar.AbsolutePosition.X) / SliderBar.AbsoluteSize.X, 0, 1)
-                    local rawVal = min + ((max - min) * pos)
-                    local val = math.round((rawVal - min) / increment) * increment + min
-                    val = math.clamp(val, min, max)
-                    
-                    if increment % 1 ~= 0 then
-                        val = tonumber(string.format("%.2f", val))
-                    else
-                        val = math.floor(val)
-                    end
-                    
-                    local snappedPos = (val - min) / (max - min)
-                    Fill.Size = UDim2.new(snappedPos, 0, 1, 0)
-                    ValueLabel.Text = tostring(val)
-                    callback(val)
-                end
-                
-                SliderBar.InputBegan:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                        dragging = true
-                        updateValue(input)
-                    end
-                end)
-                
-                UserInputService.InputEnded:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                        dragging = false
-                    end
-                end)
-                
-                UserInputService.InputChanged:Connect(function(input)
-                    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-                        updateValue(input)
-                    end
-                end)
-            end
-            
-            -- [[ BUTTON COMPONENT ]]
-            function SectionAPI:CreateButton(config)
-                config = config or {}
-                local buttonName = config.Name or "Button"
-                local callback = config.Callback or function() end
-                
-                local Button = Instance.new("TextButton")
-                Button.Size = UDim2.new(1, 0, 0, 35)
-                Button.BackgroundColor3 = Theme.DarkBackground
-                Button.BackgroundTransparency = 0.4
-                Button.Text = ""
-                Button.Parent = SectionFrame
-                
-                Instance.new("UICorner", Button).CornerRadius = UDim.new(0, 6)
-                
-                local Label = Instance.new("TextLabel")
-                Label.Size = UDim2.new(1, 0, 1, 0)
-                Label.Position = UDim2.new(0.03, 0, 0, 0)
-                Label.BackgroundTransparency = 1
-                Label.Text = buttonName
-                Label.TextColor3 = Theme.White
-                Label.TextXAlignment = Enum.TextXAlignment.Left
-                Label.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold)
-                Label.TextSize = 13
-                Label.Parent = Button
-                
-                Button.MouseButton1Click:Connect(function()
-                    callback()
-                end)
-            end
-            
-            -- [[ TEXTBOX COMPONENT ]]
-            function SectionAPI:CreateTextbox(config)
-                config = config or {}
-                local textboxName = config.Name or "Textbox"
-                local placeholder = config.Placeholder or "Enter text..."
-                local callback = config.Callback or function() end
-                
-                local TextboxFrame = Instance.new("Frame")
-                TextboxFrame.Size = UDim2.new(1, 0, 0, 40)
-                TextboxFrame.BackgroundColor3 = Theme.DarkBackground
-                TextboxFrame.BackgroundTransparency = 0.4
-                TextboxFrame.Parent = SectionFrame
-                
-                Instance.new("UICorner", TextboxFrame).CornerRadius = UDim.new(0, 6)
-                
-                local Label = Instance.new("TextLabel")
-                Label.Size = UDim2.new(0.5, 0, 1, 0)
-                Label.Position = UDim2.new(0.03, 0, 0, 0)
-                Label.BackgroundTransparency = 1
-                Label.Text = textboxName
-                Label.TextColor3 = Theme.White
-                Label.TextXAlignment = Enum.TextXAlignment.Left
-                Label.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold)
-                Label.TextSize = 13
-                Label.Parent = TextboxFrame
-                
-                local TextBox = Instance.new("TextBox")
-                TextBox.Size = UDim2.new(0.45, -10, 0, 26)
-                TextBox.Position = UDim2.new(0.5, 0, 0.5, -13)
-                TextBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-                TextBox.Text = ""
-                TextBox.PlaceholderText = placeholder
-                TextBox.TextColor3 = Theme.White
-                TextBox.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
-                TextBox.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Regular)
-                TextBox.TextSize = 12
-                TextBox.ClearTextOnFocus = false
-                TextBox.Parent = TextboxFrame
-                
-                Instance.new("UICorner", TextBox).CornerRadius = UDim.new(0, 4)
-                
-                TextBox.FocusLost:Connect(function(enterPressed)
-                    callback(TextBox.Text, enterPressed)
-                end)
-            end
-            
-            return SectionAPI
-        end
-        
-        return TabAPI
-    end
-    
-    return WindowAPI
+	local BottomShadow = Instance.new("Frame")
+	BottomShadow.Size = UDim2.new(1, 0, 0, borderWidth or 3)
+	BottomShadow.Position = UDim2.new(0, 0, 1, -(borderWidth or 3))
+	BottomShadow.BackgroundColor3 = darkShadowColor
+	BottomShadow.BorderSizePixel = 0
+	BottomShadow.ZIndex = (frame.ZIndex or 1) + 1
+	BottomShadow.Parent = frame
+	
+	local RightShadow = Instance.new("Frame")
+	RightShadow.Size = UDim2.new(0, borderWidth or 3, 1, 0)
+	RightShadow.Position = UDim2.new(1, -(borderWidth or 3), 0, 0)
+	RightShadow.BackgroundColor3 = darkShadowColor
+	RightShadow.BorderSizePixel = 0
+	RightShadow.ZIndex = (frame.ZIndex or 1) + 1
+	RightShadow.Parent = frame
+
+	local UIStroke = Instance.new("UIStroke")
+	UIStroke.Color = Color3.fromRGB(0, 0, 0)
+	UIStroke.Thickness = 2
+	UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	UIStroke.Parent = frame
 end
 
-return Library
+function ExodusHub:SaveConfiguration()
+	if not self.ConfigEnabled or not writefile then return end
+	if not isfolder or not isfolder(self.ConfigFolder) then
+		if makefolder then makefolder(self.ConfigFolder) end
+	end
+	pcall(function()
+		writefile(self.ConfigFolder .. "/" .. self.ConfigFileName .. ".json", HttpService:JSONEncode(self.Flags))
+	end)
+end
+
+function ExodusHub:LoadConfiguration()
+	if not self.ConfigEnabled or not readfile or not isfile then return end
+	local filePath = self.ConfigFolder .. "/" .. self.ConfigFileName .. ".json"
+	pcall(function()
+		if isfile(filePath) then
+			local decoded = HttpService:JSONDecode(readfile(filePath))
+			if type(decoded) == "table" then
+				for k, v in pairs(decoded) do
+					self.Flags[k] = v
+				end
+			end
+		end
+	end)
+end
+
+function ExodusHub:Notify(config)
+	local title = type(config) == "table" and (config.Title or "Notification") or tostring(config)
+	local message = type(config) == "table" and (config.Content or "") or ""
+	local duration = type(config) == "table" and (config.Duration or 3.5) or 3.5
+
+	local ScreenGui = ParentGui:FindFirstChild("ExodusHubUI")
+	if not ScreenGui then return end
+
+	local Holder = ScreenGui:FindFirstChild("NotificationHolder")
+	if not Holder then
+		Holder = Instance.new("Frame")
+		Holder.Name = "NotificationHolder"
+		Holder.Size = UDim2.new(0, 260, 1, -40)
+		Holder.Position = UDim2.new(1, -270, 0, 20)
+		Holder.BackgroundTransparency = 1
+		Holder.ZIndex = 200
+		Holder.Parent = ScreenGui
+
+		local NotifLayout = Instance.new("UIListLayout")
+		NotifLayout.Padding = UDim.new(0, 8)
+		NotifLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+		NotifLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+		NotifLayout.SortOrder = Enum.SortOrder.LayoutOrder
+		NotifLayout.Parent = Holder
+	end
+
+	local NotifFrame = Instance.new("Frame")
+	NotifFrame.Size = UDim2.new(0, 250, 0, 60)
+	NotifFrame.Position = UDim2.new(1, 300, 0, 0)
+	NotifFrame.ZIndex = 201
+	NotifFrame.Parent = Holder
+
+	local theme = self.Themes[self.CurrentTheme]
+	apply3DEffect(NotifFrame, Color3.fromRGB(25, 25, 25), Color3.fromRGB(60, 60, 60), Color3.fromRGB(10, 10, 10), 2)
+
+	local TitleLabel = Instance.new("TextLabel")
+	TitleLabel.Size = UDim2.new(1, -12, 0, 20)
+	TitleLabel.Position = UDim2.new(0, 8, 0, 4)
+	TitleLabel.BackgroundTransparency = 1
+	TitleLabel.Text = "⚡ " .. title
+	TitleLabel.Font = Enum.Font.FredokaOne
+	TitleLabel.TextSize = 14
+	TitleLabel.TextColor3 = theme.Light
+	TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+	TitleLabel.ZIndex = 202
+	TitleLabel.Parent = NotifFrame
+
+	local MsgLabel = Instance.new("TextLabel")
+	MsgLabel.Size = UDim2.new(1, -16, 0, 28)
+	MsgLabel.Position = UDim2.new(0, 8, 0, 24)
+	MsgLabel.BackgroundTransparency = 1
+	MsgLabel.Text = message
+	MsgLabel.Font = Enum.Font.SourceSans
+	MsgLabel.TextSize = 13
+	MsgLabel.TextColor3 = Color3.fromRGB(230, 230, 230)
+	MsgLabel.TextXAlignment = Enum.TextXAlignment.Left
+	MsgLabel.TextYAlignment = Enum.TextYAlignment.Top
+	MsgLabel.TextWrapped = true
+	MsgLabel.ZIndex = 202
+	MsgLabel.Parent = NotifFrame
+
+	local ProgressBar = Instance.new("Frame")
+	ProgressBar.Size = UDim2.new(1, 0, 0, 3)
+	ProgressBar.Position = UDim2.new(0, 0, 1, -3)
+	ProgressBar.BackgroundColor3 = theme.Primary
+	ProgressBar.BorderSizePixel = 0
+	ProgressBar.ZIndex = 203
+	ProgressBar.Parent = NotifFrame
+
+	TweenService:Create(NotifFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Position = UDim2.new(0, 0, 0, 0)
+	}):Play()
+
+	TweenService:Create(ProgressBar, TweenInfo.new(duration, Enum.EasingStyle.Linear), {
+		Size = UDim2.new(0, 0, 0, 3)
+	}):Play()
+
+	task.delay(duration, function()
+		local slideOut = TweenService:Create(NotifFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			Position = UDim2.new(1, 300, 0, 0)
+		})
+		slideOut:Play()
+		slideOut.Completed:Connect(function() NotifFrame:Destroy() end)
+	end)
+end
+
+function ExodusHub:CreateWindow(Settings)
+	Settings = Settings or {}
+	local WindowTitle = Settings.Name or "Exodus Hub"
+	self.CurrentTheme = Settings.Theme or "Red"
+	
+	if Settings.ConfigurationSaving and Settings.ConfigurationSaving.Enabled then
+		self.ConfigEnabled = true
+		self.ConfigFolder = Settings.ConfigurationSaving.FolderName or "ExodusHub_Configs"
+		self.ConfigFileName = Settings.ConfigurationSaving.FileName or "config"
+		self:LoadConfiguration()
+	end
+
+	if ParentGui:FindFirstChild("ExodusHubUI") then
+		ParentGui.ExodusHubUI:Destroy()
+	end
+
+	local ScreenGui = Instance.new("ScreenGui")
+	ScreenGui.Name = "ExodusHubUI"
+	ScreenGui.ResetOnSpawn = false
+	ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	ScreenGui.Parent = ParentGui
+
+	local OpenBtn = Instance.new("TextButton")
+	OpenBtn.Size = UDim2.new(0, 40, 0, 40)
+	OpenBtn.Position = UDim2.new(0, 55, 0, 10)
+	OpenBtn.Text = "⚡"
+	OpenBtn.TextSize = 20
+	OpenBtn.ZIndex = 100
+	OpenBtn.Parent = ScreenGui
+
+	local theme = self.Themes[self.CurrentTheme]
+	apply3DEffect(OpenBtn, theme.Primary, theme.Light, theme.Dark, 3)
+
+	local UICorner = Instance.new("UICorner")
+	UICorner.CornerRadius = UDim.new(1, 0)
+	UICorner.Parent = OpenBtn
+
+	local MainFrame = Instance.new("Frame")
+	MainFrame.Size = UDim2.new(0, 720, 0, 430)
+	MainFrame.Position = UDim2.new(0.5, -360, 0.5, -215)
+	MainFrame.BackgroundTransparency = 1
+	MainFrame.Parent = ScreenGui
+
+	OpenBtn.Activated:Connect(function()
+		MainFrame.Visible = not MainFrame.Visible
+	end)
+
+	local LeftSidebar = Instance.new("Frame")
+	LeftSidebar.Size = UDim2.new(0, 136, 1, -42)
+	LeftSidebar.Position = UDim2.new(0, 0, 0, 42)
+	LeftSidebar.BackgroundTransparency = 1
+	LeftSidebar.ZIndex = 5
+	LeftSidebar.Parent = MainFrame
+
+	local LeftLayout = Instance.new("UIListLayout")
+	LeftLayout.Padding = UDim.new(0, 11)
+	LeftLayout.Parent = LeftSidebar
+
+	local RightSidebar = Instance.new("Frame")
+	RightSidebar.Size = UDim2.new(0, 136, 1, -42)
+	RightSidebar.Position = UDim2.new(1, -136, 0, 42)
+	RightSidebar.BackgroundTransparency = 1
+	RightSidebar.ZIndex = 5
+	RightSidebar.Parent = MainFrame
+
+	local RightLayout = Instance.new("UIListLayout")
+	RightLayout.Padding = UDim.new(0, 11)
+	RightLayout.Parent = RightSidebar
+
+	local CenterContainer = Instance.new("Frame")
+	CenterContainer.Size = UDim2.new(0, 420, 1, -46)
+	CenterContainer.Position = UDim2.new(0, 150, 0, 0)
+	CenterContainer.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+	CenterContainer.BackgroundTransparency = 0.35
+	CenterContainer.BorderSizePixel = 0
+	CenterContainer.ZIndex = 1
+	CenterContainer.Parent = MainFrame
+
+	apply3DEffect(CenterContainer, Color3.fromRGB(15, 15, 15), Color3.fromRGB(60, 60, 60), Color3.fromRGB(0, 0, 0), 2)
+
+	local Header = Instance.new("Frame")
+	Header.Size = UDim2.new(1, 0, 0, 42)
+	Header.ZIndex = 10
+	Header.Parent = CenterContainer
+
+	apply3DEffect(Header, theme.Primary, theme.Light, theme.Dark, 3)
+
+	local Title = Instance.new("TextLabel")
+	Title.Size = UDim2.new(1, -50, 1, 0)
+	Title.Position = UDim2.new(0, 10, 0, 0)
+	Title.BackgroundTransparency = 1
+	Title.Text = WindowTitle
+	Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+	Title.TextSize = 22
+	Title.Font = Enum.Font.FredokaOne
+	Title.ZIndex = 11
+	Title.Parent = Header
+
+	local CloseBtn = Instance.new("TextButton")
+	CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+	CloseBtn.Position = UDim2.new(1, -36, 0.5, -15)
+	CloseBtn.Text = "X"
+	CloseBtn.Font = Enum.Font.FredokaOne
+	CloseBtn.TextSize = 18
+	CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	CloseBtn.ZIndex = 12
+	CloseBtn.Parent = Header
+
+	apply3DEffect(CloseBtn, theme.Primary, theme.Light, theme.Dark, 2)
+	CloseBtn.Activated:Connect(function() MainFrame.Visible = false end)
+
+	local SeparateSearchContainer = Instance.new("Frame")
+	SeparateSearchContainer.Size = UDim2.new(0, 420, 0, 38)
+	SeparateSearchContainer.Position = UDim2.new(0, 150, 1, -38)
+	SeparateSearchContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	SeparateSearchContainer.ZIndex = 10
+	SeparateSearchContainer.Parent = MainFrame
+
+	apply3DEffect(SeparateSearchContainer, Color3.fromRGB(20, 20, 20), Color3.fromRGB(50, 50, 50), Color3.fromRGB(5, 5, 5), 2)
+
+	local SearchInput = Instance.new("TextBox")
+	SearchInput.Size = UDim2.new(1, -16, 1, -8)
+	SearchInput.Position = UDim2.new(0, 8, 0, 4)
+	SearchInput.BackgroundTransparency = 1
+	SearchInput.PlaceholderText = "Search / Filter features..."
+	SearchInput.PlaceholderColor3 = Color3.fromRGB(140, 140, 140)
+	SearchInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+	SearchInput.Font = Enum.Font.SourceSans
+	SearchInput.TextSize = 14
+	SearchInput.ZIndex = 11
+	SearchInput.Parent = SeparateSearchContainer
+
+	local dragging, dragStart, startPos
+	Header.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			dragStart = input.Position
+			startPos = MainFrame.Position
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			local delta = input.Position - dragStart
+			MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+		end
+	end)
+
+	UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = false
+		end
+	end)
+
+	local Window = { Tabs = {} }
+
+	function Window:CreateTab(Name, Icon)
+		local side = (#Window.Tabs >= 4) and "right" or "left"
+		local ParentSidebar = (side == "right") and RightSidebar or LeftSidebar
+
+		local TabBtn = Instance.new("TextButton")
+		TabBtn.Size = UDim2.new(1, 0, 0, 42)
+		TabBtn.Text = Name
+		TabBtn.Font = Enum.Font.FredokaOne
+		TabBtn.TextSize = 16
+		TabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		TabBtn.ZIndex = 6
+		TabBtn.Parent = ParentSidebar
+
+		local tTheme = ExodusHub.Themes[ExodusHub.CurrentTheme]
+		apply3DEffect(TabBtn, tTheme.Primary, tTheme.Light, tTheme.Dark, 3)
+
+		local TabPage = Instance.new("ScrollingFrame")
+		TabPage.Size = UDim2.new(1, -16, 1, -52)
+		TabPage.Position = UDim2.new(0, 8, 0, 46)
+		TabPage.BackgroundTransparency = 1
+		TabPage.BorderSizePixel = 0
+		TabPage.ScrollBarThickness = 4
+		TabPage.ScrollBarImageColor3 = tTheme.Primary
+		TabPage.Visible = false
+		TabPage.ZIndex = 5
+		TabPage.Parent = CenterContainer
+
+		local PageLayout = Instance.new("UIListLayout")
+		PageLayout.Padding = UDim.new(0, 8)
+		PageLayout.SortOrder = Enum.SortOrder.LayoutOrder
+		PageLayout.Parent = TabPage
+
+		PageLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+			TabPage.CanvasSize = UDim2.new(0, 0, 0, PageLayout.AbsoluteContentSize.Y + 12)
+		end)
+
+		local function SelectTab()
+			for _, tab in pairs(Window.Tabs) do
+				tab.Page.Visible = false
+				tab.Button.BackgroundColor3 = ExodusHub.Themes[ExodusHub.CurrentTheme].Primary
+			end
+			TabPage.Visible = true
+			TabBtn.BackgroundColor3 = ExodusHub.Themes[ExodusHub.CurrentTheme].Light
+		end
+
+		TabBtn.Activated:Connect(SelectTab)
+		if #Window.Tabs == 0 then SelectTab() end
+
+		local Tab = { Page = TabPage, Button = TabBtn }
+
+		function Tab:CreateSection(titleText)
+			local expanded = true
+
+			local SectionFrame = Instance.new("Frame")
+			SectionFrame.Size = UDim2.new(1, 0, 0, 28)
+			SectionFrame.ZIndex = 6
+			SectionFrame.Parent = TabPage
+
+			local curTheme = ExodusHub.Themes[ExodusHub.CurrentTheme]
+			apply3DEffect(SectionFrame, curTheme.Dark, curTheme.Primary, Color3.fromRGB(10, 10, 10), 1)
+
+			local ToggleHeader = Instance.new("TextButton")
+			ToggleHeader.Size = UDim2.new(1, 0, 1, 0)
+			ToggleHeader.BackgroundTransparency = 1
+			ToggleHeader.Text = "  ▼ " .. string.upper(titleText)
+			ToggleHeader.Font = Enum.Font.FredokaOne
+			ToggleHeader.TextSize = 13
+			ToggleHeader.TextColor3 = Color3.fromRGB(255, 255, 255)
+			ToggleHeader.TextXAlignment = Enum.TextXAlignment.Left
+			ToggleHeader.ZIndex = 7
+			ToggleHeader.Parent = SectionFrame
+
+			local ItemsContainer = Instance.new("Frame")
+			ItemsContainer.Size = UDim2.new(1, 0, 0, 0)
+			ItemsContainer.BackgroundTransparency = 1
+			ItemsContainer.AutomaticSize = Enum.AutomaticSize.Y
+			ItemsContainer.ZIndex = 6
+			ItemsContainer.Parent = TabPage
+
+			local ItemsLayout = Instance.new("UIListLayout")
+			ItemsLayout.Padding = UDim.new(0, 6)
+			ItemsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+			ItemsLayout.Parent = ItemsContainer
+
+			ToggleHeader.Activated:Connect(function()
+				expanded = not expanded
+				ItemsContainer.Visible = expanded
+				ToggleHeader.Text = (expanded and "  ▼ " or "  ► ") .. string.upper(titleText)
+			end)
+
+			local Section = { Container = ItemsContainer }
+
+			function Section:CreateButton(Config)
+				Config = Config or {}
+				local labelText = Config.Name or "Button"
+				local btnText = Config.ButtonName or "Click"
+				local callback = Config.Callback or function() end
+
+				local Container = Instance.new("Frame")
+				Container.Size = UDim2.new(1, 0, 0, 38)
+				Container.ZIndex = 6
+				Container.Parent = ItemsContainer
+				apply3DEffect(Container, Color3.fromRGB(30, 30, 30), Color3.fromRGB(60, 60, 60), Color3.fromRGB(15, 15, 15), 2)
+
+				local Label = Instance.new("TextLabel")
+				Label.Size = UDim2.new(1, -120, 1, 0)
+				Label.Position = UDim2.new(0, 10, 0, 0)
+				Label.BackgroundTransparency = 1
+				Label.Text = labelText
+				Label.Font = Enum.Font.FredokaOne
+				Label.TextSize = 14
+				Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+				Label.TextXAlignment = Enum.TextXAlignment.Left
+				Label.ClipsDescendants = true
+				Label.TextTruncate = Enum.TextTruncate.AtEnd
+				Label.ZIndex = 7
+				Label.Parent = Container
+
+				local TriggerBtn = Instance.new("TextButton")
+				TriggerBtn.Size = UDim2.new(0, 100, 0, 26)
+				TriggerBtn.Position = UDim2.new(1, -106, 0.5, -13)
+				TriggerBtn.Text = btnText
+				TriggerBtn.Font = Enum.Font.FredokaOne
+				TriggerBtn.TextSize = 13
+				TriggerBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+				TriggerBtn.ZIndex = 8
+				TriggerBtn.Parent = Container
+
+				local t = ExodusHub.Themes[ExodusHub.CurrentTheme]
+				apply3DEffect(TriggerBtn, t.Primary, t.Light, t.Dark, 2)
+				TriggerBtn.Activated:Connect(callback)
+			end
+
+			function Section:CreateToggle(Config)
+				Config = Config or {}
+				local name = Config.Name or "Toggle"
+				local flag = Config.Flag or name
+				
+				local toggled = ExodusHub.Flags[flag] ~= nil and ExodusHub.Flags[flag] or (Config.CurrentValue ~= nil and Config.CurrentValue or false)
+				ExodusHub.Flags[flag] = toggled
+				local callback = Config.Callback or function() end
+
+				local Frame = Instance.new("Frame")
+				Frame.Size = UDim2.new(1, 0, 0, 38)
+				Frame.ZIndex = 6
+				Frame.Parent = ItemsContainer
+				apply3DEffect(Frame, Color3.fromRGB(30, 30, 30), Color3.fromRGB(60, 60, 60), Color3.fromRGB(15, 15, 15), 2)
+
+				local Label = Instance.new("TextLabel")
+				Label.Size = UDim2.new(1, -65, 1, 0)
+				Label.Position = UDim2.new(0, 10, 0, 0)
+				Label.BackgroundTransparency = 1
+				Label.Text = name
+				Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+				Label.Font = Enum.Font.FredokaOne
+				Label.TextSize = 14
+				Label.TextXAlignment = Enum.TextXAlignment.Left
+				Label.ClipsDescendants = true
+				Label.TextTruncate = Enum.TextTruncate.AtEnd
+				Label.ZIndex = 7
+				Label.Parent = Frame
+
+				local Track = Instance.new("TextButton")
+				Track.Size = UDim2.new(0, 46, 0, 22)
+				Track.Position = UDim2.new(1, -54, 0.5, -11)
+				Track.Text = ""
+				Track.AutoButtonColor = false
+				Track.ZIndex = 7
+				Track.Parent = Frame
+
+				local t = ExodusHub.Themes[ExodusHub.CurrentTheme]
+				apply3DEffect(Track, toggled and t.Primary or Color3.fromRGB(45, 45, 45), Color3.fromRGB(80, 80, 80), Color3.fromRGB(10, 10, 10), 1)
+
+				local Thumb = Instance.new("Frame")
+				Thumb.Size = UDim2.new(0, 18, 0, 18)
+				Thumb.Position = toggled and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9)
+				Thumb.ZIndex = 8
+				Thumb.Parent = Track
+				apply3DEffect(Thumb, Color3.fromRGB(240, 240, 240), Color3.fromRGB(255, 255, 255), Color3.fromRGB(150, 150, 150), 1)
+
+				task.spawn(function() callback(toggled) end)
+
+				Track.Activated:Connect(function()
+					toggled = not toggled
+					ExodusHub.Flags[flag] = toggled
+					local curT = ExodusHub.Themes[ExodusHub.CurrentTheme]
+					local targetPos = toggled and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9)
+					local targetColor = toggled and curT.Primary or Color3.fromRGB(45, 45, 45)
+					TweenService:Create(Thumb, TweenInfo.new(0.15), {Position = targetPos}):Play()
+					TweenService:Create(Track, TweenInfo.new(0.15), {BackgroundColor3 = targetColor}):Play()
+					ExodusHub:SaveConfiguration()
+					callback(toggled)
+				end)
+			end
+
+			function Section:CreateSlider(Config)
+				Config = Config or {}
+				local name = Config.Name or "Slider"
+				local flag = Config.Flag or name
+				local min = Config.Min or 0
+				local max = Config.Max or 100
+				local increment = Config.Increment or 1
+				
+				local val = ExodusHub.Flags[flag] ~= nil and ExodusHub.Flags[flag] or (Config.Default ~= nil and Config.Default or min)
+				ExodusHub.Flags[flag] = val
+				local callback = Config.Callback or function() end
+
+				local Frame = Instance.new("Frame")
+				Frame.Size = UDim2.new(1, 0, 0, 52)
+				Frame.ZIndex = 6
+				Frame.Parent = ItemsContainer
+				apply3DEffect(Frame, Color3.fromRGB(30, 30, 30), Color3.fromRGB(60, 60, 60), Color3.fromRGB(15, 15, 15), 2)
+
+				local Label = Instance.new("TextLabel")
+				Label.Size = UDim2.new(1, -20, 0, 20)
+				Label.Position = UDim2.new(0, 10, 0, 4)
+				Label.BackgroundTransparency = 1
+				Label.Text = name .. ": " .. tostring(val)
+				Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+				Label.Font = Enum.Font.FredokaOne
+				Label.TextSize = 14
+				Label.TextXAlignment = Enum.TextXAlignment.Left
+				Label.ZIndex = 7
+				Label.Parent = Frame
+
+				local SliderBar = Instance.new("TextButton")
+				SliderBar.Size = UDim2.new(1, -24, 0, 10)
+				SliderBar.Position = UDim2.new(0, 12, 0, 32)
+				SliderBar.Text = ""
+				SliderBar.AutoButtonColor = false
+				SliderBar.ZIndex = 7
+				SliderBar.Parent = Frame
+				apply3DEffect(SliderBar, Color3.fromRGB(20, 20, 20), Color3.fromRGB(50, 50, 50), Color3.fromRGB(5, 5, 5), 1)
+
+				local Fill = Instance.new("Frame")
+				Fill.Size = UDim2.new((val - min) / (max - min), 0, 1, 0)
+				local t = ExodusHub.Themes[ExodusHub.CurrentTheme]
+				Fill.BackgroundColor3 = t.Primary
+				Fill.BorderSizePixel = 0
+				Fill.ZIndex = 8
+				Fill.Parent = SliderBar
+
+				local WhiteKnob = Instance.new("Frame")
+				WhiteKnob.Size = UDim2.new(0, 8, 0, 20)
+				WhiteKnob.Position = UDim2.new(1, -4, 0.5, -10)
+				WhiteKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+				WhiteKnob.BorderSizePixel = 0
+				WhiteKnob.ZIndex = 9
+				WhiteKnob.Parent = Fill
+
+				local draggingSlider = false
+				local function updateSlider(input)
+					local pos = math.clamp((input.Position.X - SliderBar.AbsolutePosition.X) / SliderBar.AbsoluteSize.X, 0, 1)
+					local rawVal = min + ((max - min) * pos)
+					val = math.floor(math.round(rawVal / increment) * increment * 1000) / 1000
+					val = math.clamp(val, min, max)
+					
+					ExodusHub.Flags[flag] = val
+					Fill.Size = UDim2.new((val - min) / (max - min), 0, 1, 0)
+					Label.Text = name .. ": " .. tostring(val)
+					ExodusHub:SaveConfiguration()
+					callback(val)
+				end
+
+				SliderBar.InputBegan:Connect(function(input)
+					if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+						draggingSlider = true
+						updateSlider(input)
+					end
+				end)
+				UserInputService.InputEnded:Connect(function(input)
+					if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+						draggingSlider = false
+					end
+				end)
+				UserInputService.InputChanged:Connect(function(input)
+					if draggingSlider and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+						updateSlider(input)
+					end
+				end)
+			end
+
+			function Section:CreateInput(Config)
+				Config = Config or {}
+				local nameText = Config.Name or "Text Box"
+				local flag = Config.Flag or nameText
+				local placeholder = Config.PlaceholderText or "Type here..."
+				local callback = Config.Callback or function() end
+
+				local initialText = ExodusHub.Flags[flag] ~= nil and tostring(ExodusHub.Flags[flag]) or ""
+
+				local Container = Instance.new("Frame")
+				Container.Size = UDim2.new(1, 0, 0, 42)
+				Container.ZIndex = 6
+				Container.Parent = ItemsContainer
+				apply3DEffect(Container, Color3.fromRGB(30, 30, 30), Color3.fromRGB(60, 60, 60), Color3.fromRGB(15, 15, 15), 2)
+
+				local Label = Instance.new("TextLabel")
+				Label.Size = UDim2.new(0.48, -10, 0, 20)
+				Label.Position = UDim2.new(0, 10, 0, 11)
+				Label.BackgroundTransparency = 1
+				Label.Text = nameText
+				Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+				Label.Font = Enum.Font.FredokaOne
+				Label.TextSize = 14
+				Label.TextXAlignment = Enum.TextXAlignment.Left
+				Label.TextYAlignment = Enum.TextYAlignment.Top
+				Label.TextWrapped = true
+				Label.ZIndex = 7
+				Label.Parent = Container
+
+				local BoxFrame = Instance.new("Frame")
+				BoxFrame.Size = UDim2.new(0.48, -10, 0, 28)
+				BoxFrame.Position = UDim2.new(0.5, 2, 0, 7)
+				BoxFrame.ZIndex = 7
+				BoxFrame.Parent = Container
+				apply3DEffect(BoxFrame, Color3.fromRGB(15, 15, 15), Color3.fromRGB(40, 40, 40), Color3.fromRGB(0, 0, 0), 1)
+
+				local InputBox = Instance.new("TextBox")
+				InputBox.Size = UDim2.new(1, -12, 1, 0)
+				InputBox.Position = UDim2.new(0, 6, 0, 0)
+				InputBox.BackgroundTransparency = 1
+				InputBox.Text = initialText
+				InputBox.PlaceholderText = placeholder
+				InputBox.PlaceholderColor3 = Color3.fromRGB(130, 130, 130)
+				InputBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+				InputBox.Font = Enum.Font.SourceSans
+				InputBox.TextSize = 14
+				InputBox.TextXAlignment = Enum.TextXAlignment.Left
+				InputBox.ClipsDescendants = true
+				InputBox.TextTruncate = Enum.TextTruncate.AtEnd
+				InputBox.ZIndex = 8
+				InputBox.Parent = BoxFrame
+
+				Label:GetPropertyChangedSignal("TextBounds"):Connect(function()
+					local requiredLabelHeight = Label.TextBounds.Y
+					local totalHeight = math.max(42, requiredLabelHeight + 20)
+					Container.Size = UDim2.new(1, 0, 0, totalHeight)
+					Label.Size = UDim2.new(0.48, -10, 0, requiredLabelHeight)
+					BoxFrame.Position = UDim2.new(0.5, 2, 0.5, -14)
+				end)
+
+				InputBox.FocusLost:Connect(function(enterPressed)
+					ExodusHub.Flags[flag] = InputBox.Text
+					ExodusHub:SaveConfiguration()
+					callback(InputBox.Text, enterPressed)
+				end)
+			end
+			
+			function Section:CreateTextBox(Config)
+				return self:CreateInput(Config)
+			end
+
+			function Section:CreateDropdown(Config)
+				Config = Config or {}
+				local name = Config.Name or "Dropdown"
+				local flag = Config.Flag or name
+				local options = Config.Options or {}
+				local current = Config.CurrentOption
+				
+				local selected = ExodusHub.Flags[flag] ~= nil and ExodusHub.Flags[flag] or (type(current) == "table" and current[1] or current or options[1])
+				ExodusHub.Flags[flag] = selected
+				local callback = Config.Callback or function() end
+				local isOpen = false
+
+				local DropFrame = Instance.new("Frame")
+				DropFrame.Size = UDim2.new(1, 0, 0, 38)
+				DropFrame.ClipsDescendants = true
+				DropFrame.ZIndex = 15
+				DropFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+				DropFrame.BorderSizePixel = 0
+				DropFrame.Parent = ItemsContainer
+
+				apply3DEffect(DropFrame, Color3.fromRGB(30, 30, 30), Color3.fromRGB(60, 60, 60), Color3.fromRGB(15, 15, 15), 2)
+
+				local HeaderBtn = Instance.new("TextButton")
+				HeaderBtn.Size = UDim2.new(1, 0, 0, 38)
+				HeaderBtn.BackgroundTransparency = 1
+				HeaderBtn.Text = "  " .. name .. ": " .. tostring(selected)
+				HeaderBtn.Font = Enum.Font.FredokaOne
+				HeaderBtn.TextSize = 14
+				HeaderBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+				HeaderBtn.TextXAlignment = Enum.TextXAlignment.Left
+				HeaderBtn.ZIndex = 16
+				HeaderBtn.Parent = DropFrame
+
+				local OptionList = Instance.new("Frame")
+				OptionList.Size = UDim2.new(1, -12, 0, 0)
+				OptionList.Position = UDim2.new(0, 6, 0, 42)
+				OptionList.BackgroundTransparency = 1
+				OptionList.ZIndex = 16
+				OptionList.Parent = DropFrame
+
+				local dropdownObj = {}
+				function dropdownObj:Refresh(newOptions, newCurrent)
+					options = newOptions or {}
+					selected = ExodusHub.Flags[flag] ~= nil and ExodusHub.Flags[flag] or (type(newCurrent) == "table" and newCurrent[1] or newCurrent or options[1])
+					HeaderBtn.Text = "  " .. name .. ": " .. tostring(selected)
+					
+					OptionList:ClearAllChildren()
+					local Grid = Instance.new("UIGridLayout")
+					Grid.CellSize = UDim2.new(0.5, -4, 0, 32)
+					Grid.CellPadding = UDim2.new(0, 8, 0, 6)
+					Grid.Parent = OptionList
+
+					local rowsCount = math.ceil(#options / 2)
+					OptionList.Size = UDim2.new(1, -12, 0, rowsCount * 36 + ((rowsCount - 1) * 6))
+
+					for _, opt in ipairs(options) do
+						local OptBtn = Instance.new("TextButton")
+						OptBtn.Size = UDim2.new(1, 0, 1, 0)
+						OptBtn.Text = "  " .. opt
+						OptBtn.Font = Enum.Font.SourceSansBold
+						OptBtn.TextSize = 14
+						OptBtn.TextColor3 = Color3.fromRGB(240, 240, 240)
+						OptBtn.AutoButtonColor = false
+						OptBtn.ZIndex = 17
+						OptBtn.Parent = OptionList
+						
+						apply3DEffect(OptBtn, Color3.fromRGB(45, 45, 45), Color3.fromRGB(80, 80, 80), Color3.fromRGB(20, 20, 20), 1)
+
+						local RedMark = Instance.new("Frame")
+						RedMark.Name = "RedMark"
+						RedMark.Size = UDim2.new(0, 8, 0, 16)
+						RedMark.Position = UDim2.new(1, -14, 0.5, -8)
+						RedMark.BackgroundColor3 = Color3.fromRGB(220, 20, 20)
+						RedMark.BorderSizePixel = 0
+						RedMark.Visible = (opt == selected)
+						RedMark.ZIndex = 18
+						RedMark.Parent = OptBtn
+
+						OptBtn.Activated:Connect(function()
+							selected = opt
+							ExodusHub.Flags[flag] = selected
+							HeaderBtn.Text = "  " .. name .. ": " .. selected
+							isOpen = false
+							DropFrame.Size = UDim2.new(1, 0, 0, 38)
+							ExodusHub:SaveConfiguration()
+							callback({selected})
+						end)
+					end
+				end
+
+				dropdownObj:Refresh(options, selected)
+
+				HeaderBtn.Activated:Connect(function()
+					isOpen = not isOpen
+					if isOpen then
+						DropFrame.Size = UDim2.new(1, 0, 0, 48 + OptionList.AbsoluteSize.Y)
+					else
+						DropFrame.Size = UDim2.new(1, 0, 0, 38)
+					end
+				end)
+
+				return dropdownObj
+			end
+
+			function Section:CreateParagraph(Config)
+				Config = Config or {}
+				local container = Instance.new("Frame")
+				container.Size = UDim2.new(1, 0, 0, 70)
+				container.AutomaticSize = Enum.AutomaticSize.Y
+				container.ZIndex = 6
+				container.Parent = ItemsContainer
+
+				apply3DEffect(container, Color3.fromRGB(30, 30, 30), Color3.fromRGB(60, 60, 60), Color3.fromRGB(15, 15, 15), 2)
+
+				local titleLabel = Instance.new("TextLabel")
+				titleLabel.Size = UDim2.new(1, -20, 0, 24)
+				titleLabel.Position = UDim2.new(0, 10, 0, 6)
+				titleLabel.BackgroundTransparency = 1
+				titleLabel.Text = Config.Title or ""
+				titleLabel.Font = Enum.Font.FredokaOne
+				titleLabel.TextSize = 14
+				titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+				titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+				titleLabel.ZIndex = 7
+				titleLabel.Parent = container
+
+				local contentLabel = Instance.new("TextLabel")
+				contentLabel.Size = UDim2.new(1, -20, 0, 36)
+				contentLabel.Position = UDim2.new(0, 10, 0, 28)
+				contentLabel.BackgroundTransparency = 1
+				contentLabel.Text = Config.Content or ""
+				contentLabel.Font = Enum.Font.SourceSans
+				contentLabel.TextSize = 13
+				contentLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+				contentLabel.TextXAlignment = Enum.TextXAlignment.Left
+				contentLabel.TextYAlignment = Enum.TextYAlignment.Top
+				contentLabel.TextWrapped = true
+				contentLabel.ZIndex = 7
+				contentLabel.Parent = container
+
+				contentLabel:GetPropertyChangedSignal("TextBounds"):Connect(function()
+					contentLabel.Size = UDim2.new(1, -20, 0, contentLabel.TextBounds.Y + 4)
+					container.Size = UDim2.new(1, 0, 0, contentLabel.TextBounds.Y + 38)
+				end)
+
+				local paragraphObj = {}
+				function paragraphObj:Set(newConfig)
+					if newConfig.Title then titleLabel.Text = newConfig.Title end
+					if newConfig.Content then contentLabel.Text = newConfig.Content end
+				end
+				return paragraphObj
+			end
+
+			return Section
+		end
+
+		table.insert(Window.Tabs, Tab)
+		return Tab
+	end
+
+	return Window
+end
+
+return ExodusHub
