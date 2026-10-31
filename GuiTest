@@ -15,14 +15,14 @@ local ExodusHub = {
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
-local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
-local ParentGui = (syn and syn.protect_gui) and game:GetService("CoreGui") or LocalPlayer:WaitForChild("PlayerGui")
 local TweenService = game:GetService("TweenService")
 local TeleportService = game:GetService("TeleportService")
 local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
 local lp = Players.LocalPlayer
+local ParentGui = (syn and syn.protect_gui) and game:GetService("CoreGui") or lp:WaitForChild("PlayerGui")
 
 local function apply3DEffect(frame, mainColor, topLightColor, darkShadowColor, borderWidth)
 	frame.BackgroundColor3 = mainColor
