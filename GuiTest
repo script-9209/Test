@@ -1992,7 +1992,10 @@ local function killAll()
         end
     end)
 end
-
+if _G.ExodusHubLoaded then
+    return
+end
+_G.ExodusHubLoaded = true
 local Window = ExodusHub:CreateWindow({
 	Name = "🎃 - Exodus Hub",
 	Theme = "Red",
