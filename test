@@ -1143,81 +1143,6 @@ function ExodusHub:CreateWindow(Settings)
 	return Window
 end
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Players = game:GetService("Players")
-local localPlayer = Players.LocalPlayer
-
-_G.InRound = false
-_G.CurrentRoundState = "Unknown"
-
-local CurrentRoundClient
-pcall(function()
-	CurrentRoundClient = require(ReplicatedStorage:WaitForChild("Modules", 5):WaitForChild("CurrentRoundClient", 5))
-end)
-
-task.spawn(function()
-	while true do
-		task.wait(0.5)
-		local success, result = pcall(function()
-			if CurrentRoundClient and CurrentRoundClient.PlayerData then
-				return next(CurrentRoundClient.PlayerData) ~= nil
-			end
-			local mapFolder = workspace:FindFirstChild("Map") or workspace:FindFirstChild("CurrentMap")
-			return mapFolder ~= nil and #mapFolder:GetChildren() > 0
-		end)
-		_G.InRound = success and result or false
-		_G.CurrentRoundState = _G.InRound and "InRound" or "Lobby"
-	end
-end)
-
-if _G.__GunLoopConn then
-	pcall(function() task.cancel(_G.__GunLoopConn) end)
-end
-
-_G.__GunLoopConn = task.spawn(function()
-	while true do
-		task.wait(0.1)
-		
-		local success, err = pcall(function()
-			local lp = game.Players.LocalPlayer
-			local drop = workspace:FindFirstChild("GunDrop", true)
-			
-			-- Handle ESP Billboard Creation
-			if drop and not drop:FindFirstChild("ExodusGunESP") then
-				local bill = Instance.new("BillboardGui", drop)
-				bill.Name = "ExodusGunESP"
-				bill.Size = UDim2.new(0, 120, 0, 60)
-				bill.AlwaysOnTop = true
-				bill.ExtentsOffset = Vector3.new(0, 2, 0)
-				
-				local label = Instance.new("TextLabel", bill)
-				label.Size = UDim2.new(1, 0, 1, 0)
-				label.BackgroundTransparency = 1
-				label.Font = Enum.Font.GothamBold
-				label.TextSize = 16
-				label.Text = "GUN HERE\n▼"
-				label.TextColor3 = Color3.fromRGB(0, 255, 0)
-				label.TextStrokeTransparency = 0
-				label.TextStrokeColor3 = Color3.new(0, 0, 0)
-			end
-			
-			-- Handle Auto-Grab (Touch Interest Simulation)
-			if _G.AutoGrabGun and drop and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
-				local hrp = lp.Character.HumanoidRootPart
-				if firetouchinterest then
-					firetouchinterest(hrp, drop, 0)
-					firetouchinterest(hrp, drop, 1)
-				end
-			end
-		end)
-		
-		if not success then
-			-- Suppress spam errors if game context unloads briefly
-			task.wait(1)
-		end
-	end
-end)
-
 -- ==========================================
 -- INITIALIZATION & 4 TABS SETUP
 -- ==========================================
@@ -1362,15 +1287,212 @@ EspSection:CreateToggle({
 	Flag = "PlayerESP",
 	CurrentValue = false,
 	Callback = function(state)
-		print("Player ESP toggled:", state)
+		_G.ESPEnabled = state
+		
+		-- Start the role cache loop once when toggled on (if not already running)
+		if state and not _G.__RoleCacheStarted then
+			_G.__RoleCacheStarted = true
+			_G.RoleCache = {}
+			
+			task.spawn(function()
+				while true do
+					task.wait(1.5)
+					local success, data = pcall(function()
+						local remote = game:GetService("ReplicatedStorage"):FindFirstChild("GetPlayerData", true)
+						if remote then
+							return remote:InvokeServer()
+						end
+					end)
+					if success and type(data) == "table" then
+						_G.RoleCache = data
+					end
+				end
+			end)
+		end
+		
+		-- Setup function for players
+		local function applyPlayerESP(p)
+			if not p or p == game.Players.LocalPlayer then return end
+			local lp = game.Players.LocalPlayer
+			
+			local function setup(char)
+				if not char then return end
+				local head = char:WaitForChild("Head", 10)
+				if not head then return end
+
+				local highlight = char:FindFirstChild("ExodusESP") or Instance.new("Highlight")
+				highlight.Name = "ExodusESP"
+				highlight.Parent = char
+				highlight.FillTransparency = 0.5
+				highlight.OutlineTransparency = 0
+
+				local bill = head:FindFirstChild("ExodusBill") or Instance.new("BillboardGui")
+				bill.Name = "ExodusBill"
+				bill.Parent = head
+				bill.Adornee = head
+				bill.Size = UDim2.new(0, 150, 0, 50)
+				bill.AlwaysOnTop = true
+				bill.ExtentsOffset = Vector3.new(0, 3, 0)
+
+				local label = bill:FindFirstChild("TextLabel") or Instance.new("TextLabel")
+				label.Parent = bill
+				label.Size = UDim2.new(1, 0, 1, 0)
+				label.BackgroundTransparency = 1
+				label.Font = Enum.Font.GothamBold
+				label.TextSize = 12
+				label.TextStrokeTransparency = 0
+
+				task.spawn(function()
+					while char and char.Parent and p and p.Parent and p.Character == char do
+						if _G.ESPEnabled then
+							highlight.Enabled = true
+							bill.Enabled = true
+
+							local activeHero = nil
+							for _, player in ipairs(game.Players:GetPlayers()) do
+								if player and player.Character then
+									local bp = player:FindFirstChild("Backpack")
+									local charGun = player.Character:FindFirstChild("Gun")
+									local backGun = bp and bp:FindFirstChild("Gun")
+									if charGun or backGun then
+										activeHero = player
+										break
+									end
+								end
+							end
+
+							local backpack = p:FindFirstChild("Backpack")
+							local hasKnife = (backpack and backpack:FindFirstChild("Knife")) or char:FindFirstChild("Knife")
+							local hasGun = (backpack and backpack:FindFirstChild("Gun")) or char:FindFirstChild("Gun")
+							local gunDropped = workspace:FindFirstChild("GunDrop", true)
+							local pData = _G.RoleCache and _G.RoleCache[p.Name]
+							local role = (pData and type(pData) == "table" and pData.Role) or "Innocent"
+
+							if hasKnife or role == "Murderer" then
+								local mColor = Color3.fromRGB(255, 0, 0)
+								highlight.FillColor = mColor
+								label.Text = "MURDERER\n▼"
+								label.TextColor3 = mColor
+							elseif hasGun then
+								local sColor = Color3.fromRGB(0, 162, 255)
+								highlight.FillColor = sColor
+								label.Text = "SHERIFF\n▼"
+								label.TextColor3 = sColor
+							elseif role == "Sheriff" or role == "Hero" then
+								if gunDropped or (activeHero and activeHero ~= p) then
+									local iColor = Color3.fromRGB(0, 255, 0)
+									highlight.FillColor = iColor
+									label.Text = "▼"
+									label.TextColor3 = iColor
+								else
+									local sColor = Color3.fromRGB(0, 162, 255)
+									highlight.FillColor = sColor
+									label.Text = "SHERIFF\n▼"
+									label.TextColor3 = sColor
+								end
+							else
+								local iColor = Color3.fromRGB(0, 255, 0)
+								highlight.FillColor = iColor
+								label.Text = "▼"
+								label.TextColor3 = iColor
+							end
+						else
+							highlight.Enabled = false
+							bill.Enabled = false
+						end
+						task.wait(0.5)
+					end
+				end)
+			end
+			
+			p.CharacterAdded:Connect(setup)
+			if p.Character then setup(p.Character) end
+		end
+
+		-- Initialize ESP on existing and future players once toggled on
+		if state and not _G.__PlayerESPConnected then
+			_G.__PlayerESPConnected = true
+			for _, player in pairs(game.Players:GetPlayers()) do
+				applyPlayerESP(player)
+			end
+			game.Players.PlayerAdded:Connect(applyPlayerESP)
+		end
 	end
 })
 EspSection:CreateToggle({
-	Name = "Role / Tracer ESP",
-	Flag = "RoleESP",
+	Name = "Gun ESP",
+	Flag = "GunESP",
 	CurrentValue = false,
 	Callback = function(state)
-		print("Role ESP toggled:", state)
+		_G.GunESPEnabled = state
+		
+		if state then
+			if _G.__GunESPConn then
+				pcall(function() task.cancel(_G.__GunESPConn) end)
+			end
+			
+			_G.__GunESPConn = task.spawn(function()
+				while _G.GunESPEnabled do
+					task.wait(0.2)
+					
+					pcall(function()
+						local drop = workspace:FindFirstChild("GunDrop", true)
+						
+						-- Manage ESP Billboards
+						if drop then
+							local existingBill = drop:FindFirstChild("ExodusGunESP")
+							if not existingBill then
+								local bill = Instance.new("BillboardGui", drop)
+								bill.Name = "ExodusGunESP"
+								bill.Size = UDim2.new(0, 120, 0, 60)
+								bill.AlwaysOnTop = true
+								bill.ExtentsOffset = Vector3.new(0, 2, 0)
+								
+								local label = Instance.new("TextLabel", bill)
+								label.Size = UDim2.new(1, 0, 1, 0)
+								label.BackgroundTransparency = 1
+								label.Font = Enum.Font.GothamBold
+								label.TextSize = 16
+								label.Text = "GUN HERE\n▼"
+								label.TextColor3 = Color3.fromRGB(0, 255, 0)
+								label.TextStrokeTransparency = 0
+								label.TextStrokeColor3 = Color3.new(0, 0, 0)
+							elseif existingBill then
+								existingBill.Enabled = true
+							end
+						else
+							-- Clean up or hide if drop doesn't exist
+							for _, v in ipairs(workspace:GetDescendants()) do
+								if v.Name == "ExodusGunESP" then
+									v.Enabled = false
+								end
+							end
+						end
+					end)
+				end
+				
+				-- Cleanup ESP when toggled off
+				pcall(function()
+					for _, v in ipairs(workspace:GetDescendants()) do
+						if v.Name == "ExodusGunESP" then
+							v:Destroy()
+						end
+					end
+				end)
+			end)
+		else
+			-- Explicitly destroy/hide ESP when turned off
+			pcall(function()
+				if _G.__GunESPConn then
+					task.cancel(_G.__GunESPConn)
+				end
+				for _, v in ipairs(workspace:GetDescendants()) do
+					if v.Name == "ExodusGunESP" then
+						v:Destroy()
+					end
+				end
+			end)
+		end
 	end
 })
 
