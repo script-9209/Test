@@ -1346,7 +1346,14 @@ CombatSection:CreateSlider({
 		print("Aura Range set to:", val)
 	end
 })
-
+CombatSection:CreateToggle({
+	Name = "Auto Grab Gun",
+	Flag = "AutoGrabGun",
+	CurrentValue = false,
+	Callback = function(state)
+		_G.AutoGrabGun = state
+	end
+})
 -- 4. ESP Tab
 local EspTab = Window:CreateTab("Esp")
 local EspSection = EspTab:CreateSection("Visuals")
