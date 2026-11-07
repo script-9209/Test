@@ -22,6 +22,7 @@ _G.CoinCollectCooldown = _G.CoinCollectCooldown or 0.05
 _G.InRound = _G.InRound or true
 _G.BagFull = _G.BagFull or false
 _G.AutoGrabGun = false
+_G.AuraRange = 7
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -1257,18 +1258,73 @@ CombatSection:CreateToggle({
 	Flag = "KillAura",
 	CurrentValue = false,
 	Callback = function(state)
-		print("Kill Aura toggled:", state)
+		local killAuraConnection = nil
+		local RunService = game:GetService("RunService")
+		local Players = game:GetService("Players")
+		local lp = Players.LocalPlayer
+
+		if state then
+			killAuraConnection = RunService.Heartbeat:Connect(function()
+				if not lp.Character or not lp.Character:FindFirstChild("HumanoidRootPart") then return end
+				local knife = lp.Character:FindFirstChild("Knife")
+				if not knife then
+					local backpackKnife = lp.Backpack:FindFirstChild("Knife")
+					if backpackKnife then
+						lp.Character:FindFirstChild("Humanoid"):EquipTool(backpackKnife)
+						knife = lp.Character:FindFirstChild("Knife")
+					end
+				end
+				if not knife then return end
+
+				local nearest, shortestDist = nil, math.huge
+				for _, p in ipairs(Players:GetPlayers()) do
+					if p ~= lp and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+						local dist = (lp.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude
+						if dist < shortestDist then
+							shortestDist = dist
+							nearest = p
+						end
+					end
+				end
+
+				if not nearest or not nearest.Character then return end
+				local tHRP = nearest.Character:FindFirstChild("HumanoidRootPart")
+				local tHum = nearest.Character:FindFirstChild("Humanoid")
+				if not tHRP or not tHum or tHum.Health <= 0 then return end
+
+				local range = _G.AuraRange or 7
+				if shortestDist > range then return end
+
+				pcall(function()
+					tHRP.Anchored = true
+					tHRP.CFrame = lp.Character.HumanoidRootPart.CFrame + lp.Character.HumanoidRootPart.CFrame.LookVector * 2
+					task.wait(0.1)
+					if knife:FindFirstChild("Stab") then
+						knife.Stab:FireServer("Slash")
+					end
+				end)
+
+				task.delay(0.3, function()
+					if tHRP then tHRP.Anchored = false end
+				end)
+			end)
+		else
+			if killAuraConnection then
+				killAuraConnection:Disconnect()
+				killAuraConnection = nil
+			end
+		end
 	end
 })
 CombatSection:CreateSlider({
 	Name = "Aura Range",
 	Flag = "AuraRange",
 	Min = 5,
-	Max = 30,
+	Max = 25,
 	Increment = 1,
 	Default = 15,
 	Callback = function(val)
-		print("Aura Range set to:", val)
+		_G.AuraRange = val
 	end
 })
 CombatSection:CreateToggle({
