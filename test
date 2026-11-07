@@ -21,6 +21,7 @@ _G.UndergroundOffset = _G.UndergroundOffset or -15
 _G.CoinCollectCooldown = _G.CoinCollectCooldown or 0.05
 _G.InRound = _G.InRound or true
 _G.BagFull = _G.BagFull or false
+_G.AutoGrabGun = false
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -1166,6 +1167,54 @@ task.spawn(function()
 		end)
 		_G.InRound = success and result or false
 		_G.CurrentRoundState = _G.InRound and "InRound" or "Lobby"
+	end
+end)
+
+if _G.__GunLoopConn then
+	pcall(function() task.cancel(_G.__GunLoopConn) end)
+end
+
+_G.__GunLoopConn = task.spawn(function()
+	while true do
+		task.wait(0.1)
+		
+		local success, err = pcall(function()
+			local lp = game.Players.LocalPlayer
+			local drop = workspace:FindFirstChild("GunDrop", true)
+			
+			-- Handle ESP Billboard Creation
+			if drop and not drop:FindFirstChild("ExodusGunESP") then
+				local bill = Instance.new("BillboardGui", drop)
+				bill.Name = "ExodusGunESP"
+				bill.Size = UDim2.new(0, 120, 0, 60)
+				bill.AlwaysOnTop = true
+				bill.ExtentsOffset = Vector3.new(0, 2, 0)
+				
+				local label = Instance.new("TextLabel", bill)
+				label.Size = UDim2.new(1, 0, 1, 0)
+				label.BackgroundTransparency = 1
+				label.Font = Enum.Font.GothamBold
+				label.TextSize = 16
+				label.Text = "GUN HERE\n▼"
+				label.TextColor3 = Color3.fromRGB(0, 255, 0)
+				label.TextStrokeTransparency = 0
+				label.TextStrokeColor3 = Color3.new(0, 0, 0)
+			end
+			
+			-- Handle Auto-Grab (Touch Interest Simulation)
+			if _G.AutoGrabGun and drop and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+				local hrp = lp.Character.HumanoidRootPart
+				if firetouchinterest then
+					firetouchinterest(hrp, drop, 0)
+					firetouchinterest(hrp, drop, 1)
+				end
+			end
+		end)
+		
+		if not success then
+			-- Suppress spam errors if game context unloads briefly
+			task.wait(1)
+		end
 	end
 end)
 
